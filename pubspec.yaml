@@ -1,4 +1,4 @@
-name: animestream
+name: AniFOX
 description: "A app made to stream and download anime!"
 publish_to: "none" #Dont remove this!
 
@@ -52,12 +52,12 @@ dependencies:
 
   better_player:
     git:
-      url: https://github.com/frostnova721/betterplayer.git
+      url: https://github.com/ItzFallenMe/betterplayer.git
   # video_player_win: ^3.1.1
   fvp: 
     # path: "../../fvp"
     git:
-      url: "https://github.com/frostnova721/fvp.git"
+      url: "https://github.com/ItzFallenMe/fvp.git"
 
   # UI
   pull_to_refresh: ^2.0.0
@@ -66,7 +66,7 @@ dependencies:
   cached_network_image: ^3.3.1
   window_manager:
     git:
-      url: https://github.com/YuiHrsw/window_manager.git
+      url: https://github.com/ItzFallenMe/window_manager.git
       path: packages/window_manager
       ref: windows_fullscreen_fix
 
@@ -76,7 +76,7 @@ dependencies:
   commentum_client:
     # path: ../../commentum_client
     git:
-      url: https://github.com/frostnova721/commentum_client
+      url: https://github.com/ItzFallenMe/commentum_client
 
 dev_dependencies:
   flutter_test:
@@ -86,8 +86,8 @@ dev_dependencies:
 
 inno_bundle:
   id: "59cae0c0-fb9d-11ef-b95e-5f3937b12ea5"
-  publisher: "FrostNova"
-  name: "animestream"
+  publisher: "ItzFallenMe"
+  name: "AniFox"
   languages:
     - english
 
