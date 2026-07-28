@@ -1,5 +1,5 @@
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/database/types.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/database/types.dart';
 
 class ServerSelectionBottomSheetContentData {
   final int episodeIndex;

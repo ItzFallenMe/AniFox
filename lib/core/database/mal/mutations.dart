@@ -1,10 +1,10 @@
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/mal/login.dart';
-import 'package:animestream/core/database/mal/mal.dart';
-import 'package:animestream/core/database/mal/types.dart';
-import 'package:animestream/core/database/types.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/mal/login.dart';
+import 'package:anifox/core/database/mal/mal.dart';
+import 'package:anifox/core/database/mal/types.dart';
+import 'package:anifox/core/database/types.dart';
+import 'package:anifox/core/network/network.dart';
 
 class MALMutation extends DatabaseMutation {
   @override

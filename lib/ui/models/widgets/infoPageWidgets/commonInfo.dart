@@ -1,7 +1,7 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/bottomSheets/mediaListStatus.dart';
-import 'package:animestream/ui/models/providers/infoProvider.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/bottomSheets/mediaListStatus.dart';
+import 'package:anifox/ui/models/providers/infoProvider.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 

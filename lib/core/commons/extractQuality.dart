@@ -1,7 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:async';
 
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class ParsedHlsMaster {
   final List<QualityStream> qualityStreams;

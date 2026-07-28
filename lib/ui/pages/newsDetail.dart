@@ -1,5 +1,5 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/news/animenews.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/news/animenews.dart';
 import 'package:flutter/material.dart';
 
 class NewsDetails extends StatefulWidget {

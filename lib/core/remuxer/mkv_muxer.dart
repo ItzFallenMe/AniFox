@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:animestream/core/remuxer/ebml.dart';
+import 'package:anifox/core/remuxer/ebml.dart';
 
 class CuePoint {
   final int timecode;

@@ -1,6 +1,6 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/providers/mainNavProvider.dart';
-import 'package:animestream/ui/pages/settings.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/providers/mainNavProvider.dart';
+import 'package:anifox/ui/pages/settings.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

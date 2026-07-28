@@ -1,9 +1,9 @@
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/secureStorage.dart';
-import 'package:animestream/core/database/anilist/anilist.dart';
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/types.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/secureStorage.dart';
+import 'package:anifox/core/database/anilist/anilist.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/types.dart';
 
 class AnilistMutations extends DatabaseMutation {
   @override

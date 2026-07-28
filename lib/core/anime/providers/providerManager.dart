@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:animestream/core/anime/providers/providerDetails.dart';
-import 'package:animestream/core/data/providers.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/anime/providers/providerDetails.dart';
+import 'package:anifox/core/data/providers.dart';
+import 'package:anifox/core/network/network.dart';
 
 class ProviderManager {
   static const String _fileBaseUrl =

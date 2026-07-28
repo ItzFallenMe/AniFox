@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:animestream/core/anime/extractors/type.dart';
-import 'package:animestream/core/anime/providers/types.dart';
+import 'package:anifox/core/anime/extractors/type.dart';
+import 'package:anifox/core/anime/providers/types.dart';
 import 'package:html/parser.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class VidtubeExtractor implements AnimeExtractor {
   @override

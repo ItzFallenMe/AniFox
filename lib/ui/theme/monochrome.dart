@@ -1,4 +1,4 @@
-import 'package:animestream/ui/theme/types.dart';
+import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
 
 class Monochrome implements ThemeItem {
@@ -9,7 +9,7 @@ class Monochrome implements ThemeItem {
   bool get dev => false;
 
   @override
-  AnimeStreamTheme get lightVariant => AnimeStreamTheme(
+  AniFoxTheme get lightVariant => AniFoxTheme(
         accentColor: Colors.black,
         backgroundColor: Colors.white,
         backgroundSubColor: const Color.fromARGB(255, 172, 172, 172),
@@ -23,7 +23,7 @@ class Monochrome implements ThemeItem {
   String get name => "Monochrome";
 
   @override
-  AnimeStreamTheme get theme => AnimeStreamTheme(
+  AniFoxTheme get theme => AniFoxTheme(
         accentColor: Colors.white,
         backgroundColor: Colors.black,
         backgroundSubColor: Color.fromARGB(255, 36, 36, 36),

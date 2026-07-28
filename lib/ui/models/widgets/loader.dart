@@ -3,12 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 // HMM used an AI, Im just a vibe coder atp ig
-class AnimeStreamLoading extends StatefulWidget {
+class AniFoxLoading extends StatefulWidget {
   final Color color;
   final double size;
   final Duration duration;
 
-  const AnimeStreamLoading({
+  const AniFoxLoading({
     Key? key,
     this.color = Colors.purple,
     this.size = 80.0,
@@ -16,10 +16,10 @@ class AnimeStreamLoading extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _AnimeStreamLoadingState createState() => _AnimeStreamLoadingState();
+  _AniFoxLoadingState createState() => _AniFoxLoadingState();
 }
 
-class _AnimeStreamLoadingState extends State<AnimeStreamLoading>
+class _AniFoxLoadingState extends State<AniFoxLoading>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 

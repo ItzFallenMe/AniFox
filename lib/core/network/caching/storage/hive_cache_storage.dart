@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 
-import 'package:animestream/core/network/caching/domain/cache_entry.dart';
-import 'package:animestream/core/network/caching/storage/cache_storage.dart';
+import 'package:anifox/core/network/caching/domain/cache_entry.dart';
+import 'package:anifox/core/network/caching/storage/cache_storage.dart';
 import 'package:hive/hive.dart';
 
 class CacheEntryAdapter extends TypeAdapter<CacheEntry> {

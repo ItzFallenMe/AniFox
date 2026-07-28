@@ -1,4 +1,4 @@
-import "package:animestream/core/network/network.dart";
+import "package:anifox/core/network/network.dart";
 import "package:html/parser.dart" as html;
 
 class AnimeNews {

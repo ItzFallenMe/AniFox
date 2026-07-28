@@ -1,8 +1,8 @@
-import 'package:animestream/core/anime/providers/providerDetails.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/bottomSheets/manualSearchSheet.dart';
-import 'package:animestream/ui/models/providers/infoProvider.dart';
-import 'package:animestream/ui/models/sources.dart';
+import 'package:anifox/core/anime/providers/providerDetails.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/bottomSheets/manualSearchSheet.dart';
+import 'package:anifox/ui/models/providers/infoProvider.dart';
+import 'package:anifox/ui/models/sources.dart';
 import 'package:flutter/material.dart';
 
 class SourceSideWidget extends StatelessWidget {

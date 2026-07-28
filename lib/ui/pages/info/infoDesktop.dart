@@ -1,11 +1,11 @@
-import 'package:animestream/core/anime/downloader/downloadManager.dart';
-import 'package:animestream/ui/models/providers/infoProvider.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/ContextMenu.dart';
-import 'package:animestream/ui/models/widgets/bottomBar.dart';
-import 'package:animestream/ui/models/widgets/infoPageWidgets/infoSection.dart';
-import 'package:animestream/ui/models/widgets/infoPageWidgets/watchSection.dart';
-import 'package:animestream/ui/models/widgets/navRail.dart';
+import 'package:anifox/core/anime/downloader/downloadManager.dart';
+import 'package:anifox/ui/models/providers/infoProvider.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/ContextMenu.dart';
+import 'package:anifox/ui/models/widgets/bottomBar.dart';
+import 'package:anifox/ui/models/widgets/infoPageWidgets/infoSection.dart';
+import 'package:anifox/ui/models/widgets/infoPageWidgets/watchSection.dart';
+import 'package:anifox/ui/models/widgets/navRail.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +22,7 @@ class _InfoDesktopState extends State<InfoDesktop> {
 
   final pageScrollController = ScrollController();
 
-  final viewController = AnimeStreamBottomBarController(length: 3, nonViewIndices: [0], animDuration: 00);
+  final viewController = AniFoxBottomBarController(length: 3, nonViewIndices: [0], animDuration: 00);
 
   @override
   Widget build(BuildContext context) {
@@ -32,22 +32,22 @@ class _InfoDesktopState extends State<InfoDesktop> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AnimeStreamNavRail(
+          AniFoxNavRail(
             controller: viewController,
             shouldExpand: true,
             initialIndex: 1,
             destinations: [
-              AnimeStreamNavDestination(
+              AniFoxNavDestination(
                   icon: Icons.arrow_back,
                   label: "Back",
                   onClick: () {
                     Navigator.of(context).pop();
                   }),
-              AnimeStreamNavDestination(
+              AniFoxNavDestination(
                 icon: Icons.info_outline_rounded,
                 label: "Info",
               ),
-              AnimeStreamNavDestination(
+              AniFoxNavDestination(
                 icon: Icons.play_arrow_rounded,
                 label: "Play",
               ),

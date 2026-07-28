@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/database/anilist/queries.dart';
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/loader.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/database/anilist/queries.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/loader.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:flutter/material.dart';
 
 class UserStats extends StatefulWidget {
@@ -109,7 +109,7 @@ class _UserStatsState extends State<UserStats> {
               ),
             )
           : Center(
-              child: AnimeStreamLoading(
+              child: AniFoxLoading(
                 color: appTheme.accentColor,
               ),
             ),

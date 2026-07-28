@@ -1,11 +1,11 @@
 import 'dart:io';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/data/settings.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/toggleItem.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/data/settings.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/toggleItem.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 

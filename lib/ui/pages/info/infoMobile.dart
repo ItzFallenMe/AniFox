@@ -1,25 +1,25 @@
-import 'package:animestream/core/anime/downloader/downloadManager.dart';
-import 'package:animestream/core/data/watching.dart';
-import 'package:animestream/ui/models/bottomSheets/batchDownload.dart';
-import 'package:animestream/ui/models/bottomSheets/commentSection.dart';
+import 'package:anifox/core/anime/downloader/downloadManager.dart';
+import 'package:anifox/core/data/watching.dart';
+import 'package:anifox/ui/models/bottomSheets/batchDownload.dart';
+import 'package:anifox/ui/models/bottomSheets/commentSection.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/core/database/types.dart';
-import 'package:animestream/ui/models/bottomSheets/manualSearchSheet.dart';
-import 'package:animestream/ui/models/bottomSheets/mediaListStatus.dart';
-import 'package:animestream/ui/models/bottomSheets/serverSelectionSheet.dart';
-import 'package:animestream/ui/models/providers/infoProvider.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/sources.dart';
-import 'package:animestream/ui/models/widgets/cards.dart';
-import 'package:animestream/ui/models/widgets/loader.dart';
-import 'package:animestream/ui/pages/info.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/core/database/types.dart';
+import 'package:anifox/ui/models/bottomSheets/manualSearchSheet.dart';
+import 'package:anifox/ui/models/bottomSheets/mediaListStatus.dart';
+import 'package:anifox/ui/models/bottomSheets/serverSelectionSheet.dart';
+import 'package:anifox/ui/models/providers/infoProvider.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/sources.dart';
+import 'package:anifox/ui/models/widgets/cards.dart';
+import 'package:anifox/ui/models/widgets/loader.dart';
+import 'package:anifox/ui/pages/info.dart';
 
 class InfoMobile extends StatefulWidget {
   const InfoMobile({super.key});
@@ -245,7 +245,7 @@ class _InfoMobileState extends State<InfoMobile> {
                   ],
                 )
               : Center(
-                  child: AnimeStreamLoading(
+                  child: AniFoxLoading(
                     color: appTheme.accentColor,
                   ),
                 ),

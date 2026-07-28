@@ -1,4 +1,4 @@
-import 'package:animestream/ui/theme/types.dart';
+import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
 
 class NeonGreen implements ThemeItem {
@@ -9,7 +9,7 @@ class NeonGreen implements ThemeItem {
   bool get dev => false;
 
   @override
-  AnimeStreamTheme get lightVariant => AnimeStreamTheme(
+  AniFoxTheme get lightVariant => AniFoxTheme(
         accentColor: Color(0xff00c896),
         backgroundColor: Color(0xfff5f9fc),
         modalSheetBackgroundColor: Color(0xffffffff),
@@ -23,7 +23,7 @@ class NeonGreen implements ThemeItem {
   String get name => "Neon Green";
 
   @override
-  AnimeStreamTheme get theme => AnimeStreamTheme(
+  AniFoxTheme get theme => AniFoxTheme(
         accentColor: Color(0xff27e9b5),
         backgroundColor: Color(0xff051824),
         modalSheetBackgroundColor: Color(0xff162936),

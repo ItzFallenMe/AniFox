@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/commons/subtitleParsers/assParser.dart';
-import 'package:animestream/core/commons/subtitleParsers/srtParser.dart';
-import 'package:animestream/core/commons/subtitleParsers/vttParser.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitle.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/commons/subtitleParsers/assParser.dart';
+import 'package:anifox/core/commons/subtitleParsers/srtParser.dart';
+import 'package:anifox/core/commons/subtitleParsers/vttParser.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitle.dart';
+import 'package:anifox/core/network/network.dart';
 
 class Subtitleparsers {
   Future<List<Subtitle>> parseSubs(String source, SubtitleFormat format) async {

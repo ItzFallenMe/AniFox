@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class AniSkip {
   final String _baseUrl = "https://api.aniskip.com/v2";

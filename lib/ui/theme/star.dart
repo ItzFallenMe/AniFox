@@ -1,4 +1,4 @@
-import 'package:animestream/ui/theme/types.dart';
+import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
 
 class Star implements ThemeItem {
@@ -9,7 +9,7 @@ class Star implements ThemeItem {
   bool get dev => false;
 
   @override
-  AnimeStreamTheme get lightVariant => AnimeStreamTheme(
+  AniFoxTheme get lightVariant => AniFoxTheme(
       accentColor: Color(0xFFFBC02D),
       backgroundColor: Color(0xFFFAF8F0),
       backgroundSubColor: Color.fromARGB(255, 255, 239, 168),
@@ -23,7 +23,7 @@ class Star implements ThemeItem {
   String get name => "Star";
 
   @override
-  AnimeStreamTheme get theme => AnimeStreamTheme(
+  AniFoxTheme get theme => AniFoxTheme(
         accentColor: Color(0xFFFBC02D),
         backgroundColor: Color(0xFF272727),
         backgroundSubColor: Color(0xFF1A1A1A),

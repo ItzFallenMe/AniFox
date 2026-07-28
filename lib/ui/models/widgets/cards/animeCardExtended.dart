@@ -3,9 +3,9 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/pages/info.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/pages/info.dart';
 
 class AnimeCardExtended extends StatelessWidget {
   final int id;

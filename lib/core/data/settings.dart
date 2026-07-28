@@ -1,11 +1,11 @@
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums/hiveEnums.dart';
-import 'package:animestream/core/data/types.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums/hiveEnums.dart';
+import 'package:anifox/core/data/types.dart';
 import 'package:hive/hive.dart';
 
 class Settings {
-  static final String _boxName = HiveBox.animestream.boxName;
+  static final String _boxName = HiveBox.anifox.boxName;
 
   Future<SettingsModal> getSettings({bool writing = false}) async {
     var box = await Hive.openBox(_boxName);

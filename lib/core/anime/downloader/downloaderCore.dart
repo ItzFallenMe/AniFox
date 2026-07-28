@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:animestream/core/anime/downloader/downloaders/imageDownloader.dart';
-import 'package:animestream/core/anime/downloader/downloaders/mockDownloader.dart';
-import 'package:animestream/core/anime/downloader/downloaders/streamDownloader.dart';
-import 'package:animestream/core/anime/downloader/downloaders/videoDownloader.dart';
-import 'package:animestream/core/anime/downloader/types.dart';
+import 'package:anifox/core/anime/downloader/downloaders/imageDownloader.dart';
+import 'package:anifox/core/anime/downloader/downloaders/mockDownloader.dart';
+import 'package:anifox/core/anime/downloader/downloaders/streamDownloader.dart';
+import 'package:anifox/core/anime/downloader/downloaders/videoDownloader.dart';
+import 'package:anifox/core/anime/downloader/types.dart';
 
 // The class handling the core of downloading
 class DownloaderCore {

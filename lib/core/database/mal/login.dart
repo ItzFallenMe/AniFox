@@ -2,15 +2,15 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/secureStorage.dart';
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/mal/mal.dart';
-import 'package:animestream/core/database/mal/types.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/secureStorage.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/mal/mal.dart';
+import 'package:anifox/core/database/mal/types.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class MALLogin extends DatabaseLogin {
   final _clientId = "165c40bb79c803049c4badcaa90cfd74";
@@ -22,7 +22,7 @@ class MALLogin extends DatabaseLogin {
 
     await storeSecureVal(SecureStorageKey.malChallengeVerifier, verifier);
 
-    final redirect = "auth.animestream://callback";
+    final redirect = "auth.anifox://callback";
     final state = generateState();
 
     final loginUrl =

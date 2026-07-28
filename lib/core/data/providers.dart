@@ -1,5 +1,5 @@
-import 'package:animestream/core/anime/providers/providerDetails.dart';
-import 'package:animestream/core/commons/enums/hiveEnums.dart';
+import 'package:anifox/core/anime/providers/providerDetails.dart';
+import 'package:anifox/core/commons/enums/hiveEnums.dart';
 import 'package:hive/hive.dart';
 
 class ProvidersPreferences {

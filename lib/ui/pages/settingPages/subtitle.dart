@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/data/preferences.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/ui/models/widgets/slider.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitleSettings.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitleText.dart';
-import 'package:animestream/ui/models/widgets/toggleItem.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/data/preferences.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/ui/models/widgets/slider.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitleSettings.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitleText.dart';
+import 'package:anifox/ui/models/widgets/toggleItem.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

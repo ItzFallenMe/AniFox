@@ -1,9 +1,9 @@
-import 'package:animestream/core/anime/downloader/downloader.dart';
-import 'package:animestream/core/anime/downloader/downloaderHelper.dart';
-import 'package:animestream/core/anime/downloader/types.dart';
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/anime/downloader/downloader.dart';
+import 'package:anifox/core/anime/downloader/downloaderHelper.dart';
+import 'package:anifox/core/anime/downloader/types.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:flutter/widgets.dart';
 
 /// Manages and Keeps track of downloads.

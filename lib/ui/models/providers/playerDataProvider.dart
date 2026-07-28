@@ -1,15 +1,15 @@
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/extractQuality.dart';
-import 'package:animestream/core/commons/utils.dart';
-import 'package:animestream/core/data/preferences.dart';
-import 'package:animestream/core/database/aniskip/aniskip.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/types.dart';
-import 'package:animestream/core/integrations/discord/desktopRPC.dart';
-import 'package:animestream/ui/models/sources.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitleSettings.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/extractQuality.dart';
+import 'package:anifox/core/commons/utils.dart';
+import 'package:anifox/core/data/preferences.dart';
+import 'package:anifox/core/database/aniskip/aniskip.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/types.dart';
+import 'package:anifox/core/integrations/discord/desktopRPC.dart';
+import 'package:anifox/ui/models/sources.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitleSettings.dart';
 import 'package:dart_discord_presence/dart_discord_presence.dart';
 import 'package:flutter/material.dart';
 

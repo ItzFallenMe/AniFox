@@ -1,4 +1,4 @@
-import 'package:animestream/ui/theme/types.dart';
+import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
 
 class Amethyst implements ThemeItem {
@@ -9,7 +9,7 @@ class Amethyst implements ThemeItem {
   bool get dev => false;
 
   @override
-  AnimeStreamTheme get lightVariant => AnimeStreamTheme(
+  AniFoxTheme get lightVariant => AniFoxTheme(
         accentColor: Color(0xff6a3b76),
         backgroundColor: Color(0xfff9efea),
         backgroundSubColor: Color(0xffbb8da3),
@@ -23,7 +23,7 @@ class Amethyst implements ThemeItem {
   String get name => "Amethyst";
 
   @override
-  AnimeStreamTheme get theme => AnimeStreamTheme(
+  AniFoxTheme get theme => AniFoxTheme(
         accentColor: Color(0xff6a3b76),
         backgroundColor: Color(0xff1a1119),
         backgroundSubColor: Color.fromARGB(255, 65, 37, 53),

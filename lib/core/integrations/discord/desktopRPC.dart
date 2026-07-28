@@ -1,4 +1,4 @@
-import 'package:animestream/core/app/env.dart';
+import 'package:anifox/core/app/env.dart';
 import 'package:dart_discord_presence/dart_discord_presence.dart';
 
 class DiscordDesktopRPC {
@@ -12,7 +12,7 @@ class DiscordDesktopRPC {
       print("RPC Client connected as ${val.user.username}.");
     });
 
-    await _discord.initialize(AnimeStreamEnvironment.discordApplicationId);
+    await _discord.initialize(AniFoxEnvironment.discordApplicationId);
     _isInitialized = true;
   }
 

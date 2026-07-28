@@ -1,9 +1,9 @@
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums/hiveEnums.dart';
-import 'package:animestream/core/data/hive.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/core/database/database.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums/hiveEnums.dart';
+import 'package:anifox/core/data/hive.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/core/database/database.dart';
 import 'package:hive/hive.dart';
 
 /// Max number of anime-specific preference entries to retain (LRU policy)

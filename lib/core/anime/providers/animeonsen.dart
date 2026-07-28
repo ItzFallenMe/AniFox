@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:animestream/core/anime/providers/animeProvider.dart';
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/misc.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/anime/providers/animeProvider.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/misc.dart';
+import 'package:anifox/core/network/network.dart';
 
 class AnimeOnsen extends AnimeProvider {
   Future<void> checkAndUpdateToken() async {

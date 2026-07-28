@@ -1,6 +1,6 @@
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/ui/pages/settingPages/widgets/login_card.dart';
-import 'package:animestream/ui/pages/settingPages/widgets/profile_card.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/ui/pages/settingPages/widgets/login_card.dart';
+import 'package:anifox/ui/pages/settingPages/widgets/profile_card.dart';
 import 'package:flutter/material.dart';
 
 class DatabaseAccountCard extends StatelessWidget {

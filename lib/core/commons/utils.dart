@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:animestream/core/commons/enums.dart';
+import 'package:anifox/core/commons/enums.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -100,7 +100,7 @@ Future<Directory> getDocumentsDirectory() async {
         return dir;
       }
     }
-    return Directory('/storage/emulated/0/Documents/animestream');
+    return Directory('/storage/emulated/0/Documents/anifox');
   }
-  return Directory(dir.path + '/animestream');
+  return Directory(dir.path + '/anifox');
 }

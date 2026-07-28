@@ -1,26 +1,26 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/data/animeSpecificPreference.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/ui/models/playerControllers/betterPlayer.dart';
-import 'package:animestream/ui/models/widgets/player/controls.dart';
-import 'package:animestream/ui/models/widgets/player/gestureOverlay.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subViewer.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/data/animeSpecificPreference.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/ui/models/playerControllers/betterPlayer.dart';
+import 'package:anifox/ui/models/widgets/player/controls.dart';
+import 'package:anifox/ui/models/widgets/player/gestureOverlay.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subViewer.dart';
 import 'package:better_player/better_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/watching.dart';
-import 'package:animestream/ui/models/widgets/player/playerUtils.dart';
-import 'package:animestream/ui/models/providers/playerDataProvider.dart';
-import 'package:animestream/ui/models/providers/playerProvider.dart';
-import 'package:animestream/ui/models/providers/appProvider.dart';
-import 'package:animestream/ui/models/playerControllers/videoController.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/watching.dart';
+import 'package:anifox/ui/models/widgets/player/playerUtils.dart';
+import 'package:anifox/ui/models/providers/playerDataProvider.dart';
+import 'package:anifox/ui/models/providers/playerProvider.dart';
+import 'package:anifox/ui/models/providers/appProvider.dart';
+import 'package:anifox/ui/models/playerControllers/videoController.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 class Watch extends StatefulWidget {
@@ -69,7 +69,7 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
     // }
   }
 
-  final _channel = MethodChannel('animestream.app/utils');
+  final _channel = MethodChannel('anifox.app/utils');
 
   void _initCallbacks(BuildContext context) {
     _channel.setMethodCallHandler((call) async {

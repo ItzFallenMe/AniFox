@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:animestream/core/network/caching/storage/cache_config_storage.dart';
-import 'package:animestream/core/network/caching/storage/hive_cache_config_storage.dart';
+import 'package:anifox/core/network/caching/storage/cache_config_storage.dart';
+import 'package:anifox/core/network/caching/storage/hive_cache_config_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class CacheConfig {

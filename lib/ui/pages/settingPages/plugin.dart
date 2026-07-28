@@ -1,4 +1,4 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:flutter/material.dart';
 
 class PluginPage extends StatefulWidget {
@@ -104,10 +104,10 @@ class _PluginPageState extends State<PluginPage> with TickerProviderStateMixin {
             //   controller: _tabController,
             //   children: [
             //     _installedProviders == null
-            //         ? Center(child: AnimeStreamLoading(color: appTheme.accentColor))
+            //         ? Center(child: AniFoxLoading(color: appTheme.accentColor))
             //         : _list(_installedProviders!),
             //     _availableProviders == null
-            //         ? Center(child: AnimeStreamLoading(color: appTheme.accentColor))
+            //         ? Center(child: AniFoxLoading(color: appTheme.accentColor))
             //         : _list(_availableProviders!),
             //   ],
             // )),

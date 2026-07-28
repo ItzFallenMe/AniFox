@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:animestream/core/anime/providers/animeProvider.dart';
-import 'package:animestream/core/anime/providers/types.dart';
+import 'package:anifox/core/anime/providers/animeProvider.dart';
+import 'package:anifox/core/anime/providers/types.dart';
 import 'package:html/parser.dart' as html;
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class AniDB implements AnimeProvider {
   @override

@@ -1,13 +1,13 @@
 import 'dart:io';
 
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/commons/subtitleParsers/subtitleParsers.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/playerControllers/videoController.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitle.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitleSettings.dart';
-import 'package:animestream/ui/models/widgets/subtitles/subtitleText.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/commons/subtitleParsers/subtitleParsers.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/playerControllers/videoController.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitle.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitleSettings.dart';
+import 'package:anifox/ui/models/widgets/subtitles/subtitleText.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 

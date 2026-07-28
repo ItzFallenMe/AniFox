@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:animestream/core/anime/extractors/vidtube.dart';
-import 'package:animestream/core/anime/providers/animeProvider.dart';
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/app/logging.dart';
+import 'package:anifox/core/anime/extractors/vidtube.dart';
+import 'package:anifox/core/anime/providers/animeProvider.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/logging.dart';
 import 'package:html/parser.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 
 class Anikoto implements AnimeProvider {
   @override

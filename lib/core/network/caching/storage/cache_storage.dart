@@ -1,4 +1,4 @@
-import 'package:animestream/core/network/caching/domain/cache_entry.dart';
+import 'package:anifox/core/network/caching/domain/cache_entry.dart';
 
 abstract class CacheStorage {
   Future<void> init();

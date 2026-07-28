@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:animestream/core/anime/downloader/downloaderHelper.dart';
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/anime/downloader/downloaderHelper.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:flutter/material.dart';
 
 class LogScreen extends StatefulWidget {

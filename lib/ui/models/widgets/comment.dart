@@ -1,4 +1,4 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:commentum_client/commentum_client.dart';
 import 'package:flutter/material.dart';
 

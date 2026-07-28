@@ -1,6 +1,6 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/pages/downloads.dart';
-import 'package:animestream/ui/pages/settings.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/pages/downloads.dart';
+import 'package:anifox/ui/pages/settings.dart';
 import 'package:flutter/material.dart';
 
 Container buildHeader(String title, BuildContext context, {void Function()? afterNavigation}) {

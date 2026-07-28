@@ -1,10 +1,10 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/app/version.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/ContextMenu.dart';
-import 'package:animestream/ui/models/widgets/clickableItem.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
-import 'package:animestream/ui/pages/settingPages/logs.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/app/version.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/ContextMenu.dart';
+import 'package:anifox/ui/models/widgets/clickableItem.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
+import 'package:anifox/ui/pages/settingPages/logs.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -136,7 +136,7 @@ class _AppInfoSettingState extends State<AppInfoSetting> {
         ),
         SizedBox(height: 15),
         Text(
-          "animestream",
+          "AniFox",
           style: TextStyle(
             color: appTheme.textMainColor,
             fontFamily: "Poppins",
@@ -176,7 +176,7 @@ class _AppInfoSettingState extends State<AppInfoSetting> {
         children: [
           ClickableItem(
               onTap: () => launchUrl(
-                    Uri.parse("https://github.com/frostnova721/animestream"),
+                    Uri.parse("https://github.com/ItzFallenMe/AniFox"),
                     mode: LaunchMode.externalApplication,
                   ),
               label: "GitHub Repository",
@@ -186,7 +186,7 @@ class _AppInfoSettingState extends State<AppInfoSetting> {
           _divider(),
           ClickableItem(
             onTap: () => launchUrl(
-              Uri.parse("https://github.com/frostnova721/animestream/issues"),
+              Uri.parse("https://github.com/ItzFallenMe/AniFox/issues"),
               mode: LaunchMode.externalApplication,
             ),
             label: "Report an Issue",
@@ -196,7 +196,7 @@ class _AppInfoSettingState extends State<AppInfoSetting> {
           _divider(),
           ClickableItem(
               onTap: () {
-                Clipboard.setData(ClipboardData(text: "https://github.com/frostnova721/animestream"));
+                Clipboard.setData(ClipboardData(text: "https://github.com/ItzFallenMe/AniFox"));
                 floatingSnackBar("Repository link copied!");
               },
               label: "Share App",
@@ -237,7 +237,7 @@ class _AppInfoSettingState extends State<AppInfoSetting> {
               onTap: () {
                 launchUrl(
                   Uri.parse(
-                    'https://www.buymeacoffee.com/frostnova',
+                    'https://www.buymeacoffee.com/itzfallenme',
                   ),
                  mode: LaunchMode.externalApplication, 
                 );

@@ -1,15 +1,15 @@
-import 'package:animestream/ui/theme/amethyst.dart';
-import 'package:animestream/ui/theme/coldPurple.dart';
-import 'package:animestream/ui/theme/hotPink.dart';
-import 'package:animestream/ui/theme/lime.dart';
-import 'package:animestream/ui/theme/neonRed.dart';
-import 'package:animestream/ui/theme/star.dart';
-import 'package:animestream/ui/theme/mocha.dart';
-import 'package:animestream/ui/theme/monochrome.dart';
-import 'package:animestream/ui/theme/neonGreen.dart';
-import 'package:animestream/ui/theme/sakura.dart';
-import 'package:animestream/ui/theme/types.dart';
-import 'package:animestream/ui/theme/cozyKoala.dart';
+import 'package:anifox/ui/theme/amethyst.dart';
+import 'package:anifox/ui/theme/coldPurple.dart';
+import 'package:anifox/ui/theme/hotPink.dart';
+import 'package:anifox/ui/theme/lime.dart';
+import 'package:anifox/ui/theme/neonRed.dart';
+import 'package:anifox/ui/theme/star.dart';
+import 'package:anifox/ui/theme/mocha.dart';
+import 'package:anifox/ui/theme/monochrome.dart';
+import 'package:anifox/ui/theme/neonGreen.dart';
+import 'package:anifox/ui/theme/sakura.dart';
+import 'package:anifox/ui/theme/types.dart';
+import 'package:anifox/ui/theme/cozyKoala.dart';
 import 'package:flutter/material.dart';
 
 /** List of available themes.
@@ -29,7 +29,7 @@ List<ThemeItem> availableThemes = [
   CozyKoala(),
 ];
 // Represents a generic light theme (used only for its values)
-AnimeStreamTheme lightModeValues = AnimeStreamTheme(
+AniFoxTheme lightModeValues = AniFoxTheme(
   textMainColor: Colors.black,
   textSubColor: Color.fromARGB(255, 61, 61, 61),
   backgroundColor: Colors.white,
@@ -40,7 +40,7 @@ AnimeStreamTheme lightModeValues = AnimeStreamTheme(
 );
 
 // Represents a generic dark theme (used only for its values)
-AnimeStreamTheme darkModeValues = AnimeStreamTheme(
+AniFoxTheme darkModeValues = AniFoxTheme(
   backgroundColor: Color.fromARGB(255, 24, 24, 24),
   backgroundSubColor: const Color.fromARGB(255, 36, 36, 36),
   textMainColor: Colors.white,

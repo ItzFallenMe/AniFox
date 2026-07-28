@@ -1,6 +1,6 @@
-import 'package:animestream/core/commons/enums/hiveEnums.dart';
-import 'package:animestream/core/network/caching/cache_config.dart';
-import 'package:animestream/core/network/caching/storage/cache_config_storage.dart';
+import 'package:anifox/core/commons/enums/hiveEnums.dart';
+import 'package:anifox/core/network/caching/cache_config.dart';
+import 'package:anifox/core/network/caching/storage/cache_config_storage.dart';
 import 'package:hive/hive.dart';
 
 class HiveCacheConfigStorage implements CacheConfigStorage {
@@ -8,7 +8,7 @@ class HiveCacheConfigStorage implements CacheConfigStorage {
   final String key;
 
   HiveCacheConfigStorage({String? boxName, this.key = 'cache_config'})
-      : boxName = boxName ?? HiveBox.animestream.boxName;
+      : boxName = boxName ?? HiveBox.anifox.boxName;
 
   @override
   Future<CacheConfig?> load() async {

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:animestream/core/anime/extractors/kwik.dart';
-import 'package:animestream/core/anime/providers/animeProvider.dart';
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/network/network.dart' as http;
+import 'package:anifox/core/anime/extractors/kwik.dart';
+import 'package:anifox/core/anime/providers/animeProvider.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/network/network.dart' as http;
 import 'package:html/parser.dart' as html;
 
 class AnimePahe extends AnimeProvider {

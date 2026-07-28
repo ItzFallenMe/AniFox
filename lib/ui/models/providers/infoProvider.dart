@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-import 'package:animestream/core/anime/providers/providerDetails.dart';
-import 'package:animestream/core/anime/providers/types.dart';
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/commons/utils.dart';
-import 'package:animestream/core/data/animeSpecificPreference.dart';
-import 'package:animestream/core/data/preferences.dart';
-import 'package:animestream/core/data/types.dart';
-import 'package:animestream/core/data/watching.dart';
-import 'package:animestream/core/database/anilist/login.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/handler/handler.dart';
-import 'package:animestream/core/database/types.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/sources.dart';
+import 'package:anifox/core/anime/providers/providerDetails.dart';
+import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/commons/utils.dart';
+import 'package:anifox/core/data/animeSpecificPreference.dart';
+import 'package:anifox/core/data/preferences.dart';
+import 'package:anifox/core/data/types.dart';
+import 'package:anifox/core/data/watching.dart';
+import 'package:anifox/core/database/anilist/login.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/handler/handler.dart';
+import 'package:anifox/core/database/types.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/sources.dart';
 
 class InfoProvider extends ChangeNotifier {
   int id;

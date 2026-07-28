@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/data/downloadHistory.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/data/downloadHistory.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:flutter/material.dart';
 
 class FileExplorer extends StatefulWidget {
@@ -27,7 +27,7 @@ class _FileExplorerState extends State<FileExplorer> {
     }
   }
 
-  final _rootDir = (currentUserSettings?.downloadPath ?? "/storage/emulated/0/Download/animestream");
+  final _rootDir = (currentUserSettings?.downloadPath ?? "/storage/emulated/0/Download/anifox");
 
   String _getFileName(String path) {
     return Platform.isWindows ? path.split("\\").last : path.split("/").last;
@@ -60,7 +60,7 @@ class _FileExplorerState extends State<FileExplorer> {
     );
   }
 
-  Directory currentDir = Directory(currentUserSettings?.downloadPath ?? '/storage/emulated/0/Download/animestream');
+  Directory currentDir = Directory(currentUserSettings?.downloadPath ?? '/storage/emulated/0/Download/anifox');
 
   List<FileSystemEntity> entities = [];
 

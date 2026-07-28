@@ -1,6 +1,6 @@
 {
-    "name": "animestream",
-    "short_name": "animestream",
+    "name": "AniFox",
+    "short_name": "AniFox",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

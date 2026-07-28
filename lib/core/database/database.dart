@@ -1,7 +1,7 @@
 //contains base structure for a database
 
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/database/types.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/database/types.dart';
 
 enum Databases {
   anilist,

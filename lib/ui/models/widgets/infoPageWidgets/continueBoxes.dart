@@ -1,7 +1,7 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/ui/models/bottomSheets/serverSelectionSheet.dart';
-import 'package:animestream/ui/models/providers/infoProvider.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/ui/models/bottomSheets/serverSelectionSheet.dart';
+import 'package:anifox/ui/models/providers/infoProvider.dart';
 import 'package:flutter/material.dart';
 
 class ContinueWatchingSideBox extends StatelessWidget {

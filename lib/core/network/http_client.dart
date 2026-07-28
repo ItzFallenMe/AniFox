@@ -4,10 +4,10 @@ import 'dart:typed_data';
 
 export 'package:http/http.dart' hide Response, Client, get, post, put, patch, delete, head;
 
-import 'package:animestream/core/app/values.dart';
-import 'package:animestream/core/network/caching/cache_manager.dart';
-import 'package:animestream/core/network/caching/domain/cache_entry.dart';
-import 'package:animestream/core/network/http_response.dart';
+import 'package:anifox/core/app/values.dart';
+import 'package:anifox/core/network/caching/cache_manager.dart';
+import 'package:anifox/core/network/caching/domain/cache_entry.dart';
+import 'package:anifox/core/network/http_response.dart';
 
 class HTTP {
   HTTP._internal({CacheManager? cacheManager})

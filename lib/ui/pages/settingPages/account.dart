@@ -1,18 +1,18 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/enums.dart';
-import 'package:animestream/core/data/secureStorage.dart';
-import 'package:animestream/core/database/anilist/anilist.dart';
-import 'package:animestream/core/database/anilist/login.dart';
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/core/database/database.dart';
-import 'package:animestream/core/database/mal/login.dart';
-import 'package:animestream/core/database/simkl/login.dart';
-import 'package:animestream/core/database/simkl/types.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/loader.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
-import 'package:animestream/ui/models/providers/appProvider.dart';
-import 'package:animestream/ui/pages/settingPages/widgets/database_account_card.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/enums.dart';
+import 'package:anifox/core/data/secureStorage.dart';
+import 'package:anifox/core/database/anilist/anilist.dart';
+import 'package:anifox/core/database/anilist/login.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/core/database/database.dart';
+import 'package:anifox/core/database/mal/login.dart';
+import 'package:anifox/core/database/simkl/login.dart';
+import 'package:anifox/core/database/simkl/types.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/loader.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
+import 'package:anifox/ui/models/providers/appProvider.dart';
+import 'package:anifox/ui/pages/settingPages/widgets/database_account_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -182,7 +182,7 @@ class _AccountSettingState extends State<AccountSetting> {
                   ? Container(
                       padding: const EdgeInsets.only(top: 30),
                       child: Center(
-                        child: AnimeStreamLoading(
+                        child: AniFoxLoading(
                           color: appTheme.accentColor,
                         ),
                       ),

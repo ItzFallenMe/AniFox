@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/notification.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/notification.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:http/http.dart';
@@ -68,7 +68,7 @@ class DownloaderHelper {
         // Default fallback
         defDownloadPath = '${Platform.environment['USERPROFILE']}\\Downloads';
       }
-      return Platform.isWindows ? defDownloadPath : '/storage/emulated/0/Download/animestream';
+      return Platform.isWindows ? defDownloadPath : '/storage/emulated/0/Download/anifox';
     }
   }
 

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/snackBar.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:animestream/core/network/network.dart';
+import 'package:anifox/core/network/network.dart';
 import 'package:open_file/open_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -41,7 +41,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
 
   void downloadAndInstallUpdate() async {
     final filename =
-        "animestream_${widget.version}.${Platform.isWindows ? "exe" : "apk"}";
+        "anifox_${widget.version}.${Platform.isWindows ? "exe" : "apk"}";
     final tempPath = await getTemporaryDirectory();
     downloadPath = "${tempPath.path}/$filename";
 
@@ -90,7 +90,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
       // check and clean the old file (can pile up if not cleaned)
       // this is also cleanable with the "clear cache" option
       final oldVersion = File(
-          "${tempPath.path}/animestream_${(await PackageInfo.fromPlatform()).version}.${Platform.isWindows ? "exe" : "apk"}");
+          "${tempPath.path}/anifox_${(await PackageInfo.fromPlatform()).version}.${Platform.isWindows ? "exe" : "apk"}");
       if (oldVersion.existsSync()) {
         oldVersion.delete();
       }
@@ -191,7 +191,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
                     onPressed: () async {
                       await launchUrl(
                         Uri.parse(
-                            "https://github.com/frostnova721/animestream/releases/latest"),
+                            "https://github.com/ItzFallenMe/AniFox/releases/latest"),
                         mode: LaunchMode.externalApplication,
                       );
                     },

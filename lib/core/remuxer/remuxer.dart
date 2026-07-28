@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:animestream/core/remuxer/aac_parser.dart';
-import 'package:animestream/core/remuxer/h264_parser.dart';
-import 'package:animestream/core/remuxer/mkv_muxer.dart';
-import 'package:animestream/core/remuxer/ts_demuxer.dart';
+import 'package:anifox/core/remuxer/aac_parser.dart';
+import 'package:anifox/core/remuxer/h264_parser.dart';
+import 'package:anifox/core/remuxer/mkv_muxer.dart';
+import 'package:anifox/core/remuxer/ts_demuxer.dart';
 
 class _QueuedBlock {
   final int trackNumber;

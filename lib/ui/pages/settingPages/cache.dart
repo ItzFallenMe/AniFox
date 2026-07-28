@@ -1,11 +1,11 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/network/caching/cache_config.dart';
-import 'package:animestream/core/network/caching/cache_manager.dart';
-import 'package:animestream/ui/models/popup.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/models/widgets/clickableItem.dart';
-import 'package:animestream/ui/models/widgets/toggleItem.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/network/caching/cache_config.dart';
+import 'package:anifox/core/network/caching/cache_manager.dart';
+import 'package:anifox/ui/models/popup.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/models/widgets/clickableItem.dart';
+import 'package:anifox/ui/models/widgets/toggleItem.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:flutter/material.dart';
 
 class CacheSetting extends StatefulWidget {

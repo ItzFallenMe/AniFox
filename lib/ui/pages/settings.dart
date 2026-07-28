@@ -1,11 +1,11 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/pages/settingPages/account.dart';
-import 'package:animestream/ui/pages/settingPages/appInfo.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
-import 'package:animestream/ui/pages/settingPages/downloader.dart';
-import 'package:animestream/ui/pages/settingPages/general.dart';
-import 'package:animestream/ui/pages/settingPages/player.dart';
-import 'package:animestream/ui/pages/settingPages/ui.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/pages/settingPages/account.dart';
+import 'package:anifox/ui/pages/settingPages/appInfo.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
+import 'package:anifox/ui/pages/settingPages/downloader.dart';
+import 'package:anifox/ui/pages/settingPages/general.dart';
+import 'package:anifox/ui/pages/settingPages/player.dart';
+import 'package:anifox/ui/pages/settingPages/ui.dart';
 import 'package:flutter/material.dart';
 
 class SettingsPage extends StatefulWidget {

@@ -12,7 +12,7 @@ enum HiveKey {
 }
 
 enum HiveBox {
-  animestream("animestream"),
+  anifox("anifox"),
   animeInfo("animeInfo"),
   misc("misc"),
   downloadHistory("download_history"),

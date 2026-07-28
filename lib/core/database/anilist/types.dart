@@ -1,4 +1,4 @@
-import 'package:animestream/core/database/types.dart';
+import 'package:anifox/core/database/types.dart';
 
 enum AnilistSortType {
   trending("TRENDING"),

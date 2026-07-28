@@ -1,8 +1,8 @@
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/core/network/caching/cache_config.dart';
-import 'package:animestream/core/network/caching/domain/cache_entry.dart';
-import 'package:animestream/core/network/caching/storage/cache_storage.dart';
-import 'package:animestream/core/network/caching/storage/hive_cache_storage.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/network/caching/cache_config.dart';
+import 'package:anifox/core/network/caching/domain/cache_entry.dart';
+import 'package:anifox/core/network/caching/storage/cache_storage.dart';
+import 'package:anifox/core/network/caching/storage/hive_cache_storage.dart';
 
 class _CacheLog {
   final String scope;

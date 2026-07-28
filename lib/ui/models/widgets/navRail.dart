@@ -1,8 +1,8 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/models/widgets/bottomBar.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/models/widgets/bottomBar.dart';
 import 'package:flutter/material.dart';
 
-class AnimeStreamNavDestination {
+class AniFoxNavDestination {
   final IconData icon;
   final String label;
   final Color? selectedColor;
@@ -11,7 +11,7 @@ class AnimeStreamNavDestination {
   final Color? unselectedIconColor;
   final VoidCallback? onClick;
 
-  const AnimeStreamNavDestination({
+  const AniFoxNavDestination({
     required this.icon,
     required this.label,
     this.selectedColor,
@@ -22,13 +22,13 @@ class AnimeStreamNavDestination {
   });
 }
 
-class AnimeStreamNavRail extends StatefulWidget {
-  final List<AnimeStreamNavDestination> destinations;
-  final AnimeStreamBottomBarController controller;
+class AniFoxNavRail extends StatefulWidget {
+  final List<AniFoxNavDestination> destinations;
+  final AniFoxBottomBarController controller;
   final int initialIndex;
   final bool shouldExpand;
   final bool autoCollapse;
-  const AnimeStreamNavRail({
+  const AniFoxNavRail({
     super.key,
     required this.destinations,
     required this.controller,
@@ -38,10 +38,10 @@ class AnimeStreamNavRail extends StatefulWidget {
   });
 
   @override
-  State<AnimeStreamNavRail> createState() => _AnimeStreamNavRailState();
+  State<AniFoxNavRail> createState() => _AniFoxNavRailState();
 }
 
-class _AnimeStreamNavRailState extends State<AnimeStreamNavRail> {
+class _AniFoxNavRailState extends State<AniFoxNavRail> {
   @override
   void initState() {
     super.initState();

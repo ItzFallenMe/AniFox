@@ -1,6 +1,6 @@
-import 'package:animestream/core/anime/downloader/downloaderHelper.dart';
-import 'package:animestream/core/anime/downloader/types.dart';
-import 'package:animestream/core/commons/enums/hiveEnums.dart';
+import 'package:anifox/core/anime/downloader/downloaderHelper.dart';
+import 'package:anifox/core/anime/downloader/types.dart';
+import 'package:anifox/core/commons/enums/hiveEnums.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 

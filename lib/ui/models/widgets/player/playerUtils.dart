@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:animestream/core/commons/utils.dart';
+import 'package:anifox/core/commons/utils.dart';
 import 'package:better_player/better_player.dart';
 import 'package:flutter/material.dart';
 

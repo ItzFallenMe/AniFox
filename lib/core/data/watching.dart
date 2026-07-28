@@ -1,16 +1,16 @@
 import "package:hive/hive.dart";
 
-import "package:animestream/core/app/logging.dart";
-import "package:animestream/core/app/runtimeDatas.dart";
-import "package:animestream/core/commons/enums/hiveEnums.dart";
-import "package:animestream/core/database/anilist/login.dart";
-import "package:animestream/core/database/anilist/queries.dart";
-import "package:animestream/core/database/anilist/types.dart";
-import "package:animestream/core/database/handler/syncHandler.dart";
-import "package:animestream/core/database/types.dart";
-import "package:animestream/core/commons/enums.dart";
+import "package:anifox/core/app/logging.dart";
+import "package:anifox/core/app/runtimeDatas.dart";
+import "package:anifox/core/commons/enums/hiveEnums.dart";
+import "package:anifox/core/database/anilist/login.dart";
+import "package:anifox/core/database/anilist/queries.dart";
+import "package:anifox/core/database/anilist/types.dart";
+import "package:anifox/core/database/handler/syncHandler.dart";
+import "package:anifox/core/database/types.dart";
+import "package:anifox/core/commons/enums.dart";
 
-final String _boxName = HiveBox.animestream.boxName;
+final String _boxName = HiveBox.anifox.boxName;
 
 Future<void> storeWatching(
   String title,

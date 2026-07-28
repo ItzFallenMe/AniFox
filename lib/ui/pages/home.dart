@@ -1,20 +1,20 @@
 import 'dart:io';
 
-import 'package:animestream/core/app/logging.dart';
-import 'package:animestream/ui/models/providers/mainNavProvider.dart';
-import 'package:animestream/ui/models/screenType.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/ui/models/providers/mainNavProvider.dart';
+import 'package:anifox/ui/models/screenType.dart';
 import 'package:flutter/material.dart';
 
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/core/commons/types.dart';
-import 'package:animestream/core/data/watching.dart';
-import 'package:animestream/core/database/anilist/types.dart';
-import 'package:animestream/ui/models/widgets/cards.dart';
-import 'package:animestream/ui/models/widgets/header.dart';
-import 'package:animestream/ui/models/snackBar.dart';
-import 'package:animestream/ui/pages/lists.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
-import 'package:animestream/ui/pages/settingPages/stats.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/commons/types.dart';
+import 'package:anifox/core/data/watching.dart';
+import 'package:anifox/core/database/anilist/types.dart';
+import 'package:anifox/ui/models/widgets/cards.dart';
+import 'package:anifox/ui/models/widgets/header.dart';
+import 'package:anifox/ui/models/snackBar.dart';
+import 'package:anifox/ui/pages/lists.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
+import 'package:anifox/ui/pages/settingPages/stats.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 class Home extends StatefulWidget {

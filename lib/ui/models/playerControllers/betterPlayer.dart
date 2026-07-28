@@ -1,6 +1,6 @@
-import 'package:animestream/core/commons/extractQuality.dart';
-import 'package:animestream/ui/models/playerControllers/videoController.dart';
-import 'package:animestream/ui/models/widgets/player/playerUtils.dart';
+import 'package:anifox/core/commons/extractQuality.dart';
+import 'package:anifox/ui/models/playerControllers/videoController.dart';
+import 'package:anifox/ui/models/widgets/player/playerUtils.dart';
 import 'package:better_player/better_player.dart';
 import 'package:flutter/material.dart';
 

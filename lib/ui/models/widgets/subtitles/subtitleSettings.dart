@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:animestream/core/commons/extensions.dart';
+import 'package:anifox/core/commons/extensions.dart';
 
 class SubtitleSettings {
   final Color textColor;

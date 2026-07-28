@@ -1,5 +1,5 @@
-import 'package:animestream/core/app/runtimeDatas.dart';
-import 'package:animestream/ui/pages/settingPages/common.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:flutter/material.dart';
 
 // Represents the button tiles which are clickable in setting screen
