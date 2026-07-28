@@ -42,12 +42,22 @@ Download the latest APK from [Releases](https://github.com/ItzFallenMe/AniFox/re
 
 **Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK
 
+This repo uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
+
 ```bash
 git clone https://github.com/ItzFallenMe/AniFox.git
 cd AniFox
+
+# Fetch the private core (requires PRIVATE_REPO_TOKEN)
+export PRIVATE_REPO_TOKEN=your_github_pat
+bash scripts/fetch_core.sh
+
+# Build
 flutter pub get
 flutter build apk --dart-define-from-file=.env
 ```
+
+Set `PRIVATE_REPO_TOKEN` as an environment variable locally, or add it as a GitHub Actions secret for CI builds.
 
 Set up your signing keystore in `android/app/` and `android/key.properties` before building release APKs.
 

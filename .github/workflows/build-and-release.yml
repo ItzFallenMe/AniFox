@@ -79,6 +79,11 @@ jobs:
         with:
           ref: ${{ needs.extract-version.outputs.tag }}
 
+      - name: Fetch private core
+        env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+        run: bash scripts/fetch_core.sh
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
