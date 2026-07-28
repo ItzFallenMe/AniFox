@@ -62,10 +62,6 @@ dependencies:
   flutter_native_splash: ^2.4.7
   home_widget: ^0.7.0
   screen_brightness: ^2.1.8
-  commentum_client:
-    # path: ../../commentum_client
-    git:
-      url: https://github.com/ItzFallenMe/commentum_client
 
 dev_dependencies:
   flutter_test:

@@ -69,7 +69,6 @@ Copy `.env_example` to `.env` and fill in:
 |---|---|
 | `SIMKL_CLIENT_ID` | Simkl API client ID |
 | `SIMKL_CLIENT_SECRET` | Simkl API client secret |
-| `COMMENTUM_API_URL` | Commentum API endpoint |
 
 ## Contributing
 

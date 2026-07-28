@@ -1,7 +1,7 @@
 import 'package:anifox/core/anime/downloader/downloadManager.dart';
 import 'package:anifox/core/data/watching.dart';
 import 'package:anifox/ui/models/bottomSheets/batchDownload.dart';
-import 'package:anifox/ui/models/bottomSheets/commentSection.dart';
+import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -1532,22 +1532,6 @@ class _InfoMobileState extends State<InfoMobile> {
                 iconSize: 27,
                 icon: Icon(
                   Icons.arrow_back_rounded,
-                  color: Colors.white,
-                ),
-                style: IconButton.styleFrom(backgroundColor: Color.fromARGB(69, 0, 0, 0)),
-              ),
-              IconButton(
-                onPressed: () {
-                  showModalBottomSheet(
-                      context: context,
-                      useSafeArea: true,
-                      builder: (context) {
-                        return Commentsection(mediaId: provider.id, userId: storedUserData?.id);
-                      });
-                },
-                iconSize: 27,
-                icon: Icon(
-                  Icons.comment_rounded,
                   color: Colors.white,
                 ),
                 style: IconButton.styleFrom(backgroundColor: Color.fromARGB(69, 0, 0, 0)),
