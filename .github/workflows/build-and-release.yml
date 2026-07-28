@@ -173,8 +173,6 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     needs:
     - extract-version
     - build-android-apk
@@ -212,7 +210,7 @@ jobs:
           prerelease: false
           files: release-files/*
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_GIT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     name: Notify Release
