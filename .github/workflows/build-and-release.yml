@@ -124,8 +124,8 @@ jobs:
             echo "Keystore configured for signing"
           else
             echo "No keystore configured - using debug signing"
-            echo "storePassword=" > android/key.properties
-            echo "keyPassword=" >> android/key.properties
+            echo "storePassword=android" > android/key.properties
+            echo "keyPassword=android" >> android/key.properties
             echo "keyAlias=androiddebugkey" >> android/key.properties
             echo "storeFile=/tmp/debug.keystore" >> android/key.properties
             keytool -genkey -v -keystore /tmp/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
