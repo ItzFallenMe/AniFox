@@ -1,96 +1,95 @@
-# AniFox
+<p align="center">
+  <img src="lib/assets/icons/logo.png" width="180" alt="AniFox Logo">
+</p>
 
-A Flutter project made to stream and download Anime with AniList tracking.
+<h1 align="center">AniFox</h1>
 
 <p align="center">
-<a href="https://github.com/ItzFallenMe/AniFox/releases"><img src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total.svg?style=for-the-badge&color=CAF979"></a>
-<a href="https://img.shields.io/badge/Made_With-Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white"><img src="https://img.shields.io/badge/Made_With-Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white"></a>
-<a href="https://img.shields.io/badge/Made_For-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white"><img src="https://img.shields.io/badge/Made_For-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white"></a>
-<a href="https://discord.gg/DEQHYGJ9Zr"><img src="https://img.shields.io/discord/1323364150067466331?style=for-the-badge&logo=discord&color=5865F2"></a>
+  Stream and download anime with AniList tracking
 </p>
 
 <p align="center">
-    <img src="lib/assets/icons/logo.png" width="256" height="256" alt="project logo">
+  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?style=for-the-badge&color=F97316"></a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?style=for-the-badge&color=F97316"></a>
+  <a href="https://github.com/ItzFallenMe/AniFox/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ItzFallenMe/AniFox?style=for-the-badge&color=F97316"></a>
+  <a href="https://discord.gg/DEQHYGJ9Zr"><img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
 </p>
 
-## Tech Stack
+---
 
-Built with ❤️ using Flutter
+## About
 
-## Introduction
+**AniFox** is a cross-platform anime streaming and downloading app with built-in AniList tracking, episode notifications, Discord Rich Presence, and an Android home screen widget.
 
-**AniFox** is a project made to stream and download Anime. Inspired from parent project [animestream-electron](https://github.com/frostnova721/animestream-electron) which was limited to desktops. Just wanted to make an app! btw, this app is **HEAVILY** inspired from saikou (you know what it means!)
+Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), GPL-3.0.
+
+## Features
+
+- Stream anime from multiple sources
+- Download episodes for offline viewing
+- AniList sync (watch history, scoring, lists)
+- Discord Rich Presence on desktop
+- Episode release notifications
+- Continue-watching Android widget
+- Genre and watch-time stats dashboard
+- Multiple themes including AniFox (orange)
+- Native splash screen with animated intro
 
 ## Installation
 
-You can download the latest apk file from the [releases](https://github.com/ItzFallenMe/AniFox/releases) tab. Then install the downloaded apk!
+Download the latest APK from [Releases](https://github.com/ItzFallenMe/AniFox/releases).
 
 ## Building
 
-- Clone the repo
+**Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install)
 
-- Install required packages:
+```bash
+# Clone the repo
+git clone https://github.com/ItzFallenMe/AniFox.git
+cd AniFox
 
-```cmd
+# Install dependencies
 flutter pub get
+
+# Build APK
+./anifox build apk
+
+# Build for Windows
+./anifox build windows
+
+# Package Windows installer (requires Inno Setup)
+./anifox pack windows
 ```
 
-- Setup signing keystore file for android and store them in `android/app/` directory
+The `./anifox` script automatically loads `.env` variables (API URL, SIMKL credentials, Discord App ID) so you don't pass `--dart-define-from-file` manually.
 
-- Setup key.properties in `android/` directory
+Set up your signing keystore in `android/app/` and `android/key.properties` before building release APKs.
 
-> `./astrm` is just a script to run the flutter commands without needing to add the dart define args everytime! 
+## Environment Variables
 
-- To build the apk from the source code, simply run the command below:
+Copy `.env_example` to `.env` and fill in:
 
-```cmd
-./astrm build apk
-```
+| Variable | Description |
+|---|---|
+| `SIMKL_CLIENT_ID` | Simkl API client ID |
+| `SIMKL_CLIENT_SECRET` | Simkl API client secret |
+| `COMMENTUM_API_URL` | Commentum API endpoint |
+| `DISCORD_APP_ID` | Discord Developer Portal app ID |
 
-- To build application for windows, run the following command:
+## Contributing
 
-```cmd
-./astrm build windows
-```
-
-- To package the windows application as a setup, run:
-
-```cmd
-./astrm pack windows
-```
-
-*pack* argument only works for windows. For other platforms, just use the "*build*" argument.
-
-If you havent installed inno setup on your machine, install it first before building the windows setup:
-[install inno setup](https://github.com/hahouari/inno_bundle/wiki/Install-Inno-Setup)
-
-PS: Your machine needs to have flutter installed. [Install flutter](https://docs.flutter.dev/get-started/install)
-
-## Contribution
-
-Contributions are always welcome! If you have any ideas or changes that you want to see in the app, submit a pull request. If you have suggestions or issues, feel free to open a issue!
+Contributions are welcome! Open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the **GNU Public License version 3.0**.
-
-Originally based on [animestream](https://github.com/frostnova721/animestream) by FrostNova, GPL-3.0.
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
 ## Disclaimer
 
-- By using this app, you agree that the developer(s) of AniFox is not responsible for any content within the app and won't be legally responsible for any violations.
-- All the contents in AniFox are taken from 3rd party websites and API's, and the developer(s) of AniFox is not accountable for their nature or legality. Users are advised to use the application responsibly and in compliance with relevant laws and regulations.
-- AniFox or its developer(s) are not responsible for the misuse of any content within or outside the app and shall not be responsible for dissemination of any content within the app.
+- AniFox and its developers are not responsible for any content accessed through the app.
+- All content is sourced from third-party APIs and websites.
+- Users are responsible for compliance with their local laws and regulations.
 
-## Official Communities
+## Community
 
-### Discord
-<a href="https://discord.gg/DEQHYGJ9Zr">
-<img src="http://invidget.switchblade.xyz/DEQHYGJ9Zr">
-</a>
-
-## Contributors
-
-- [ItzFallenMe](https://github.com/ItzFallenMe)
-
-Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), GPL-3.0.
+[![Discord](https://invidget.switchblade.xyz/DEQHYGJ9Zr)](https://discord.gg/DEQHYGJ9Zr)

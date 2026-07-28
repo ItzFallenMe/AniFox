@@ -50,5 +50,13 @@ flutter_*.png
 todo.md
 localChangelog.md
 
+# Signing keystores
+*.jks
+*.keystore
+
+# Session / tool artifacts
+session-*.md
+AGENT.md
+
 # FVM Version Cache
 .fvm/
