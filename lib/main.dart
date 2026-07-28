@@ -21,6 +21,8 @@ import 'package:anifox/core/app/version.dart';
 import 'package:anifox/core/data/preferences.dart';
 import 'package:anifox/core/data/settings.dart';
 import 'package:anifox/core/data/theme.dart';
+import 'package:anifox/core/integrations/continueWatchingWidget.dart';
+import 'package:anifox/core/integrations/episodeNotifications.dart';
 import 'package:anifox/ui/models/notification.dart';
 import 'package:anifox/ui/models/providers/appProvider.dart';
 import 'package:anifox/ui/models/providers/mainNavProvider.dart';
@@ -28,8 +30,9 @@ import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/models/sources.dart';
 import 'package:anifox/ui/models/widgets/appWrapper.dart';
 import 'package:anifox/ui/pages/info.dart';
+import 'package:anifox/ui/pages/intro.dart';
 import 'package:anifox/ui/pages/mainNav.dart';
-import 'package:anifox/ui/theme/lime.dart';
+import 'package:anifox/ui/theme/anifox.dart';
 import 'package:anifox/ui/theme/themes.dart';
 import 'package:anifox/ui/theme/types.dart';
 import 'package:fvp/fvp.dart' as fvp;
@@ -73,6 +76,12 @@ void main(List<String> args) async {
     AnimeOnsen().checkAndUpdateToken();
 
     NotificationService().init();
+
+    // Schedule episode release notifications
+    EpisodeNotificationService().scheduleUpcomingEpisodeNotifications();
+
+    // Update continue-watching widget
+    ContinueWatchingWidgetService().updateWidget();
 
     /// Load sources. we adding inbuilt sources till migrated
     final sm = SourceManager.instance;
@@ -133,8 +142,8 @@ Future<void> loadAndAssignSettings() async {
     if ((themeId > availableThemes.length && !kDebugMode) || themeId < 1) {
       Logs.app.log("[STARTUP] Failed to apply theme with ID $themeId, Applying default theme");
       showToast("Failed to apply theme. Using default theme");
-      setTheme(01);
-      themeId = 01;
+      setTheme(00);
+      themeId = 00;
     }
 
     final darkMode = currentUserSettings!.darkMode!;
@@ -143,7 +152,7 @@ Future<void> loadAndAssignSettings() async {
 
     if (theme == null) {
       // Set default theme incase of any corruptions/issues n stuff
-      theme = LimeZest();
+      theme = AniFoxBrand();
       Logs.app.log("[STARTUP] Failed to apply theme with ID $themeId, Applying default theme");
     }
 
@@ -323,9 +332,11 @@ class _AniFoxState extends State<AniFox> {
                   seedColor: (currentUserSettings?.materialTheme ?? false) ? scheme.accentColor : appTheme.accentColor,
                 ),
                 iconTheme: IconThemeData(color: appTheme.textMainColor)),
-            home: ChangeNotifierProvider(
-              create: (context) => MainNavProvider(),
-              child: Platform.isWindows || Platform.isLinux ? AppWrapper(firstPage: MainNavigator()) : MainNavigator(),
+            home: IntroScreen(
+              nextScreen: ChangeNotifierProvider(
+                create: (context) => MainNavProvider(),
+                child: Platform.isWindows || Platform.isLinux ? AppWrapper(firstPage: MainNavigator()) : MainNavigator(),
+              ),
             ),
             debugShowCheckedModeBanner: false,
           );

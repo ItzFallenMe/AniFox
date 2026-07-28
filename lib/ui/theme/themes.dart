@@ -1,3 +1,4 @@
+import 'package:anifox/ui/theme/anifox.dart';
 import 'package:anifox/ui/theme/amethyst.dart';
 import 'package:anifox/ui/theme/coldPurple.dart';
 import 'package:anifox/ui/theme/hotPink.dart';
@@ -16,7 +17,8 @@ import 'package:flutter/material.dart';
  *
 The theme list in UI screen is generated from this list */
 List<ThemeItem> availableThemes = [
-  LimeZest(), // ids are in order 0 -> n
+  AniFoxBrand(), // ids are in order 0 -> n (AniFox brand default)
+  LimeZest(),
   Monochrome(),
   ColdPurple(),
   HotPink(),

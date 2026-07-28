@@ -18,6 +18,16 @@ class NotificationService {
           playSound: false,
           ledColor: Colors.white,
         ),
+        NotificationChannel(
+          channelGroupKey: 'anifox_group',
+          channelKey: 'anifox_episodes',
+          channelName: 'Episode Releases',
+          channelDescription: 'Notifications for new episode releases',
+          defaultColor: appTheme.accentColor,
+          playSound: true,
+          ledColor: Colors.white,
+          importance: NotificationImportance.High,
+        ),
       ],
       debug: false,
       channelGroups: [

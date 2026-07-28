@@ -9,6 +9,7 @@ import "package:anifox/core/database/anilist/types.dart";
 import "package:anifox/core/database/handler/syncHandler.dart";
 import "package:anifox/core/database/types.dart";
 import "package:anifox/core/commons/enums.dart";
+import "package:anifox/core/integrations/continueWatchingWidget.dart";
 
 final String _boxName = HiveBox.anifox.boxName;
 
@@ -49,6 +50,9 @@ Future<void> storeWatching(
       box.put('watching', watchingList);
       box.close();
     }
+
+    // Update continue-watching widget
+    ContinueWatchingWidgetService().updateWidget();
   } catch (err) {
     Logs.app.log(err.toString());
   }
@@ -81,6 +85,9 @@ Future<void> updateWatching(int? id, String title, int watched, List<AlternateDa
       box.put('watching', watchingList);
       box.close();
     }
+
+    // Update continue-watching widget
+    ContinueWatchingWidgetService().updateWidget();
   } catch (err) {
     Logs.app.log(err.toString());
   }

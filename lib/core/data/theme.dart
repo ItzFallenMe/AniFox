@@ -8,8 +8,8 @@ Future<int> getTheme() async {
   if (!box.isOpen) {
     box = await Hive.openBox(_boxName);
   }
-  dynamic selectedThemeId = box.get('theme', defaultValue: 01) ?? 01;
-  if (selectedThemeId == null || !(selectedThemeId is int)) selectedThemeId = 01;
+  dynamic selectedThemeId = box.get('theme', defaultValue: 00) ?? 00;
+  if (selectedThemeId == null || !(selectedThemeId is int)) selectedThemeId = 00;
   await box.close();
   return selectedThemeId;
 }

@@ -64,14 +64,12 @@ dependencies:
   flutter_markdown_plus: ^1.0.7
   desktop_webview_window: ^0.2.3
   cached_network_image: ^3.3.1
-  window_manager:
-    git:
-      url: https://github.com/ItzFallenMe/window_manager.git
-      path: packages/window_manager
-      ref: windows_fullscreen_fix
+  window_manager: ^0.4.3
+  fl_chart: ^0.70.0
 
   # Misc
   flutter_native_splash: ^2.4.7
+  home_widget: ^0.7.0
   screen_brightness: ^2.1.8
   commentum_client:
     # path: ../../commentum_client
@@ -95,12 +93,14 @@ flutter_native_splash:
   android: true
   ios: true
   web: false
-  color: "#181818"
-  color_dark: "#181818"
+  color: "#141414"
+  color_dark: "#141414"
   image: "lib/assets/icons/logo_foreground_splash.png"
   image_dark: "lib/assets/icons/logo_foreground_splash.png"
+  branding: "lib/assets/icons/logo_foreground_splash.png"
 
   android_12:
+    color: "#141414"
     image: "lib/assets/icons/logo_foreground_splash.png"
 
 flutter_launcher_icons:

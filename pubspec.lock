@@ -87,7 +87,7 @@ packages:
       path: "."
       ref: HEAD
       resolved-ref: "072e7f250a43278352924ee1a76a2f4052287033"
-      url: "https://github.com/frostnova721/betterplayer.git"
+      url: "https://github.com/ItzFallenMe/betterplayer.git"
     source: git
     version: "1.0.0"
   boolean_selector:
@@ -176,7 +176,7 @@ packages:
       path: "."
       ref: HEAD
       resolved-ref: "6cd43f44cc05db301271807fdced125e28fbde9e"
-      url: "https://github.com/frostnova721/commentum_client"
+      url: "https://github.com/ItzFallenMe/commentum_client"
     source: git
     version: "1.1.0"
   convert:
@@ -275,6 +275,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.3"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: "3bce007a596ff8b3119c45d68aaef631272537c03d30e5d4534dd24bf4c5eaa2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -315,6 +323,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  fl_chart:
+    dependency: "direct main"
+    description:
+      name: fl_chart
+      sha256: "5276944c6ffc975ae796569a826c38a62d2abcf264e26b88fa6f482e107f4237"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.70.2"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -456,7 +472,7 @@ packages:
       path: "."
       ref: HEAD
       resolved-ref: "78d0bc531e5f3ffa010b7e20a7ddd76e2982b88f"
-      url: "https://github.com/frostnova721/fvp.git"
+      url: "https://github.com/ItzFallenMe/fvp.git"
     source: git
     version: "0.35.2"
   gtk:
@@ -483,6 +499,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  home_widget:
+    dependency: "direct main"
+    description:
+      name: home_widget
+      sha256: "7430f7549d42cef2e729bd3c779de748b93f1eb78b1abfe6bca8fffd1cfce3e9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.0+1"
   hooks:
     dependency: transitive
     description:
@@ -639,10 +663,10 @@ packages:
     dependency: transitive
     description:
       name: meta
-      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
+      sha256: "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
       url: "https://pub.dev"
     source: hosted
-    version: "1.17.0"
+    version: "1.18.0"
   nested:
     dependency: transitive
     description:
@@ -1140,10 +1164,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "8161c84903fd860b26bfdefb7963b3f0b68fee7adea0f59ef805ecca346f0c7a"
+      sha256: "949a932224383300f01be9221c39180316445ecb8e7547f70a41a35bf421fb9e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.10"
+    version: "0.7.11"
   typed_data:
     dependency: transitive
     description:
@@ -1363,11 +1387,10 @@ packages:
   window_manager:
     dependency: "direct main"
     description:
-      path: "packages/window_manager"
-      ref: windows_fullscreen_fix
-      resolved-ref: "2fdb7941a01fb89d59b4019b5721faf5163b8f2e"
-      url: "https://github.com/YuiHrsw/window_manager.git"
-    source: git
+      name: window_manager
+      sha256: "732896e1416297c63c9e3fb95aea72d0355f61390263982a47fd519169dc5059"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.4.3"
   window_to_front:
     dependency: transitive

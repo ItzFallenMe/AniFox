@@ -7,6 +7,7 @@ import 'package:anifox/core/database/anilist/types.dart';
 import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/models/widgets/loader.dart';
 import 'package:anifox/ui/pages/settingPages/common.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 class UserStats extends StatefulWidget {
@@ -119,6 +120,102 @@ class _UserStatsState extends State<UserStats> {
   Column _tableSection() {
     return Column(
       children: [
+        // Genre Pie Chart
+        if (stats != null && stats!.genres.isNotEmpty) ...[
+          Container(
+            margin: EdgeInsets.only(top: 35),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: appTheme.textMainColor.withAlpha(30)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Genre Distribution",
+                  style: textStyle(18, bold: true, fontFamily: "Rubik").copyWith(color: appTheme.accentColor),
+                ),
+                SizedBox(height: 16),
+                SizedBox(
+                  height: 200,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                      sections: _buildPieChartSections(),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: _buildGenreLegend(),
+                ),
+              ],
+            ),
+          ),
+        ],
+        // Genre Bar Chart (top 8)
+        if (stats != null && stats!.genres.isNotEmpty) ...[
+          Container(
+            margin: EdgeInsets.only(top: 16),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: appTheme.textMainColor.withAlpha(30)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Top Genres by Episodes",
+                  style: textStyle(18, bold: true, fontFamily: "Rubik").copyWith(color: appTheme.accentColor),
+                ),
+                SizedBox(height: 16),
+                SizedBox(
+                  height: 220,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _getMaxCount().toDouble(),
+                      barTouchData: BarTouchData(enabled: false),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx >= _getTopGenres().length) return SizedBox();
+                              final name = _getTopGenres()[idx].genre;
+                              return SideTitleWidget(
+                                meta: meta,
+                                child: Text(
+                                  name.length > 8 ? '${name.substring(0, 8)}..' : name,
+                                  style: TextStyle(color: appTheme.textSubColor, fontSize: 10),
+                                ),
+                              );
+                            },
+                            reservedSize: 30,
+                          ),
+                        ),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      gridData: FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarChartGroups(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        // Genre Table
         Container(
           margin: EdgeInsets.only(top: 35),
           decoration: BoxDecoration(
@@ -410,5 +507,83 @@ class _UserStatsState extends State<UserStats> {
         ),
       ],
     );
+  }
+
+  static const _chartColors = [
+    Color(0xFFF97316),
+    Color(0xFF3B82F6),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+    Color(0xFF06B6D4),
+    Color(0xFFEF4444),
+  ];
+
+  List<PieChartSectionData> _buildPieChartSections() {
+    final genres = stats!.genres.take(8).toList();
+    final total = genres.fold<int>(0, (sum, g) => sum + g.count);
+
+    return genres.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final genre = entry.value;
+      final pct = (genre.count / total * 100);
+      return PieChartSectionData(
+        color: _chartColors[idx % _chartColors.length],
+        value: genre.count.toDouble(),
+        title: '${pct.round()}%',
+        radius: 50,
+        titleStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildGenreLegend() {
+    final genres = stats!.genres.take(8).toList();
+    return genres.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final genre = entry.value;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: _chartColors[idx % _chartColors.length],
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 4),
+          Text(genre.genre, style: TextStyle(color: appTheme.textSubColor, fontSize: 12)),
+        ],
+      );
+    }).toList();
+  }
+
+  List<GenreWatchStats> _getTopGenres() => stats!.genres.take(8).toList();
+
+  int _getMaxCount() {
+    if (stats == null || stats!.genres.isEmpty) return 0;
+    return stats!.genres.take(8).map((g) => g.count).reduce(max);
+  }
+
+  List<BarChartGroupData> _buildBarChartGroups() {
+    final top = _getTopGenres();
+    return top.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final genre = entry.value;
+      return BarChartGroupData(
+        x: idx,
+        barRods: [
+          BarChartRodData(
+            toY: genre.count.toDouble(),
+            color: _chartColors[idx % _chartColors.length],
+            width: 20,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
+          ),
+        ],
+      );
+    }).toList();
   }
 }

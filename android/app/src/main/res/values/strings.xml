@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_continue_watching_description">Shows your next unwatched episode for one-tap resume</string>
+</resources>
