@@ -52,6 +52,7 @@ localChangelog.md
 # Signing keystores
 *.jks
 *.keystore
+key.properties
 
 # Session / tool artifacts
 session-*.md
