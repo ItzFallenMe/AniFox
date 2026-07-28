@@ -17,32 +17,32 @@
 
 ---
 
-## About
+## Overview
 
 **AniFox** is an Android anime streaming and downloading app with built-in AniList tracking, episode notifications, and a home screen continue-watching widget.
 
-Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), GPL-3.0.
+Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), under the GPL-3.0 license.
 
 ## Features
 
 - Stream anime from multiple sources
 - Download episodes for offline viewing
-- AniList sync (watch history, scoring, lists)
+- AniList sync for watch history, scoring, and lists
 - Episode release notifications
 - Continue-watching Android widget
 - Genre and watch-time stats dashboard
-- Multiple themes including AniFox (orange)
+- Multiple themes, including AniFox orange
 - Native splash screen with animated intro
 
-## Installation
+## Download
 
-Download the latest APK from [Releases](https://github.com/ItzFallenMe/AniFox/releases).
+Get the latest release APK from [Releases](https://github.com/ItzFallenMe/AniFox/releases).
 
-## Building
+## Build from source
 
 **Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK
 
-This repo uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
+This repository uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
 
 ```bash
 git clone https://github.com/ItzFallenMe/AniFox.git
@@ -59,11 +59,11 @@ flutter build apk --dart-define-from-file=.env
 
 Set `PRIVATE_REPO_TOKEN` as an environment variable locally, or add it as a GitHub Actions secret for CI builds.
 
-Set up your signing keystore in `android/app/` and `android/key.properties` before building release APKs.
+Before building release APKs, set up your signing keystore in `android/app/` and `android/key.properties`.
 
-## Environment Variables
+## Environment variables
 
-Copy `.env_example` to `.env` and fill in:
+Copy `.env_example` to `.env` and fill in the required values:
 
 | Variable | Description |
 |---|---|
@@ -72,7 +72,7 @@ Copy `.env_example` to `.env` and fill in:
 
 ## Contributing
 
-Contributions are welcome! Open an issue or submit a pull request.
+Contributions are welcome. Open an issue for discussion or submit a pull request.
 
 ## License
 
