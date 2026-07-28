@@ -5,85 +5,324 @@
 <h1 align="center">AniFox</h1>
 
 <p align="center">
-  Stream and download anime with AniList tracking
+  <b>A modern Android anime streaming experience built with Flutter.</b><br>
+  Stream • Download • Track with AniList • Beautiful UI
 </p>
 
 <p align="center">
-  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?style=for-the-badge&color=F97316"></a>
-  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?style=for-the-badge&color=F97316"></a>
-  <a href="https://github.com/ItzFallenMe/AniFox/blob/master/LICENSE"><img src="https://img.shields.io/github/license/ItzFallenMe/AniFox?style=for-the-badge&color=F97316"></a>
-  <a href="https://discord.gg/DEQHYGJ9Zr"><img src="https://img.shields.io/badge/Discord-Join-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases">
+    <img src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases">
+    <img src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/ItzFallenMe/AniFox?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="https://discord.gg/DEQHYGJ9Zr">
+    <img src="https://img.shields.io/discord/1298715486436657202?style=for-the-badge&logo=discord&label=Discord" />
+  </a>
 </p>
 
 ---
 
-## Overview
+## 📖 About
 
-**AniFox** is an Android anime streaming and downloading app with built-in AniList tracking, episode notifications, and a home screen continue-watching widget.
+AniFox is a modern **Flutter-powered Android anime streaming application** focused on providing a smooth, elegant, and feature-rich watching experience.
 
-Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), under the GPL-3.0 license.
+Whether you're binge-watching your favorite series, downloading episodes for offline viewing, or keeping everything synced with **AniList**, AniFox keeps your anime library organized and accessible.
 
-## Features
+Originally based on **AnimeStream** by FrostNova and expanded with numerous improvements, redesigned UI components, additional features, and continuous maintenance.
 
-- Stream anime from multiple sources
-- Download episodes for offline viewing
-- AniList sync for watch history, scoring, and lists
+---
+
+# ✨ Features
+
+## 🎬 Streaming
+
+- Multiple anime providers
+- Fast episode loading
+- Multiple video qualities
+- Subtitle support
+- External player support
+- Continue Watching
+
+---
+
+## 📥 Downloads
+
+- Download episodes
+- Offline playback
+- Download management
+- Resume interrupted downloads
+
+---
+
+## 📚 AniList Integration
+
+- Login with AniList
+- Automatic watch progress sync
+- Update scores
+- Manage lists
+- Track completed anime
+- Recently watched synchronization
+
+---
+
+## 🔔 Smart Features
+
 - Episode release notifications
-- Continue-watching Android widget
-- Genre and watch-time stats dashboard
-- Multiple themes, including AniFox orange
-- Native splash screen with animated intro
+- Continue Watching widget
+- Personalized recommendations
+- Watch statistics
+- Genre statistics
+- Watch time dashboard
 
-## Download
+---
 
-Get the latest release APK from [Releases](https://github.com/ItzFallenMe/AniFox/releases).
+## 🎨 UI & Experience
 
-## Build from source
+- Material Design 3
+- Smooth animations
+- Native splash screen
+- Multiple themes
+- AniFox Orange Theme
+- AMOLED Dark Theme
+- Responsive layouts
+- Fast navigation
 
-**Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK
+---
 
-This repository uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
+# 📱 Screenshots
+
+> Screenshots coming soon.
+
+| Home | Player | Details |
+|------|---------|---------|
+| 📷 | 📷 | 📷 |
+
+| Downloads | Profile | Search |
+|-----------|----------|--------|
+| 📷 | 📷 | 📷 |
+
+---
+
+# 🚀 Installation
+
+Download the latest APK from the **Releases** page.
+
+https://github.com/ItzFallenMe/AniFox/releases
+
+Enable **Install Unknown Apps** if installing manually.
+
+---
+
+# 🛠 Building From Source
+
+## Requirements
+
+- Flutter
+- Android Studio
+- Android SDK
+- Git
+- GitHub Personal Access Token
+
+Clone the repository
 
 ```bash
 git clone https://github.com/ItzFallenMe/AniFox.git
 cd AniFox
-
-# Fetch the private core (requires PRIVATE_REPO_TOKEN)
-export PRIVATE_REPO_TOKEN=your_github_pat
-bash scripts/fetch_core.sh
-
-# Build
-flutter pub get
-flutter build apk --dart-define-from-file=.env
 ```
 
-Set `PRIVATE_REPO_TOKEN` as an environment variable locally, or add it as a GitHub Actions secret for CI builds.
+Fetch the private core
 
-Before building release APKs, set up your signing keystore in `android/app/` and `android/key.properties`.
+```bash
+export PRIVATE_REPO_TOKEN=YOUR_GITHUB_PAT
 
-## Environment variables
+bash scripts/fetch_core.sh
+```
 
-Copy `.env_example` to `.env` and fill in the required values:
+Install dependencies
+
+```bash
+flutter pub get
+```
+
+Create your environment file
+
+```text
+cp .env_example .env
+```
+
+Run
+
+```bash
+flutter run --dart-define-from-file=.env
+```
+
+Build Release
+
+```bash
+flutter build apk --release --dart-define-from-file=.env
+```
+
+---
+
+# 🔐 Environment Variables
+
+Copy `.env_example` to `.env`
 
 | Variable | Description |
-|---|---|
-| `SIMKL_CLIENT_ID` | Simkl API client ID |
-| `SIMKL_CLIENT_SECRET` | Simkl API client secret |
+|-----------|-------------|
+| `SIMKL_CLIENT_ID` | Simkl Client ID |
+| `SIMKL_CLIENT_SECRET` | Simkl Client Secret |
 
-## Contributing
+---
 
-Contributions are welcome. Open an issue for discussion or submit a pull request.
+# 📂 Project Structure
 
-## License
+```
+lib/
+ ├── assets/
+ ├── core/
+ ├── models/
+ ├── providers/
+ ├── screens/
+ ├── services/
+ ├── utils/
+ ├── widgets/
+ └── main.dart
+```
 
-GNU General Public License v3.0 — see [LICENSE](LICENSE).
+---
 
-## Disclaimer
+# 🏗 Tech Stack
 
-- AniFox and its developers are not responsible for any content accessed through the app.
-- All content is sourced from third-party APIs and websites.
-- Users are responsible for compliance with their local laws and regulations.
+- Flutter
+- Dart
+- Riverpod
+- Material 3
+- AniList API
+- Simkl API
+- Android SDK
 
-## Community
+---
 
-[![Discord](https://invidget.switchblade.xyz/DEQHYGJ9Zr)](https://discord.gg/DEQHYGJ9Zr)
+# 🤝 Contributing
+
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a new branch
+
+```bash
+git checkout -b feature/amazing-feature
+```
+
+3. Commit your changes
+
+```bash
+git commit -m "feat: add amazing feature"
+```
+
+4. Push
+
+```bash
+git push origin feature/amazing-feature
+```
+
+5. Open a Pull Request
+
+---
+
+# 🗺 Roadmap
+
+- [x] AniList Integration
+- [x] Downloads
+- [x] Notifications
+- [x] Continue Watching
+- [x] Widgets
+- [ ] Chromecast Support
+- [ ] Android TV Support
+- [ ] Better Recommendation Engine
+- [ ] More Streaming Providers
+- [ ] Multi-language Support
+- [ ] iOS Support (Future)
+
+---
+
+# ❓ FAQ
+
+### Is AniFox free?
+
+Yes.
+
+### Does AniFox host anime?
+
+No.
+
+AniFox acts as a client that accesses publicly available third-party sources.
+
+### Can I download anime?
+
+Yes.
+
+Supported providers allow offline downloading.
+
+### Does AniFox require an AniList account?
+
+No.
+
+AniList is optional but recommended for synchronization.
+
+---
+
+# ⚠ Disclaimer
+
+AniFox does **not** host or upload any video content.
+
+All media is provided by publicly available third-party sources.
+
+The developers of AniFox are **not responsible** for the content available through those sources.
+
+Users are responsible for complying with the laws and regulations applicable in their jurisdiction.
+
+---
+
+# 📜 License
+
+This project is licensed under the **GNU General Public License v3.0**.
+
+See the [LICENSE](LICENSE) file for details.
+
+---
+
+# ❤️ Credits
+
+- FrostNova — Original AnimeStream project
+- AniList
+- Simkl
+- Flutter Team
+- Contributors
+
+---
+
+# 🌟 Support
+
+If you enjoy AniFox, consider helping the project by:
+
+⭐ Starring the repository
+
+🐛 Reporting bugs
+
+💡 Suggesting new features
+
+🤝 Contributing code
+
+---
+
+<p align="center">
+
+Made with ❤️ using Flutter
+
+</p>
