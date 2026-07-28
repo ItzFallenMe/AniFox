@@ -33,9 +33,6 @@ dependencies:
   dynamic_color: ^1.7.0
   app_links: ^7.0.0
 
-  # Misc
-  dart_discord_presence: ^1.2.0
-
   # Local storage
   hive: ^2.2.3
   hive_flutter: ^1.1.0
@@ -53,18 +50,11 @@ dependencies:
   better_player:
     git:
       url: https://github.com/ItzFallenMe/betterplayer.git
-  # video_player_win: ^3.1.1
-  fvp: 
-    # path: "../../fvp"
-    git:
-      url: "https://github.com/ItzFallenMe/fvp.git"
 
   # UI
   pull_to_refresh: ^2.0.0
   flutter_markdown_plus: ^1.0.7
-  desktop_webview_window: ^0.2.3
   cached_network_image: ^3.3.1
-  window_manager: ^0.4.3
   fl_chart: ^0.70.0
 
   # Misc
@@ -80,18 +70,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
-  inno_bundle: ^0.11.2
-
-inno_bundle:
-  id: "59cae0c0-fb9d-11ef-b95e-5f3937b12ea5"
-  publisher: "ItzFallenMe"
-  name: "AniFox"
-  languages:
-    - english
 
 flutter_native_splash:
   android: true
-  ios: true
+  ios: false
   web: false
   color: "#141414"
   color_dark: "#141414"
@@ -105,7 +87,7 @@ flutter_native_splash:
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "./lib/assets/icons/logo.png"
   adaptive_icon_background: "./lib/assets/icons/logo_background.png"
   adaptive_icon_foreground: "./lib/assets/icons/logo_foreground.png"

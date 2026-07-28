@@ -9,7 +9,6 @@ import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/extensions.dart';
 import 'package:anifox/core/data/downloadHistory.dart';
 import 'package:anifox/ui/models/playerControllers/betterPlayer.dart';
-import 'package:anifox/ui/models/playerControllers/fvp.dart';
 import 'package:anifox/ui/models/providers/playerDataProvider.dart';
 import 'package:anifox/ui/models/providers/playerProvider.dart';
 import 'package:anifox/ui/models/snackBar.dart';
@@ -384,7 +383,7 @@ class _DownloadsPageState extends State<DownloadsPage> with TickerProviderStateM
       floatingSnackBar("File Not Found!");
       return;
     }
-    final controller = Platform.isAndroid ? BetterPlayerWrapper() : FvpWrapper();
+    final controller = BetterPlayerWrapper();
     final fullFilename = filepath.split(Platform.pathSeparator).last;
     final lastDotIndex = fullFilename.lastIndexOf('.');
     final filename = lastDotIndex != -1 ? fullFilename.substring(0, lastDotIndex) : fullFilename;

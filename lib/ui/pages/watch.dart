@@ -19,7 +19,6 @@ import 'package:anifox/core/data/watching.dart';
 import 'package:anifox/ui/models/widgets/player/playerUtils.dart';
 import 'package:anifox/ui/models/providers/playerDataProvider.dart';
 import 'package:anifox/ui/models/providers/playerProvider.dart';
-import 'package:anifox/ui/models/providers/appProvider.dart';
 import 'package:anifox/ui/models/playerControllers/videoController.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
@@ -59,7 +58,7 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     // only android and ios has the 'paused' state
-    if (state == (Platform.isWindows ? AppLifecycleState.inactive : AppLifecycleState.hidden) &&
+    if (state == AppLifecycleState.hidden &&
         (currentUserSettings?.enablePipOnMinimize ?? false)) {
       // context.read<PlayerProvider>().setPip(true);
     }
@@ -90,9 +89,6 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
   }
 
   void _initialize() async {
-    /// Set black title bar
-    context.read<AppProvider>().setTitlebarColor(appTheme.backgroundColor);
-
     final dataProvider = context.read<PlayerDataProvider>();
 
     Logs.player.log("Initializing stream ${dataProvider.state.currentStream}");
@@ -161,9 +157,6 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
       } catch (e) {
         Logs.player.log("PiP listener couldnt be added: ${e.toString()}");
       }
-    } else if (Platform.isWindows || Platform.isLinux) {
-      await dataProvider.startRPC();
-      await dataProvider.updatePresence();
     }
   }
 
@@ -254,7 +247,7 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
   // Mutex to avoid multiple skips at once
   bool _isSkippingOpOrEd = false;
 
-  bool get isDesktop => Platform.isWindows || Platform.isLinux;
+  bool get isDesktop => false;
 
   void hideControlsOnTimeout(PlayerDataProvider dp, PlayerProvider pp, {int timeoutSeconds = 5}) {
     if (_controlsTimer == null && (controller.isPlaying ?? false)) {
@@ -352,10 +345,7 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
   }
 
   void _handleDoubleTap() {
-    if (!isDesktop) return;
-    if (context.read<PlayerProvider>().state.pip) return;
-    final themeProvider = context.read<AppProvider>();
-    themeProvider.setFullScreen(!themeProvider.isFullScreen);
+    return;
   }
 
   bool hidePointer = false;
@@ -412,11 +402,6 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
             ),
           );
         }
-        await context.read<AppProvider>()
-          ..setFullScreen(false)
-          ..setTitlebarColor(null);
-
-        await playerDataProvider.stopRPC();
       },
       child: Scaffold(
         backgroundColor: Colors.black,

@@ -1,20 +1,14 @@
-import 'dart:io';
-
 import 'package:anifox/core/anime/providers/types.dart';
 import 'package:anifox/core/app/logging.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/extractQuality.dart';
 import 'package:anifox/ui/models/providers/playerDataProvider.dart';
-import 'package:anifox/ui/models/providers/appProvider.dart';
-import 'package:anifox/ui/models/widgets/appWrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 
 import 'package:anifox/core/commons/enums.dart';
 import 'package:anifox/ui/models/playerControllers/videoController.dart';
-import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:window_manager/window_manager.dart';
 
 /// Handle the core player stuff
 class PlayerProvider extends ChangeNotifier {
@@ -49,7 +43,7 @@ class PlayerProvider extends ChangeNotifier {
         1.5,
         1.75,
         2,
-        if ((currentUserSettings?.enableSuperSpeeds ?? false) && !Platform.isWindows) ...[4, 5, 8, 10]
+        if (currentUserSettings?.enableSuperSpeeds ?? false) ...[4, 5, 8, 10]
       ];
 
   /// Play a media
@@ -134,19 +128,9 @@ class PlayerProvider extends ChangeNotifier {
 
   /// Set pip mode
   Future<void> setPip(bool val) async {
-    if (!Platform.isAndroid && !Platform.isWindows && !Platform.isLinux) {
-      Logs.player.log("PiP not supported on this platform.");
-    }
-    ;
-
     Logs.player.log("set pip: $val");
     _state = _state.copyWith(pip: val);
-
-    if (Platform.isWindows) {
-      val ? _enablePip() : _disablePip();
-    } else {
-      await controller.setPip(true); // doesnt really matter for android since disabling is done by the system
-    }
+    await controller.setPip(true);
     notifyListeners();
   }
 
@@ -214,37 +198,6 @@ class PlayerProvider extends ChangeNotifier {
     } else {
       Logs.player.log("No preloaded sources found!");
     }
-  }
-
-  // Cache the window size before entering pip
-  Size _windowSizeBefore = Size(1280, 720);
-  bool _wasMaximized = false;
-  Offset _positionBefore = Offset(0, 0);
-
-  
-
-  void _disablePip() async {
-    windowManager.setAlwaysOnTop(false);
-    await windowManager.setSize(_windowSizeBefore);
-    windowManager.setPosition(_positionBefore);
-    windowManager.setResizable(true);
-    if(_wasMaximized) {
-      await windowManager.maximize();
-    }
-    Provider.of<AppProvider>(AppWrapper.navKey.currentContext!, listen: false).showTitleBar = false;
-  }
-
-  void _enablePip() async {
-    if(_wasMaximized = await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-    }
-    await windowManager.setAlwaysOnTop(true);
-    _windowSizeBefore = await windowManager.getSize();
-    _positionBefore = await windowManager.getPosition();
-    windowManager.setSize(Size(500, 300));
-    windowManager.setResizable(false);
-    windowManager.setAlignment(Alignment.bottomRight);
-    Provider.of<AppProvider>(AppWrapper.navKey.currentContext!, listen: false).showTitleBar = true;
   }
 }
 

@@ -23,7 +23,6 @@ migrate_working_dir/
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -57,6 +56,13 @@ localChangelog.md
 # Session / tool artifacts
 session-*.md
 AGENT.md
+
+# Non-Android platforms (Android only for now)
+/ios/
+/windows/
+/linux/
+/macos/
+/web/
 
 # FVM Version Cache
 .fvm/

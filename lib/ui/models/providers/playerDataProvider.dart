@@ -7,10 +7,8 @@ import 'package:anifox/core/data/preferences.dart';
 import 'package:anifox/core/database/aniskip/aniskip.dart';
 import 'package:anifox/core/database/database.dart';
 import 'package:anifox/core/database/types.dart';
-import 'package:anifox/core/integrations/discord/desktopRPC.dart';
 import 'package:anifox/ui/models/sources.dart';
 import 'package:anifox/ui/models/widgets/subtitles/subtitleSettings.dart';
-import 'package:dart_discord_presence/dart_discord_presence.dart';
 import 'package:flutter/material.dart';
 
 /// Handle the state of player. manages datas like quality, servers etc..
@@ -56,8 +54,6 @@ class PlayerDataProvider extends ChangeNotifier {
         );
 
   PlayerDataProviderState get state => _state;
-
-  final discord = (currentUserSettings?.enableDiscordRichPresence ?? false) ? DiscordDesktopRPC() : null;
 
   late SubtitleSettings subtitleSettings;
 
@@ -132,7 +128,6 @@ class PlayerDataProvider extends ChangeNotifier {
   /// Update the state of currentEpIndex
   void updateCurrentEpIndex(int newIndex) {
     _state = _state.copyWith(currentEpIndex: newIndex, preloadStarted: false, preloadedSources: []);
-    if (discord != null) updatePresence();
     notifyListeners();
   }
 
@@ -202,28 +197,6 @@ class PlayerDataProvider extends ChangeNotifier {
     }
 
     _state = _state.copyWith(opSkip: skipTimes.op, edSkip: skipTimes.ed);
-  }
-
-  Future<void> startRPC() async {
-    await discord?.initiateConnection();
-  }
-
-  Future<void> updatePresence() async {
-    await discord?.updatePresence(
-      DiscordPresence(
-        type: DiscordActivityType.watching,
-        details: "$showTitle",
-        statusDisplayType: DiscordStatusDisplayType.details,
-        state: "Episode ${_state.currentEpIndex + 1}",
-        largeAsset: DiscordAsset.fromUrl(coverImageUrl),
-        smallAsset: DiscordAsset.fromKey("app_icon"),
-        timestamps: DiscordTimestamps(start: DateTime.now().millisecondsSinceEpoch ~/ 1000),
-      ),
-    );
-  }
-
-  Future<void> stopRPC() async {
-    await discord?.dispose();
   }
 
   /// Update subtitle settings

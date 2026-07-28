@@ -9,12 +9,10 @@ import 'package:anifox/core/commons/extractQuality.dart';
 import 'package:anifox/core/data/watching.dart';
 import 'package:anifox/core/commons/enums.dart';
 import 'package:anifox/ui/models/playerControllers/betterPlayer.dart';
-import 'package:anifox/ui/models/playerControllers/fvp.dart';
 import 'package:anifox/ui/models/providers/infoProvider.dart';
 import 'package:anifox/ui/models/providers/playerDataProvider.dart';
 import 'package:anifox/ui/models/providers/playerProvider.dart';
 import 'package:anifox/ui/models/snackBar.dart';
-import 'package:anifox/ui/models/widgets/appWrapper.dart';
 import 'package:anifox/ui/models/widgets/sourceTile.dart';
 import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:anifox/ui/pages/watch.dart';
@@ -185,9 +183,9 @@ class ServerSelectionBottomSheetState extends State<ServerSelectionBottomSheet> 
       rating: widget.provider.data.rating,
     );
 
-    final controller = Platform.isAndroid ? BetterPlayerWrapper() : FvpWrapper();
+    final controller = BetterPlayerWrapper();
     final provider = widget.provider;
-    final navigatorState = (Platform.isWindows ? AppWrapper.navKey.currentState : Navigator.of(context));
+    final navigatorState = Navigator.of(context);
 
     Navigator.pop(context, true);
 

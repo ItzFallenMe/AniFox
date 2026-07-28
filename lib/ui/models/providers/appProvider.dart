@@ -1,11 +1,8 @@
-import 'dart:io';
-
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/theme.dart';
 import 'package:anifox/ui/theme/themes.dart';
 import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart';
 
 // Handles app wide settings (themes, plugin sources etc..)
 class AppProvider with ChangeNotifier {
@@ -20,29 +17,6 @@ class AppProvider with ChangeNotifier {
   bool _isFullScreen = false;
 
   bool get isFullScreen => _isFullScreen;
-
-  String _windowTitle = "AniFox";
-
-  String get windowTitle => _windowTitle;
-
-  Color? _titleBarColor = null;
-
-  Color? get titleBarColor => _titleBarColor;
-
-  // For desktops
-  bool _showTitleBar = false;
-
-  bool get showTitleBar => _showTitleBar;
-
-  set showTitleBar(bool pip) {
-    _showTitleBar = pip;
-    notifyListeners();
-  }
-
-  set windowTitle(String newTitle) {
-    _windowTitle = newTitle;
-    notifyListeners();
-  }
 
   set isFullScreen(bool fs) {
     _isFullScreen = fs;
@@ -71,13 +45,6 @@ class AppProvider with ChangeNotifier {
 
   set isDark(bool dark) {
     _isDark = dark;
-  }
-
-  /// Set the title bar color (only works on windows)
-  /// If null, default system color is used
-  void setTitlebarColor(Color? color) {
-    _titleBarColor = color;
-    notifyListeners();
   }
 
   void applyTheme(AniFoxTheme t) {
@@ -117,12 +84,5 @@ class AppProvider with ChangeNotifier {
   /// Refresh the root Widget tree
   void justRefresh() {
     notifyListeners();
-  }
-
-  /// Set the window mode to fullscreen or windowed
-  Future<void> setFullScreen(bool fs) async {
-    if (Platform.isAndroid) return;
-    await windowManager.setFullScreen(fs);
-    isFullScreen = fs;
   }
 }

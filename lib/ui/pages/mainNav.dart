@@ -13,7 +13,6 @@ import 'package:anifox/ui/models/widgets/cards.dart';
 import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/pages/discover.dart';
 import 'package:anifox/ui/pages/home.dart';
-import 'package:anifox/ui/pages/newHome.dart';
 import 'package:anifox/ui/pages/search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
