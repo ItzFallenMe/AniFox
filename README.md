@@ -19,7 +19,7 @@
   <a href="LICENSE">
     <img src="https://img.shields.io/github/license/ItzFallenMe/AniFox?style=for-the-badge&color=F97316" />
   </a>
-  <a href="https://discord.gg/DEQHYGJ9Zr">
+  <a href="https://discord.gg/9p2UP7X2hN">
     <img src="https://img.shields.io/discord/1298715486436657202?style=for-the-badge&logo=discord&label=Discord" />
   </a>
 </p>
