@@ -43,6 +43,19 @@ dependencies:
   # Media and player related
   open_file: ^3.5.10
   wakelock_plus: ^1.2.10
+  video_player: ^2.14.0
+
+  fvp:
+    git:
+      url: https://github.com/frostnova721/fvp.git
+
+  # Desktop window + webview (windows/linux/macos)
+  desktop_webview_window: ^0.2.3
+  window_manager:
+    git:
+      url: https://github.com/YuiHrsw/window_manager.git
+      path: packages/window_manager
+      ref: windows_fullscreen_fix
 
   # Dont mind... for local dev testing of better_player
   # better_player:
@@ -70,7 +83,7 @@ dev_dependencies:
 
 flutter_native_splash:
   android: true
-  ios: false
+  ios: true
   web: false
   color: "#141414"
   color_dark: "#141414"
@@ -84,7 +97,7 @@ flutter_native_splash:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   image_path: "./lib/assets/icons/logo.png"
   adaptive_icon_background: "./lib/assets/icons/logo_background.png"
   adaptive_icon_foreground: "./lib/assets/icons/logo_foreground.png"

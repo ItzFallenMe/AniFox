@@ -75,6 +75,17 @@ class _DownloaderSettingsState extends State<DownloaderSettings> {
                     await writeSettings(SettingsModal(useMkvRemuxer: !(currentUserSettings?.useMkvRemuxer ?? true)));
                   }),
                 ),
+                if (currentUserSettings?.useMkvRemuxer ?? false)
+                  ToggleItem(
+                    label: "Embed subtitles in MKV",
+                    value: currentUserSettings?.writeSubtitleTrackToVideo ?? false,
+                    description: "Write SRT/VTT subs into the remuxed file",
+                    onTapFunction: () => setState(() async {
+                      await writeSettings(SettingsModal(
+                          writeSubtitleTrackToVideo:
+                              !(currentUserSettings?.writeSubtitleTrackToVideo ?? false)));
+                    }),
+                  ),
                 InkWell(
                   onTap: () async {
                     String? dir;

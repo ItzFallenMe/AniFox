@@ -39,9 +39,13 @@ class _UpdateSheetState extends State<UpdateSheet> {
 
   String downloadPath = "";
 
+  String _assetExtension() {
+    if (Platform.isLinux || Platform.isWindows) return "zip";
+    return "apk";
+  }
+
   void downloadAndInstallUpdate() async {
-    final filename =
-        "anifox_${widget.version}.${Platform.isWindows ? "exe" : "apk"}";
+    final filename = "anifox_${widget.version}.${_assetExtension()}";
     final tempPath = await getTemporaryDirectory();
     downloadPath = "${tempPath.path}/$filename";
 
@@ -90,7 +94,7 @@ class _UpdateSheetState extends State<UpdateSheet> {
       // check and clean the old file (can pile up if not cleaned)
       // this is also cleanable with the "clear cache" option
       final oldVersion = File(
-          "${tempPath.path}/anifox_${(await PackageInfo.fromPlatform()).version}.${Platform.isWindows ? "exe" : "apk"}");
+          "${tempPath.path}/anifox_${(await PackageInfo.fromPlatform()).version}.${_assetExtension()}");
       if (oldVersion.existsSync()) {
         oldVersion.delete();
       }
@@ -106,8 +110,11 @@ class _UpdateSheetState extends State<UpdateSheet> {
     }
 
     final openRes = await OpenFile.open(downloadPath);
-    if (openRes.type == ResultType.permissionDenied) {
+    if (openRes.type == ResultType.permissionDenied && Platform.isAndroid) {
       await Permission.requestInstallPackages.request();
+    }
+    if (Platform.isLinux || Platform.isWindows) {
+      floatingSnackBar("Update downloaded — extract the zip and run AniFox");
     }
     if (openRes.type == ResultType.done) {
       Logs.app.log("Update dialog invoked succesfully.");

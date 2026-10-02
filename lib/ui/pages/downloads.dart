@@ -519,12 +519,18 @@ class _DownloadsPageState extends State<DownloadsPage> with TickerProviderStateM
                               padding: const EdgeInsets.only(right: 8),
                               child: IconButton.filled(
                                 onPressed: () {
-                                  if (status.isPaused)
+                                  if (status.isFailed) {
+                                    _dm.retryDownload(item.id);
+                                  } else if (status.isPaused)
                                     _dm.resumeDownload(item.id);
                                   else
                                     _dm.pauseDownload(item.id);
                                 },
-                                icon: Icon(status.isPaused ? Icons.play_arrow_rounded : Icons.pause),
+                                icon: Icon(status.isFailed
+                                    ? Icons.refresh_rounded
+                                    : status.isPaused
+                                        ? Icons.play_arrow_rounded
+                                        : Icons.pause),
                                 style: _iconButtonStyle(),
                               ),
                             ),

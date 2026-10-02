@@ -58,12 +58,12 @@ key.properties
 session-*.md
 AGENT.md
 
-# Non-Android platforms (Android only for now)
-/ios/
-/windows/
-/linux/
-/macos/
-/web/
+# Desktop/mobile platform folders (all platforms are now supported)
+# /ios/
+# /windows/
+# /linux/
+# /macos/
+# /web/
 
 # Private core (fetched from anifox-core repo at build time)
 /lib/core/

@@ -1,11 +1,10 @@
-import "dart:io";
-
+import "package:anifox/core/app/platform.dart";
 import "package:anifox/main.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 
 void floatingSnackBar(String message, {int? duration, bool waitForPreviousToFinish = false}) {
-  final isWindows = Platform.isWindows;
+  final isWindows = AppPlatform.isWindows;
   if (!waitForPreviousToFinish) AniFox.snackbarKey.currentState?.removeCurrentSnackBar();
   AniFox.snackbarKey.currentState?.showSnackBar(
       SnackBar(
@@ -30,7 +29,7 @@ Future<bool> floatingSnackBarWithAction(
   int duration = 4,
 }) async {
   bool tapped = false;
-  final isWindows = Platform.isWindows;
+  final isWindows = AppPlatform.isWindows;
   AniFox.snackbarKey.currentState?.removeCurrentSnackBar();
   AniFox.snackbarKey.currentState?.showSnackBar(
     SnackBar(

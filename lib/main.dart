@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:anifox/core/app/values.dart';
 import 'package:app_links/app_links.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:flutter/services.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'package:anifox/core/anime/providers/animeonsen.dart';
 import 'package:anifox/core/app/logging.dart';
@@ -26,12 +28,14 @@ import 'package:anifox/ui/models/providers/appProvider.dart';
 import 'package:anifox/ui/models/providers/mainNavProvider.dart';
 import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/models/sources.dart';
+import 'package:anifox/ui/models/widgets/appWrapper.dart';
 import 'package:anifox/ui/pages/info.dart';
 import 'package:anifox/ui/pages/intro.dart';
 import 'package:anifox/ui/pages/mainNav.dart';
 import 'package:anifox/ui/theme/anifox.dart';
 import 'package:anifox/ui/theme/themes.dart';
 import 'package:anifox/ui/theme/types.dart';
+import 'package:fvp/fvp.dart' as fvp;
 
 class _HttpOverrides extends HttpOverrides {
   @override
@@ -42,14 +46,34 @@ class _HttpOverrides extends HttpOverrides {
 
 void main(List<String> args) async {
   try {
+    if (!kIsWeb && runWebViewTitleBarWidget(args)) {
+      return;
+    }
+
     WidgetsFlutterBinding.ensureInitialized();
 
     // Initialise app version instance
     AppVersion.init();
 
-    await Hive.initFlutter("anifox");
+    await Hive.initFlutter(kIsWeb || Platform.isAndroid ? "anifox" : null);
 
     await loadAndAssignSettings();
+
+    if (!kIsWeb && !Platform.isAndroid) {
+      fvp.registerWith(options: {
+        'fastSeek': true,
+      });
+    }
+
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+      await windowManager.ensureInitialized();
+      await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
+
+      // No frameless for now!
+      // if (currentUserSettings?.useFramelessWindow ?? true) await windowManager.setAsFrameless();
+
+      await windowManager.setResizable(true);
+    }
 
     AnimeOnsen().checkAndUpdateToken();
 
@@ -216,9 +240,12 @@ class _AniFoxState extends State<AniFox> {
             {
               final id = int.tryParse(uri.queryParameters['id'] ?? "nothing");
               if (id != null) {
+                final page = !kIsWeb && (Platform.isWindows || Platform.isLinux)
+                    ? AppWrapper(firstPage: Info(id: id))
+                    : Info(id: id);
                 AniFox.navigatorKey.currentState?.push(
                       MaterialPageRoute(
-                        builder: (context) => Info(id: id),
+                        builder: (context) => page,
                       ),
                     ) ??
                     print("Nah");
@@ -311,7 +338,9 @@ class _AniFoxState extends State<AniFox> {
             home: IntroScreen(
               nextScreen: ChangeNotifierProvider(
                 create: (context) => MainNavProvider(),
-                child: MainNavigator(),
+                child: !kIsWeb && (Platform.isWindows || Platform.isLinux)
+                    ? AppWrapper(firstPage: MainNavigator())
+                    : MainNavigator(),
               ),
             ),
             debugShowCheckedModeBanner: false,

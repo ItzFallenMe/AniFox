@@ -7,6 +7,7 @@ import 'package:anifox/core/data/animeSpecificPreference.dart';
 import 'package:anifox/core/data/types.dart';
 import 'package:anifox/ui/models/playerControllers/betterPlayer.dart';
 import 'package:anifox/ui/models/widgets/player/controls.dart';
+import 'package:anifox/ui/models/widgets/player/desktopControls/desktopControls.dart';
 import 'package:anifox/ui/models/widgets/player/gestureOverlay.dart';
 import 'package:anifox/ui/models/widgets/subtitles/subViewer.dart';
 import 'package:better_player/better_player.dart';
@@ -247,7 +248,7 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
   // Mutex to avoid multiple skips at once
   bool _isSkippingOpOrEd = false;
 
-  bool get isDesktop => false;
+  bool get isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   void hideControlsOnTimeout(PlayerDataProvider dp, PlayerProvider pp, {int timeoutSeconds = 5}) {
     if (_controlsTimer == null && (controller.isPlaying ?? false)) {
@@ -516,7 +517,10 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
                           child: Stack(
                             children: [
                               IgnorePointer(ignoring: true, child: overlay()),
-                              IgnorePointer(ignoring: !playerProvider.state.controlsVisible, child: Controls()),
+                              IgnorePointer(
+                                ignoring: !playerProvider.state.controlsVisible,
+                                child: isDesktop ? const DesktopControls() : Controls(),
+                              ),
                             ],
                           ),
                         )

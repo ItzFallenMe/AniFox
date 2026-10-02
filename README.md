@@ -36,11 +36,17 @@ Originally based on [animestream](https://github.com/frostnova721/animestream) b
 
 ## Installation
 
-Download the latest APK from [Releases](https://github.com/ItzFallenMe/AniFox/releases).
+Download the latest build for your platform from [Releases](https://github.com/ItzFallenMe/AniFox/releases):
+
+| Platform | Artifact |
+|---|---|
+| Android | `app-release.apk` (universal) or split APKs |
+| Windows | `windows.zip` — extract and run `anifox.exe` |
+| Linux | `linux.zip` — extract and run the `anifox` bundle |
 
 ## Building
 
-**Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK
+**Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK (for APKs), CMake + Ninja + GTK dev libs (for Linux), Visual Studio Build Tools (for Windows), Xcode (for iOS/macOS)
 
 This repo uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
 
@@ -52,9 +58,21 @@ cd AniFox
 export PRIVATE_REPO_TOKEN=your_github_pat
 bash scripts/fetch_core.sh
 
-# Build
+# Android
 flutter pub get
 flutter build apk --dart-define-from-file=.env
+
+# Windows
+flutter config --enable-windows-desktop
+flutter build windows --dart-define-from-file=.env
+
+# Linux (needs clang, cmake, ninja, libgtk-3-dev)
+flutter config --enable-linux-desktop
+flutter build linux --dart-define-from-file=.env
+
+# iOS / macOS
+flutter build ipa --dart-define-from-file=.env
+flutter build macos --dart-define-from-file=.env
 ```
 
 Set `PRIVATE_REPO_TOKEN` as an environment variable locally, or add it as a GitHub Actions secret for CI builds.
