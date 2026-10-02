@@ -1,8 +1,8 @@
 name: anifox
-description: "A app made to stream and download anime!"
+description: "AniFox v2 - stream and download anime with extensions!"
 publish_to: "none" #Dont remove this!
 
-version: 1.0.0+1
+version: 2.0.0+2
 
 
 environment:

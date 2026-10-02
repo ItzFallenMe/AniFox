@@ -6,8 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/enums.dart';
 import 'package:anifox/core/data/types.dart';
 import 'package:anifox/core/database/types.dart';

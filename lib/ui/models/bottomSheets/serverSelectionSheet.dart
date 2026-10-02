@@ -189,8 +189,7 @@ class ServerSelectionBottomSheetState extends State<ServerSelectionBottomSheet> 
 
     Navigator.pop(context, true);
 
-    navigatorState
-        ?.push(
+    navigatorState.push(
       MaterialPageRoute(
         builder: (context) => MultiProvider(
           providers: [
