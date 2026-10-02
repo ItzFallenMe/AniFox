@@ -277,7 +277,12 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake git ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          # webkit2gtk-4.1 is required by desktop_webview_window (OAuth),
+          # which the linux/CMakeLists.txt links against.
+          sudo apt-get install -y \
+            clang cmake git ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libwebkit2gtk-4.1-dev
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

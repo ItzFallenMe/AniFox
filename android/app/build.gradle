@@ -72,6 +72,12 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.release
+
+            // R8 minification was already on (Flutter's release default);
+            // it just had no proguard config, so the missing
+            // androidx.window.extensions.WindowExtensions class aborted
+            // :app:minifyReleaseWithR8. See proguard-rules.pro.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
 
         debug {
