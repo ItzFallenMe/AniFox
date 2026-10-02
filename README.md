@@ -19,20 +19,23 @@
 
 ## About
 
-**AniFox** is an Android anime streaming and downloading app with built-in AniList tracking, episode notifications, and a home screen continue-watching widget.
+**AniFox** is an anime streaming and downloading app (Android, Windows, Linux, macOS) with built-in AniList tracking, episode notifications, a home screen continue-watching widget, and an extension system for adding community sources.
 
 Originally based on [animestream](https://github.com/frostnova721/animestream) by [FrostNova](https://github.com/frostnova721), GPL-3.0.
 
+This repository ships the **full source tree** — no private submodule is required to build.
+
 ## Features
 
-- Stream anime from multiple sources
-- Download episodes for offline viewing
-- AniList sync (watch history, scoring, lists)
-- Episode release notifications
-- Continue-watching Android widget
-- Genre and watch-time stats dashboard
-- Multiple themes including AniFox (orange)
-- Native splash screen with animated intro
+- Stream anime from 12+ built-in providers (AnimeKai, AnimePahe, Gogoanime, AllAnime, AnimeParadise, MegaPlay, Anikoto, AniZone, AnimeGG, AniDB, AnimeOnsen, Gojo)
+- ShonenX-style **Extensions**: add remote repos (provins / Mangayomi / AniFox index.json) and install extra sources
+- Download episodes for offline viewing (queue, pause/resume, retry, MKV remux with embedded subtitles)
+- AniList sync (watch history, scoring, lists) + MAL / SimKl
+- Episode release notifications with cover art and deep links
+- Continue-watching Android widget (up to 3 entries with progress)
+- Discord Rich Presence on desktop
+- Deep customization: themes, custom accent color, fonts, card radius, grid density, home sections, startup tab, subtitles
+- Settings backup/restore (JSON), search history, genre & watch-time stats
 
 ## Installation
 
@@ -43,41 +46,41 @@ Download the latest build for your platform from [Releases](https://github.com/I
 | Android | `app-release.apk` (universal) or split APKs |
 | Windows | `windows.zip` — extract and run `anifox.exe` |
 | Linux | `linux.zip` — extract and run the `anifox` bundle |
+| macOS | `macos.zip` — extract and drag `AniFox.app` (unsigned build) |
 
 ## Building
 
 **Prerequisites:** [Flutter](https://docs.flutter.dev/get-started/install), Android SDK (for APKs), CMake + Ninja + GTK dev libs (for Linux), Visual Studio Build Tools (for Windows), Xcode (for iOS/macOS)
 
-This repo uses a private core library. You need a GitHub PAT with `repo` scope to fetch it.
+The full source tree is in this repository — just clone and build.
 
 ```bash
 git clone https://github.com/ItzFallenMe/AniFox.git
 cd AniFox
 
-# Fetch the private core (requires PRIVATE_REPO_TOKEN)
-export PRIVATE_REPO_TOKEN=your_github_pat
-bash scripts/fetch_core.sh
-
-# Android
+cp .env_example .env     # fill in your keys
 flutter pub get
-flutter build apk --dart-define-from-file=.env
 
-# Windows
-flutter config --enable-windows-desktop
+# Convenience wrappers (handles pubspec versions + zip packaging)
+bash scripts/build.sh android
+bash scripts/build.sh windows   # or: linux | macos | all
+
+# ...or call Flutter directly:
+flutter build apk     --dart-define-from-file=.env
 flutter build windows --dart-define-from-file=.env
-
-# Linux (needs clang, cmake, ninja, libgtk-3-dev)
-flutter config --enable-linux-desktop
-flutter build linux --dart-define-from-file=.env
-
-# iOS / macOS
-flutter build ipa --dart-define-from-file=.env
-flutter build macos --dart-define-from-file=.env
+flutter build linux   --dart-define-from-file=.env
+flutter build macos   --dart-define-from-file=.env
 ```
 
-Set `PRIVATE_REPO_TOKEN` as an environment variable locally, or add it as a GitHub Actions secret for CI builds.
-
 Set up your signing keystore in `android/app/` and `android/key.properties` before building release APKs.
+
+### Scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/check.sh` | `flutter analyze` + `flutter test` |
+| `scripts/build.sh <target>` | Build + package a platform release |
+| `scripts/release.sh <version>` | Validate, tag `vX.Y.Z`, push (triggers CI) |
 
 ## Environment Variables
 
@@ -87,6 +90,21 @@ Copy `.env_example` to `.env` and fill in:
 |---|---|
 | `SIMKL_CLIENT_ID` | Simkl API client ID |
 | `SIMKL_CLIENT_SECRET` | Simkl API client secret |
+| `DISCORD_APP_ID` | Discord application ID for Rich Presence (desktop) |
+
+All three are available as GitHub Actions secrets for CI builds.
+
+## Releasing
+
+```bash
+# 1. Set the version in pubspec.yaml, e.g. 2.0.0+3
+# 2. Commit, then:
+bash scripts/release.sh 2.0.0
+```
+
+The workflow validates the tag against `pubspec.yaml`, runs analyze + tests,
+then builds Android/Windows/Linux/macOS in parallel and publishes a GitHub
+release (`-alpha`/`-beta`/`-rc` versions are marked as prereleases).
 
 ## Contributing
 

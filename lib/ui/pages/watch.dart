@@ -122,11 +122,10 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
       await controller.initiateVideo(dataProvider.state.currentStream.url, offline: true);
     }
 
-    final lastWatchPct = (dataProvider.lastWatchDuration ?? 0).clamp(0, 100);
+    final rememberPosition = currentUserSettings?.rememberPlaybackPosition ?? true;
+    final lastWatchPct = rememberPosition ? (dataProvider.lastWatchDuration ?? 0).clamp(0, 100) : 0.0;
     final totalMs = controller.duration ?? 0;
     final lastWatchDuration = totalMs <= 0 ? 0 : ((lastWatchPct / 100) * totalMs).toInt();
-
-    // await dataProvider.updateDiscordPresence();
 
     // Seek to last watched part
     await controller.seekTo(Duration(milliseconds: lastWatchDuration)); //percentage to value
@@ -139,6 +138,12 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
     });
 
     controller.addListener(_listener);
+
+    // Discord Rich Presence is desktop-only (uses local IPC client)
+    if (isDesktop) {
+      await dataProvider.startRPC();
+      await dataProvider.updatePresence();
+    }
 
     // Since pip is only for android! (f* IOS)
     if (Platform.isAndroid) {
@@ -209,7 +214,8 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
     final finalEpReached = dataProvider.state.currentEpIndex + 1 == dataProvider.epLinks.length;
 
     //play the loaded episode if equal to duration
-    if (!finalEpReached &&
+    if ((currentUserSettings?.autoplayNextEpisode ?? true) &&
+        !finalEpReached &&
         controller.duration != null &&
         (controller.position ?? 0) / 1000 == (controller.duration ?? 0) / 1000) {
       if (controller.isPlaying ?? false) {
@@ -746,6 +752,11 @@ class _WatchState extends State<Watch> with WidgetsBindingObserver {
       //store the exact percentage of watched
       if (!widget.localSource) print("SAVED WATCH DURATION");
     }
+
+    // Best-effort RPC cleanup (fire and forget, dispose can't await)
+    try {
+      context.read<PlayerDataProvider>().stopRPC();
+    } catch (_) {}
 
     controller.removeListener(_listener);
     controller.dispose();

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/theme.dart';
+import 'package:anifox/ui/theme/resolve.dart';
 import 'package:anifox/ui/theme/themes.dart';
 import 'package:anifox/ui/theme/types.dart';
 import 'package:flutter/material.dart';
@@ -67,21 +68,35 @@ class AppProvider with ChangeNotifier {
   set theme(AniFoxTheme selectedTheme) {
     _theme = selectedTheme;
 
+    // NOTE: selectedTheme here is the raw theme variant; re-resolve from the
+    // registry so AMOLED + custom accent stay applied. If the raw variant
+    // can't be mapped back, fall back to applying it directly.
+    final match = availableThemes.where((t) => t.theme == selectedTheme || t.lightVariant == selectedTheme).firstOrNull;
     final dark = currentUserSettings?.darkMode ?? true;
-    final accent = Appearance.effectiveAccent(selectedTheme.accentColor);
-    final onAccent = _onAccentFor(accent, selectedTheme.onAccent);
+    if (match != null) {
+      appTheme = ThemeResolver.resolveAppTheme(
+        theme: match,
+        darkMode: dark,
+        amoledBackground: currentUserSettings?.amoledBackground ?? false,
+        useCustomAccent: currentUserSettings?.useCustomAccent ?? false,
+        customAccentColor: currentUserSettings?.customAccentColor,
+      );
+    } else {
+      final accent = Appearance.effectiveAccent(selectedTheme.accentColor);
+      final onAccent = ThemeResolver.onAccentFor(accent, fallback: selectedTheme.onAccent);
 
-    appTheme = AniFoxTheme(
-      accentColor: accent,
-      //set background color only if dark theme and amoled bg are true, otherwise set respective theme's default bg
-      backgroundColor:
-          ((currentUserSettings?.amoledBackground ?? false) && dark) ? Colors.black : selectedTheme.backgroundColor,
-      backgroundSubColor: selectedTheme.backgroundSubColor,
-      textMainColor: selectedTheme.textMainColor,
-      textSubColor: selectedTheme.textSubColor,
-      modalSheetBackgroundColor: selectedTheme.modalSheetBackgroundColor,
-      onAccent: onAccent,
-    );
+      appTheme = AniFoxTheme(
+        accentColor: accent,
+        //set background color only if dark theme and amoled bg are true, otherwise set respective theme's default bg
+        backgroundColor:
+            ((currentUserSettings?.amoledBackground ?? false) && dark) ? Colors.black : selectedTheme.backgroundColor,
+        backgroundSubColor: selectedTheme.backgroundSubColor,
+        textMainColor: selectedTheme.textMainColor,
+        textSubColor: selectedTheme.textSubColor,
+        modalSheetBackgroundColor: selectedTheme.modalSheetBackgroundColor,
+        onAccent: onAccent,
+      );
+    }
 
     notifyListeners();
   }
@@ -97,29 +112,15 @@ class AppProvider with ChangeNotifier {
   Future<void> applyThemeMode(bool dark) async {
     isDark = dark;
     final themeId = await getTheme();
-    final theme = availableThemes.firstWhere((thm) => thm.id == themeId, orElse: () => availableThemes[0]);
+    final theme = ThemeResolver.itemForId(themeId);
 
-    if (dark) {
-      appTheme = AniFoxTheme(
-        accentColor: theme.theme.accentColor,
-        backgroundColor: (currentUserSettings?.amoledBackground ?? false) ? Colors.black : theme.theme.backgroundColor,
-        backgroundSubColor: theme.theme.backgroundSubColor,
-        textMainColor: theme.theme.textMainColor,
-        textSubColor: theme.theme.textSubColor,
-        modalSheetBackgroundColor: theme.theme.modalSheetBackgroundColor,
-        onAccent: theme.theme.onAccent,
-      );
-    } else {
-      appTheme = AniFoxTheme(
-        accentColor: theme.lightVariant.accentColor,
-        backgroundColor: theme.lightVariant.backgroundColor,
-        backgroundSubColor: theme.lightVariant.backgroundSubColor,
-        textMainColor: theme.lightVariant.textMainColor,
-        textSubColor: theme.lightVariant.textSubColor,
-        modalSheetBackgroundColor: theme.lightVariant.modalSheetBackgroundColor,
-        onAccent: theme.lightVariant.onAccent,
-      );
-    }
+    appTheme = ThemeResolver.resolveAppTheme(
+      theme: theme,
+      darkMode: dark,
+      amoledBackground: currentUserSettings?.amoledBackground ?? false,
+      useCustomAccent: currentUserSettings?.useCustomAccent ?? false,
+      customAccentColor: currentUserSettings?.customAccentColor,
+    );
 
     notifyListeners();
   }
@@ -136,17 +137,10 @@ class AppProvider with ChangeNotifier {
         textMainColor: appTheme.textMainColor,
         textSubColor: appTheme.textSubColor,
         modalSheetBackgroundColor: appTheme.modalSheetBackgroundColor,
-        onAccent: _onAccentFor(custom, appTheme.onAccent),
+        onAccent: ThemeResolver.onAccentFor(custom, fallback: appTheme.onAccent),
       );
     }
     notifyListeners();
   }
 
-  Color _onAccentFor(Color accent, Color fallback) {
-    // White text on dark/saturated accents, black on light ones.
-    final luminance = accent.computeLuminance();
-    if (luminance > 0.6) return Colors.black;
-    if (luminance < 0.15) return Colors.white;
-    return fallback;
   }
-}

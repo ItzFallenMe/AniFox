@@ -66,15 +66,16 @@ class _NewHomeState extends State<NewHome> {
                     )),
               ],
             ),
-            _title("Continue Watching"),
-            SizedBox(
-              height: 200,
-              child: CarouselView(
-                controller: _carouselController,
-                itemExtent: _carouselItemWidth,
-                scrollDirection: Axis.horizontal,
-                itemSnapping: true,
-                children: List.generate(provider.recentlyWatched.items.length, (idx) {
+            if (currentUserSettings?.homeShowContinueWatching ?? true) _title("Continue Watching"),
+            if (currentUserSettings?.homeShowContinueWatching ?? true)
+              SizedBox(
+                height: 200,
+                child: CarouselView(
+                  controller: _carouselController,
+                  itemExtent: _carouselItemWidth,
+                  scrollDirection: Axis.horizontal,
+                  itemSnapping: true,
+                  children: List.generate(provider.recentlyWatched.items.length, (idx) {
                   final it = provider.recentlyWatched.items[idx];
                   final title = it.title['english'] ?? it.title['romaji'] ?? "";
                   return Container(
@@ -151,40 +152,52 @@ class _NewHomeState extends State<NewHome> {
                 }).toList(),
               ),
             ),
-            _title("Trending"),
-            SizedBox(
-              height: 300,
-              child: GridView.builder(
-                scrollDirection: Axis.horizontal,
-                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 250,
-                    mainAxisExtent: MediaQuery.of(context).size.width / 1.5,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10),
-                itemCount: provider.thisSeasonData.length,
-                itemBuilder: (context, index) {
-                  final it = provider.thisSeasonData[index];
-                  final title = it.title['english'] ?? it.title['romaji'] ?? "";
-                  return Container(
-                    width: (MediaQuery.of(context).size.width / 2) - 10,
-                    padding: EdgeInsets.all(12),
-                    alignment: Alignment.bottomLeft,
-                    decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: CachedNetworkImageProvider(it.cover),
-                          fit: BoxFit.cover,
-                          opacity: 0.5,
-                        ),
-                        borderRadius: BorderRadius.circular(15)),
-                    child: Text(
-                      currentUserSettings?.nativeTitle ?? false ? it.title['native'] ?? "" : title,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
-                      maxLines: 2,
-                    ),
-                  );
-                },
+            if (currentUserSettings?.homeShowTrending ?? true) _title("Trending"),
+            if (currentUserSettings?.homeShowTrending ?? true)
+              SizedBox(
+                height: 300,
+                child: GridView.builder(
+                  scrollDirection: Axis.horizontal,
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 250,
+                      mainAxisExtent: MediaQuery.of(context).size.width / 1.5,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10),
+                  itemCount: provider.thisSeasonData.length,
+                  itemBuilder: (context, index) {
+                    final it = provider.thisSeasonData[index];
+                    final title = it.title['english'] ?? it.title['romaji'] ?? "";
+                    return Container(
+                      width: (MediaQuery.of(context).size.width / 2) - 10,
+                      padding: EdgeInsets.all(12),
+                      alignment: Alignment.bottomLeft,
+                      decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: CachedNetworkImageProvider(it.cover),
+                            fit: BoxFit.cover,
+                            opacity: 0.5,
+                          ),
+                          borderRadius: BorderRadius.circular(15)),
+                      child: Text(
+                        currentUserSettings?.nativeTitle ?? false ? it.title['native'] ?? "" : title,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
+                        maxLines: 2,
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
+            if (!(currentUserSettings?.homeShowContinueWatching ?? true) &&
+                !(currentUserSettings?.homeShowTrending ?? true))
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    "All home sections are hidden.\nRe-enable them in Settings → UI.",
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

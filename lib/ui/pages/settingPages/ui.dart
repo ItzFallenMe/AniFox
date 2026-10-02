@@ -12,6 +12,7 @@ import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/models/widgets/toggleItem.dart';
 import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:anifox/ui/models/providers/appProvider.dart';
+import 'package:anifox/ui/theme/resolve.dart';
 import 'package:anifox/ui/theme/themes.dart';
 import 'package:anifox/ui/theme/types.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -184,23 +185,15 @@ class _ThemeSettingState extends State<ThemeSetting> {
                             value: AMOLEDBackgroundEnabled,
                             onTapFunction: () async {
                               final thm = availableThemes.firstWhere((i) => i.id == currentThemeId);
-                              // setState(() {
                               AMOLEDBackgroundEnabled = !AMOLEDBackgroundEnabled;
-                              // });
                               await Settings().writeSettings(SettingsModal(amoledBackground: AMOLEDBackgroundEnabled));
-                              appTheme = darkMode
-                                  ? AniFoxTheme(
-                                      accentColor: thm.theme.accentColor,
-                                      backgroundColor:
-                                          AMOLEDBackgroundEnabled ? Colors.black : thm.theme.backgroundColor,
-                                      backgroundSubColor: thm.theme.backgroundSubColor,
-                                      textMainColor: thm.theme.textMainColor,
-                                      textSubColor: thm.theme.textSubColor,
-                                      modalSheetBackgroundColor: thm.theme.modalSheetBackgroundColor,
-                                      onAccent: thm.theme.onAccent)
-                                  : thm.lightVariant;
-                              // floatingSnackBar( "All set! restart the app to apply the theme");
-                              // });
+                              appTheme = ThemeResolver.resolveAppTheme(
+                                theme: thm,
+                                darkMode: darkMode,
+                                amoledBackground: AMOLEDBackgroundEnabled,
+                                useCustomAccent: currentUserSettings?.useCustomAccent ?? false,
+                                customAccentColor: currentUserSettings?.customAccentColor,
+                              );
                               Provider.of<AppProvider>(context, listen: false).justRefresh();
                               setState(() {});
                             },

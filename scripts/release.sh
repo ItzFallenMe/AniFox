@@ -1,30 +1,31 @@
 #!/usr/bin/env bash
-set -e
-
 # ─── AniFox Release Script ───
-# Pushes code from AniFoxSrc (private dev) to AniFox (public release)
-# and tags it to trigger the GitHub Actions build.
+# Validates the repo, syncs the pubspec version, tags, and pushes to trigger
+# the GitHub Actions multi-platform build.
 #
 # Usage:
-#   ./scripts/release.sh 1.0.0          # release v1.0.0
-#   ./scripts/release.sh --dry-run 1.0.0 # preview without pushing
+#   bash scripts/release.sh 2.0.0            # release v2.0.0
+#   bash scripts/release.sh --dry-run 2.0.0  # preview without pushing
+#
+# The repo now ships the FULL source tree (lib/core included), so no private
+# submodule/remote fetch is needed.
+set -e
+cd "$(dirname "$0")/.."
 
 DRY_RUN=false
-if [ "$1" = "--dry-run" ]; then
+if [ "${1:-}" = "--dry-run" ]; then
   DRY_RUN=true
   shift
 fi
-
-if [ -z "$1" ]; then
-  echo "Usage: ./scripts/release.sh [--dry-run] <version>"
-  echo "Example: ./scripts/release.sh 1.0.0"
+if [ "${1:-}" = "--help" ] || [ -z "${1:-}" ]; then
+  echo "Usage: bash scripts/release.sh [--dry-run] <version>"
+  echo "Example: bash scripts/release.sh 2.0.0"
   exit 1
 fi
 
 VERSION="$1"
 TAG="v${VERSION}"
-PUBLIC_REMOTE="public"
-PUBLIC_REPO="https://github.com/ItzFallenMe/AniFox.git"
+REPO="https://github.com/ItzFallenMe/AniFox.git"
 
 echo "════════════════════════════════════════"
 echo " AniFox Release: $TAG"
@@ -45,27 +46,30 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
-# ─── 2. Ensure core is fetched ───
-if [ ! -d "lib/core" ]; then
-  echo "→ Fetching anifox-core..."
-  if $DRY_RUN; then
-    echo "  (skipped in dry run)"
-  else
-    bash scripts/fetch_core.sh
-  fi
+# Full source must be present (no more private core submodule).
+if [ ! -f "lib/core/app/version.dart" ]; then
+  echo "  ⚠  lib/core is missing. This repo ships the full source tree."
+  exit 1
 fi
 
-# ─── 3. Setup public remote ───
-if ! git remote get-url "$PUBLIC_REMOTE" >/dev/null 2>&1; then
-  echo "→ Adding '$PUBLIC_REMOTE' remote..."
-  if $DRY_RUN; then
-    echo "  git remote add $PUBLIC_REMOTE $PUBLIC_REPO"
-  else
-    git remote add "$PUBLIC_REMOTE" "$PUBLIC_REPO"
-  fi
+# ─── 2. Version must match pubspec ───
+PUB_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+if [ "$PUB_VERSION" != "$VERSION" ]; then
+  echo "  ⚠  pubspec version is '$PUB_VERSION' but you asked for '$VERSION'."
+  echo "     Update the 'version:' field in pubspec.yaml first."
+  exit 1
+fi
+echo "  pubspec version matches ($PUB_VERSION)."
+
+# ─── 3. Quality gate ───
+echo "→ Running checks (analyze + tests)..."
+if $DRY_RUN; then
+  echo "  (skipped in dry run)"
+else
+  bash scripts/check.sh
 fi
 
-# ─── 4. Create tag ───
+# ─── 4. Tag ───
 echo "→ Creating tag $TAG"
 if $DRY_RUN; then
   echo "  git tag -a $TAG -m 'Release $TAG'"
@@ -73,20 +77,23 @@ else
   git tag -a "$TAG" -m "Release $TAG"
 fi
 
-# ─── 5. Push to public repo ───
-echo "→ Pushing to AniFox (public)..."
+# ─── 5. Push ───
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "→ Pushing $TAG to $REPO ($BRANCH)..."
 if $DRY_RUN; then
-  echo "  git push $PUBLIC_REMOTE master:main --tags"
+  echo "  git push origin $BRANCH --tags"
 else
-  git push "$PUBLIC_REMOTE" master:main --tags
+  git push origin "$BRANCH" --tags
 fi
 
 echo ""
 echo "════════════════════════════════════════"
-echo " Done!"
-if ! $DRY_RUN; then
-  echo " Tag $TAG pushed. GitHub Actions will build the APK."
-  echo ""
+if $DRY_RUN; then
+  echo " Dry run complete — nothing was pushed."
+else
+  echo " Done! Tag $TAG pushed."
   echo " Actions: https://github.com/ItzFallenMe/AniFox/actions"
+  echo ""
+  echo " Artifacts will include: APKs, windows.zip, linux.zip, macos.zip"
 fi
 echo "════════════════════════════════════════"

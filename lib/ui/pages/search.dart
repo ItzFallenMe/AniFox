@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/preferences.dart';
 import 'package:anifox/core/data/search_history.dart';
@@ -168,6 +169,8 @@ class _SearchState extends State<Search> {
   }
 
   Container _searchResults() {
+    // Card density follows the grid-columns setting (3 = classic 180px look).
+    final cardExtent = verticalCards ? 450.0 : 180.0 * 3 / Appearance.gridColumns;
     return Container(
       padding: EdgeInsets.only(left: 15, right: 15),
       child: SingleChildScrollView(
@@ -177,7 +180,7 @@ class _SearchState extends State<Search> {
             GridView.builder(
               padding: EdgeInsets.zero,
               gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: verticalCards ? 450 : 180,
+                  maxCrossAxisExtent: cardExtent,
                   mainAxisExtent: verticalCards
                       ? 150
                       : Platform.isAndroid

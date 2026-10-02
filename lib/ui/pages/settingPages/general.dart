@@ -184,7 +184,7 @@ class _GeneralSettingState extends State<GeneralSetting> {
                     ClickableItem(
                       onTap: () => _startupSheet(),
                       label: "Startup tab",
-                      description: ["Home", "Discover", "Lists"][startupTab.clamp(0, 2)],
+                      description: ["Home", "Discover", "Search"][startupTab.clamp(0, 2)],
                       suffixIcon: const Icon(Icons.arrow_drop_down),
                     ),
                     _sectionTitle("Playback"),
@@ -296,7 +296,7 @@ class _GeneralSettingState extends State<GeneralSetting> {
   }
 
   void _startupSheet() {
-    const tabs = ["Home", "Discover", "Lists"];
+    const tabs = ["Home", "Discover", "Search"];
     showModalBottomSheet(
       context: context,
       showDragHandle: true,

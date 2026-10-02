@@ -34,6 +34,11 @@ class MainNavigatorState extends State<MainNavigator> with TickerProviderStateMi
 
     isTv().then((value) => provider.tv = value);
 
+    // Honor the startup tab setting (0 home, 1 discover, 2 lists/search).
+    final startupTab = (currentUserSettings?.startupTab ?? 0).clamp(0, 2);
+    _floatyBarController.currentIndex = startupTab;
+    _barController.currentIndex = startupTab;
+
     // open the box for the whole app life time!
     DownloadHistory.initBox();
 

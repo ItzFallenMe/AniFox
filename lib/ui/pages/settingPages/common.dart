@@ -1,3 +1,4 @@
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:flutter/material.dart';
 
@@ -93,7 +94,7 @@ Widget settingPagesTitleHeader(BuildContext context, String title) {
 TextStyle textStyle() {
   return TextStyle(
     color: appTheme.textMainColor,
-    fontFamily: "NotoSans",
+    fontFamily: Appearance.appFont,
     fontWeight: FontWeight.bold,
     fontSize: 20,
   );

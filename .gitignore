@@ -65,8 +65,5 @@ AGENT.md
 # /macos/
 # /web/
 
-# Private core (fetched from anifox-core repo at build time)
-/lib/core/
-
 # FVM Version Cache
 .fvm/

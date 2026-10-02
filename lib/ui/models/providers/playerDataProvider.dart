@@ -1,5 +1,6 @@
 import 'package:anifox/core/anime/providers/types.dart';
 import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/platform.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/extractQuality.dart';
 import 'package:anifox/core/commons/utils.dart';
@@ -7,8 +8,10 @@ import 'package:anifox/core/data/preferences.dart';
 import 'package:anifox/core/database/aniskip/aniskip.dart';
 import 'package:anifox/core/database/database.dart';
 import 'package:anifox/core/database/types.dart';
+import 'package:anifox/core/integrations/discord/desktopRPC.dart';
 import 'package:anifox/ui/models/sources.dart';
 import 'package:anifox/ui/models/widgets/subtitles/subtitleSettings.dart';
+import 'package:dart_discord_presence/dart_discord_presence.dart';
 import 'package:flutter/material.dart';
 
 /// Handle the state of player. manages datas like quality, servers etc..
@@ -56,6 +59,11 @@ class PlayerDataProvider extends ChangeNotifier {
   PlayerDataProviderState get state => _state;
 
   late SubtitleSettings subtitleSettings;
+
+  /// Discord RPC client. Only created on desktop when the user enabled it.
+  final DiscordDesktopRPC? discord = (currentUserSettings?.enableDiscordRichPresence ?? false) && AppPlatform.isDesktop
+      ? DiscordDesktopRPC()
+      : null;
 
   /// Call this to refresh/init subs settings
   void initSubsettings() => UserPreferences.getUserPreferences().then((val) {
@@ -129,6 +137,8 @@ class PlayerDataProvider extends ChangeNotifier {
   void updateCurrentEpIndex(int newIndex) {
     _state = _state.copyWith(currentEpIndex: newIndex, preloadStarted: false, preloadedSources: []);
     notifyListeners();
+    // Keep Discord presence in sync with the episode being watched.
+    updatePresence();
   }
 
   /// Toggle control lock
@@ -197,6 +207,41 @@ class PlayerDataProvider extends ChangeNotifier {
     }
 
     _state = _state.copyWith(opSkip: skipTimes.op, edSkip: skipTimes.ed);
+  }
+
+  Future<void> startRPC() async {
+    try {
+      await discord?.initiateConnection();
+    } catch (e) {
+      Logs.player.log("[RPC] start failed: $e");
+    }
+  }
+
+  Future<void> updatePresence() async {
+    if (discord == null) return;
+    try {
+      await discord?.updatePresence(
+        DiscordPresence(
+          type: DiscordActivityType.watching,
+          details: showTitle,
+          statusDisplayType: DiscordStatusDisplayType.details,
+          state: "Episode ${_state.currentEpIndex + 1}",
+          largeAsset: coverImageUrl != null ? DiscordAsset.fromUrl(coverImageUrl!) : DiscordAsset.fromKey("app_icon"),
+          smallAsset: DiscordAsset.fromKey("app_icon"),
+          timestamps: DiscordTimestamps(start: DateTime.now().millisecondsSinceEpoch ~/ 1000),
+        ),
+      );
+    } catch (e) {
+      Logs.player.log("[RPC] presence update failed: $e");
+    }
+  }
+
+  Future<void> stopRPC() async {
+    try {
+      await discord?.dispose();
+    } catch (e) {
+      Logs.player.log("[RPC] stop failed: $e");
+    }
   }
 
   /// Update subtitle settings

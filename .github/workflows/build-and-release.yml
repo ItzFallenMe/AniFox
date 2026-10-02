@@ -27,6 +27,11 @@ env:
   JAVA_VERSION: '17'
   JAVA_DISTRIBUTION: 'temurin'
 
+# Cancel superseded runs on the same ref (saves minutes on rapid pushes).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Extract version from pubspec.yaml
   extract-version:
@@ -68,21 +73,55 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION+$VERSION_CODE"
 
-  # ANDROID BUILDS
-  build-android-apk:
-    name: Android Build
+      - name: Check tag matches pubspec
+        if: ${{ steps.get-tag.outputs.tag != '' }}
+        run: |
+          TAG_V="${{ steps.get-tag.outputs.tag }}"
+          TAG_V="${TAG_V#v}"
+          PUB_V="${{ steps.get-version.outputs.version }}"
+          if [ "$TAG_V" != "$PUB_V" ]; then
+            echo "::error::Tag v$TAG_V does not match pubspec version $PUB_V. Bump pubspec or retag."
+            exit 1
+          fi
+          echo "Tag matches pubspec version."
+
+  # VALIDATE (fail fast before expensive builds)
+  validate:
+    name: Analyze & Test
     runs-on: ubuntu-latest
     needs: extract-version
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.extract-version.outputs.tag }}
+          ref: ${{ needs.extract-version.outputs.tag != '' && needs.extract-version.outputs.tag || github.sha }}
 
-      - name: Fetch private core
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: bash scripts/fetch_core.sh
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-warnings
+
+      - name: Run tests
+        run: flutter test
+
+  # ANDROID BUILDS
+  build-android-apk:
+    name: Android Build
+    runs-on: ubuntu-latest
+    needs: [extract-version, validate]
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.extract-version.outputs.tag }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -173,18 +212,12 @@ jobs:
   build-windows:
     name: Windows Build
     runs-on: windows-latest
-    needs: extract-version
+    needs: [extract-version, validate]
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.extract-version.outputs.tag }}
-
-      - name: Fetch private core
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        shell: bash
-        run: bash scripts/fetch_core.sh
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -234,17 +267,12 @@ jobs:
   build-linux:
     name: Linux Build
     runs-on: ubuntu-latest
-    needs: extract-version
+    needs: [extract-version, validate]
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.extract-version.outputs.tag }}
-
-      - name: Fetch private core
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: bash scripts/fetch_core.sh
 
       - name: Install Linux dependencies
         run: |
@@ -294,22 +322,79 @@ jobs:
           path: build/linux.zip
           retention-days: 30
 
-          
+  # MACOS BUILD (unsigned; notarize/sign before store distribution)
+  build-macos:
+    name: macOS Build
+    runs-on: macos-latest
+    needs: [extract-version, validate]
+    # macOS builds are unsigned and can be flaky on CI — don't block other
+    # platform releases if it fails.
+    continue-on-error: true
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.extract-version.outputs.tag != '' && needs.extract-version.outputs.tag || github.sha }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Setup env File
+        env:
+          SIMKL_CLIENT_SECRET: ${{ secrets.SIMKL_CLIENT_SECRET }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+          DISCORD_APP_ID: ${{secrets.DISCORD_APP_ID }}
+        run: |
+          echo "SIMKL_CLIENT_SECRET=$SIMKL_CLIENT_SECRET" > .env
+          echo "SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID" >> .env
+          echo "DISCORD_APP_ID=$DISCORD_APP_ID" >> .env
+
+      - name: Build macOS
+        run: >
+          flutter build macos --release
+          --dart-define-from-file=.env
+          --build-number=${{ needs.extract-version.outputs.version_code }}
+          --build-name=${{ needs.extract-version.outputs.version }}
+
+      - name: Archive macOS build
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r ../../../../../macos.zip ./*.app
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: build/macos.zip
+          retention-days: 30
+
   # CREATE RELEASE
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs:
     - extract-version
+    - validate
     - build-android-apk
     - build-windows
     - build-linux
+    - build-macos
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.create_release == true || github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.extract-version.outputs.tag }}
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -327,9 +412,19 @@ jobs:
           find artifacts -type f -name "*.apk" -exec cp {} release-files/ \;
           find artifacts -type f -name "windows.zip" -exec cp {} release-files/ \;
           find artifacts -type f -name "linux.zip" -exec cp {} release-files/ \;
+          find artifacts -type f -name "macos.zip" -exec cp {} release-files/ \;
 
           echo "Release files:"
           ls -lh release-files
+
+      - name: Detect prerelease
+        id: pre
+        run: |
+          if [[ "${{ needs.extract-version.outputs.version }}" =~ (alpha|beta|rc) ]]; then
+            echo "value=true" >> $GITHUB_OUTPUT
+          else
+            echo "value=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -337,7 +432,8 @@ jobs:
           tag_name: v${{ needs.extract-version.outputs.version }}
           name: v${{ needs.extract-version.outputs.version }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.pre.outputs.value }}
+          generate_release_notes: true
           files: release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

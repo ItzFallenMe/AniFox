@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:anifox/core/anime/providers/animeonsen.dart';
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/logging.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/app/version.dart';
@@ -32,8 +33,7 @@ import 'package:anifox/ui/models/widgets/appWrapper.dart';
 import 'package:anifox/ui/pages/info.dart';
 import 'package:anifox/ui/pages/intro.dart';
 import 'package:anifox/ui/pages/mainNav.dart';
-import 'package:anifox/ui/theme/anifox.dart';
-import 'package:anifox/ui/theme/themes.dart';
+import 'package:anifox/ui/theme/resolve.dart';
 import 'package:anifox/ui/theme/types.dart';
 import 'package:fvp/fvp.dart' as fvp;
 
@@ -96,9 +96,8 @@ void main(List<String> args) async {
 
     // await dotenv.load(fileName: ".env");
 
-    // if (currentUserSettings?.enableDiscordPresence ?? false) {
-    //   await FlutterDiscordRPC.initialize("1362858832266657812");
-    // }
+    // NOTE: Discord Rich Presence is handled per-playback by
+    // PlayerDataProvider (desktop only, see integrations/discord/).
 
     // FlutterError.onError = (FlutterErrorDetails details) async {
     //   FlutterError.presentError(details);
@@ -140,41 +139,32 @@ Future<void> loadAndAssignSettings() async {
 
   //load and apply theme
   await getTheme().then((themeId) {
-    // ignore the themeid limit checks for debug mode
-    if ((themeId > availableThemes.length && !kDebugMode) || themeId < 1) {
+    // Clamp unknown ids (e.g. from removed themes) back to the default.
+    // NOTE: id 0 is the valid default theme — it must NOT be rejected.
+    if ((!ThemeResolver.isValidId(themeId) && !kDebugMode)) {
       Logs.app.log("[STARTUP] Failed to apply theme with ID $themeId, Applying default theme");
       showToast("Failed to apply theme. Using default theme");
       setTheme(00);
       themeId = 00;
     }
 
-    final darkMode = currentUserSettings!.darkMode!;
+    final darkMode = currentUserSettings?.darkMode ?? true;
 
-    ThemeItem? theme = availableThemes.where((theme) => theme.id == themeId).toList().firstOrNull;
-
-    if (theme == null) {
+    final theme = ThemeResolver.itemForId(themeId);
+    if (theme.id != themeId) {
       // Set default theme incase of any corruptions/issues n stuff
-      theme = AniFoxBrand();
       Logs.app.log("[STARTUP] Failed to apply theme with ID $themeId, Applying default theme");
     }
 
-    if (darkMode) {
-      appTheme = theme.theme;
-      appTheme.backgroundColor =
-          (currentUserSettings!.amoledBackground ?? false) ? Colors.black : theme.theme.backgroundColor;
-    } else {
-      appTheme = AniFoxTheme(
-        accentColor: theme.lightVariant.accentColor,
-        textMainColor: theme.lightVariant.textMainColor,
-        textSubColor: theme.lightVariant.textSubColor,
-        backgroundColor: theme.lightVariant.backgroundColor,
-        backgroundSubColor: theme.lightVariant.backgroundSubColor,
-        modalSheetBackgroundColor: theme.lightVariant.modalSheetBackgroundColor,
-        onAccent: theme.lightVariant.onAccent,
-      );
-    }
+    appTheme = ThemeResolver.resolveAppTheme(
+      theme: theme,
+      darkMode: darkMode,
+      amoledBackground: currentUserSettings?.amoledBackground ?? false,
+      useCustomAccent: currentUserSettings?.useCustomAccent ?? false,
+      customAccentColor: currentUserSettings?.customAccentColor,
+    );
 
-    Logs.app.log("[STARTUP] Loaded theme of ID $themeId (${theme.name})");
+    Logs.app.log("[STARTUP] Loaded theme of ID ${theme.id} (${theme.name})");
   });
 }
 
@@ -221,11 +211,6 @@ class _AniFoxState extends State<AniFox> {
   void dispose() {
     _sub?.cancel();
 
-    // if (currentUserSettings?.enableDiscordPresence ?? false) {
-    //   FlutterDiscordRPC.instance.clearActivity();
-    //   FlutterDiscordRPC.instance.disconnect();
-    //   FlutterDiscordRPC.instance.dispose();
-    // }
     super.dispose();
   }
 
@@ -327,7 +312,9 @@ class _AniFoxState extends State<AniFox> {
             theme: ThemeData(
                 useMaterial3: true,
                 brightness: themeProvider.isDark ? Brightness.dark : Brightness.light,
-                textTheme: Theme.of(context).textTheme.apply(bodyColor: appTheme.textMainColor, fontFamily: "NotoSans"),
+                textTheme: Theme.of(context)
+                    .textTheme
+                    .apply(bodyColor: appTheme.textMainColor, fontFamily: Appearance.appFont),
                 scaffoldBackgroundColor: appTheme.backgroundColor,
                 bottomSheetTheme: BottomSheetThemeData(backgroundColor: appTheme.modalSheetBackgroundColor),
                 colorScheme: ColorScheme.fromSeed(
