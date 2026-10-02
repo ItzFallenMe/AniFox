@@ -47,6 +47,18 @@ build_windows() {
 }
 
 build_linux() {
+  # System libs required by the Flutter Linux plugins. Discover them with:
+  #   python3 -c "import json;print([p['name'] for p in json.load(open('.flutter-plugins-dependencies'))['plugins']['linux']])"
+  # webkit2gtk-4.1 -> desktop_webview_window / flutter_web_auth_2
+  # libsecret-1     -> flutter_secure_storage_linux
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y \
+      clang cmake git ninja-build pkg-config \
+      libgtk-3-dev liblzma-dev libstdc++-12-dev \
+      libwebkit2gtk-4.1-dev \
+      libsecret-1-dev
+  fi
   flutter config --enable-linux-desktop
   flutter build linux --release \
     --dart-define-from-file="$ENV_FILE" \
