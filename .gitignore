@@ -43,8 +43,12 @@ app.*.map.json
 
 flutter_*.png
 
+# Local env files (keep the example)
+.env
+.env.*
 *.env
 *.env.g.dart
+!.env_example
 
 todo.md
 localChangelog.md
