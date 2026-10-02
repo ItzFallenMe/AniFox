@@ -15,7 +15,9 @@
 # --- Kotlin metadata -------------------------------------------------------
 # Several plugins (better_player, dynamic_color, flutter_web_auth_2,
 # home_widget, url_launcher_android) still apply the Kotlin Gradle Plugin.
--keepattributes *Annotation*, InnerClasses, Signature, RuntimeVisible*
+# R8 needs InnerClasses + EnclosingMethod attributes preserved to avoid:
+# "Attribute InnerClasses requires EnclosingMethod attribute"
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, RuntimeVisible*
 -keepclassmembers class ** {
     @androidx.annotation.Keep <methods>;
 }

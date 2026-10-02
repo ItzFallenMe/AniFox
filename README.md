@@ -145,14 +145,43 @@ https://github.com/ItzFallenMe/AniFox/releases
 |---|---|---|
 | Android | `app-release.apk` | Install directly (enable *Install Unknown Apps*), or grab a split APK for your ABI |
 | Windows | `windows.zip` | Extract → run `anifox.exe` |
-| Linux | `linux.zip` | Extract → run the `anifox` bundle |
+| Linux | `linux.zip` | Extract → ensure system dependencies → run `./anifox` |
 | macOS | `macos.zip` | Extract → drag `AniFox.app` into Applications |
-
+ 
 > macOS builds are unsigned. On first launch use right-click → **Open**, or run
 > `xattr -cr AniFox.app` from Terminal.
-
+ 
+### Linux Runtime Dependencies
+ 
+The Linux build requires the following system libraries at **runtime** (not just build-time):
+ 
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install -y libwebkit2gtk-4.1-0 libsecret-1-0
+ 
+# Fedora
+sudo dnf install -y webkit2gtk4.1 libsecret
+ 
+# Arch Linux
+sudo pacman -S webkit2gtk-4.1 libsecret
+ 
+# openSUSE
+sudo zypper install webkit2gtk-4.1 libsecret-1-0
+```
+ 
+**Quick dependency check:**
+```bash
+ldd ./anifox | grep -E "webkit2gtk|secret"
+# Should show both libraries found
+```
+ 
+If the binary fails to start with `error while loading shared libraries: libwebkit2gtk-4.1.so.0`, install the packages above and try again.
+ 
+> macOS builds are unsigned. On first launch use right-click → **Open**, or run
+> `xattr -cr AniFox.app` from Terminal.
+ 
 ---
-
+ 
 # 🛠 Building From Source
 
 ## Requirements
