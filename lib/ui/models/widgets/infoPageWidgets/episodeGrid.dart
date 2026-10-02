@@ -1,4 +1,5 @@
 import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/enums.dart';
 import 'package:anifox/ui/models/bottomSheets/serverSelectionSheet.dart';
@@ -112,7 +113,7 @@ class InfoPageEpisodeGrid extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: hovered.value ? appTheme.backgroundColor : appTheme.backgroundSubColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(Appearance.cardRadius * 0.8),
         ),
         child: Text(
           "$episodeNumber",
@@ -130,7 +131,7 @@ class InfoPageEpisodeGrid extends StatelessWidget {
     final episodeNumber = provider.visibleEpList[provider.currentPageIndex][index]['realIndex'] + 1;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(Appearance.cardRadius * 0.8),
       child: Column(
         children: [
           Stack(
@@ -141,7 +142,7 @@ class InfoPageEpisodeGrid extends StatelessWidget {
                 width: double.infinity,
                 padding: EdgeInsets.all(5),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Appearance.cardRadius * 0.5),
                   child: Image.network(
                     provider.data.cover,
                     fit: BoxFit.cover,
@@ -200,7 +201,10 @@ class InfoPageEpisodeGrid extends StatelessWidget {
     final title = episode.episodeTitle != null && episode.episodeTitle!.isNotEmpty
         ? "$episodeNumber: ${episode.episodeTitle}"
         : 'Episode $episodeNumber';
-    final isFiller = episode.isFiller ?? false;
+    final showBadges = currentUserSettings?.showFillerBadges ?? true;
+    final isFiller = showBadges && (episode.isFiller ?? false);
+    final hasDub = showBadges && (episode.hasDub ?? false);
+    final radius = Appearance.cardRadius * 0.8;
 
     return MouseRegion(
       onEnter: (_) => hovered.value = true,
@@ -210,7 +214,7 @@ class InfoPageEpisodeGrid extends StatelessWidget {
           Container(
             margin: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(radius),
               // overflow: Overflow.hidden,
             ),
             clipBehavior: Clip.antiAlias,
@@ -236,7 +240,7 @@ class InfoPageEpisodeGrid extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(radius),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -248,6 +252,41 @@ class InfoPageEpisodeGrid extends StatelessWidget {
               ),
             ),
           ),
+          if (isFiller || hasDub)
+            Positioned(
+              top: 14,
+              left: 14,
+              child: Row(
+                children: [
+                  if (isFiller)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: appTheme.accentColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'FILLER',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  if (hasDub)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(160),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withAlpha(120)),
+                      ),
+                      child: const Text(
+                        'DUB',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Positioned(
             bottom: 12,
             left: 12,

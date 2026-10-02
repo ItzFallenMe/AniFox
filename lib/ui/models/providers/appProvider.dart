@@ -1,3 +1,4 @@
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/theme.dart';
 import 'package:anifox/ui/theme/themes.dart';
@@ -27,9 +28,11 @@ class AppProvider with ChangeNotifier {
     _theme = selectedTheme;
 
     final dark = currentUserSettings?.darkMode ?? true;
+    final accent = Appearance.effectiveAccent(selectedTheme.accentColor);
+    final onAccent = _onAccentFor(accent, selectedTheme.onAccent);
 
     appTheme = AniFoxTheme(
-      accentColor: selectedTheme.accentColor,
+      accentColor: accent,
       //set background color only if dark theme and amoled bg are true, otherwise set respective theme's default bg
       backgroundColor:
           ((currentUserSettings?.amoledBackground ?? false) && dark) ? Colors.black : selectedTheme.backgroundColor,
@@ -37,7 +40,7 @@ class AppProvider with ChangeNotifier {
       textMainColor: selectedTheme.textMainColor,
       textSubColor: selectedTheme.textSubColor,
       modalSheetBackgroundColor: selectedTheme.modalSheetBackgroundColor,
-      onAccent: selectedTheme.onAccent,
+      onAccent: onAccent,
     );
 
     notifyListeners();
@@ -83,6 +86,27 @@ class AppProvider with ChangeNotifier {
 
   /// Refresh the root Widget tree
   void justRefresh() {
+    // Re-apply custom accent on plain refreshes too.
+    final custom = Appearance.customAccent;
+    if (custom != null) {
+      appTheme = AniFoxTheme(
+        accentColor: custom,
+        backgroundColor: appTheme.backgroundColor,
+        backgroundSubColor: appTheme.backgroundSubColor,
+        textMainColor: appTheme.textMainColor,
+        textSubColor: appTheme.textSubColor,
+        modalSheetBackgroundColor: appTheme.modalSheetBackgroundColor,
+        onAccent: _onAccentFor(custom, appTheme.onAccent),
+      );
+    }
     notifyListeners();
+  }
+
+  Color _onAccentFor(Color accent, Color fallback) {
+    // White text on dark/saturated accents, black on light ones.
+    final luminance = accent.computeLuminance();
+    if (luminance > 0.6) return Colors.black;
+    if (luminance < 0.15) return Colors.white;
+    return fallback;
   }
 }

@@ -44,6 +44,9 @@ class PlayerSettingState extends State<PlayerSetting> {
   late bool autoOpEdSkip;
   late bool enableHoldToSpeedUp;
   late bool enablePlayerGestures;
+  late bool autoplayNextEpisode;
+  late bool rememberPlaybackPosition;
+  late String preferredAudio;
 
   Future<void> readSettings() async {
     final settings = await Settings().getSettings();
@@ -60,6 +63,9 @@ class PlayerSettingState extends State<PlayerSetting> {
       autoOpEdSkip = settings.autoOpEdSkip ?? false;
       enableHoldToSpeedUp = settings.enableHoldToSpeedUp ?? true;
       enablePlayerGestures = settings.enablePlayerGestures ?? false;
+      autoplayNextEpisode = settings.autoplayNextEpisode ?? true;
+      rememberPlaybackPosition = settings.rememberPlaybackPosition ?? true;
+      preferredAudio = settings.preferredAudio ?? "sub";
     });
   }
 
@@ -310,7 +316,35 @@ class PlayerSettingState extends State<PlayerSetting> {
                             description: "Gestures for brightness & volume controls",
                             value: enablePlayerGestures,
                             mobileOnly: true,
-                            )
+                            ),
+                          ToggleItem(
+                            onTapFunction: () {
+                              autoplayNextEpisode = !autoplayNextEpisode;
+                              writeSettings(SettingsModal(autoplayNextEpisode: autoplayNextEpisode));
+                            },
+                            label: "Autoplay next episode",
+                            description: "Continue automatically when an episode ends",
+                            value: autoplayNextEpisode,
+                          ),
+                          ToggleItem(
+                            onTapFunction: () {
+                              rememberPlaybackPosition = !rememberPlaybackPosition;
+                              writeSettings(
+                                  SettingsModal(rememberPlaybackPosition: rememberPlaybackPosition));
+                            },
+                            label: "Remember position",
+                            description: "Resume episodes where you left off",
+                            value: rememberPlaybackPosition,
+                          ),
+                          ToggleItem(
+                            onTapFunction: () {
+                              preferredAudio = preferredAudio == "dub" ? "sub" : "dub";
+                              writeSettings(SettingsModal(preferredAudio: preferredAudio));
+                            },
+                            label: "Prefer dubbed audio",
+                            description: "Pick dub streams by default (sub otherwise)",
+                            value: preferredAudio == "dub",
+                          ),
                         ],
                       ),
                     )

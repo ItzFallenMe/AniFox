@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/settings.dart';
 import 'package:anifox/core/data/theme.dart';
@@ -49,6 +50,14 @@ class _ThemeSettingState extends State<ThemeSetting> {
     materialTheme = currentUserSettings?.materialTheme ?? false;
     nativeTitle = currentUserSettings?.nativeTitle ?? false;
     useOldNavbar = currentUserSettings?.useOldNavbar ?? false;
+    appFontFamily = currentUserSettings?.appFontFamily ?? "NotoSans";
+    useCustomAccent = currentUserSettings?.useCustomAccent ?? false;
+    customAccentColor = currentUserSettings?.customAccentColor;
+    cardCornerRadius = currentUserSettings?.cardCornerRadius ?? 15.0;
+    gridColumns = currentUserSettings?.gridColumns ?? 3;
+    homeShowContinueWatching = currentUserSettings?.homeShowContinueWatching ?? true;
+    homeShowTrending = currentUserSettings?.homeShowTrending ?? true;
+    homeShowTopAiring = currentUserSettings?.homeShowTopAiring ?? true;
     // borderlessWindow = currentUserSettings?.useFramelessWindow ?? true;
   }
 
@@ -72,6 +81,14 @@ class _ThemeSettingState extends State<ThemeSetting> {
   late bool useNewHomeScreen;
   late bool nativeTitle;
   late bool useOldNavbar;
+  late String appFontFamily;
+  late bool useCustomAccent;
+  late int? customAccentColor;
+  late double cardCornerRadius;
+  late int gridColumns;
+  late bool homeShowContinueWatching;
+  late bool homeShowTrending;
+  late bool homeShowTopAiring;
   // late bool borderlessWindow;
 
   @override
@@ -221,6 +238,78 @@ class _ThemeSettingState extends State<ThemeSetting> {
                                     Provider.of<AppProvider>(context, listen: false).justRefresh();
                                   }),
                             ),
+                          _sectionTitle("Appearance"),
+                          ClickableItem(
+                            label: "App font",
+                            description: appFontFamily,
+                            suffixIcon: Icon(Icons.arrow_drop_down, color: appTheme.textMainColor),
+                            onTap: () => _fontSheet(),
+                          ),
+                          ToggleItem(
+                            label: "Custom accent color",
+                            description: "Override theme accent",
+                            value: useCustomAccent,
+                            onTapFunction: () async {
+                              useCustomAccent = !useCustomAccent;
+                              await Settings().writeSettings(SettingsModal(useCustomAccent: useCustomAccent));
+                              Provider.of<AppProvider>(context, listen: false).justRefresh();
+                              setState(() {});
+                            },
+                          ),
+                          if (useCustomAccent) _accentGrid(),
+                          Padding(
+                            padding: EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 10),
+                            child: _sliderItem("Card corner radius", cardCornerRadius,
+                                min: 4,
+                                max: 28,
+                                description: "Roundness of cards & tiles",
+                                divisions: 12, onChangedFunction: (val) {
+                              setState(() {
+                                cardCornerRadius = val;
+                              });
+                            }, onDragEnd: (val) async {
+                              await Settings()
+                                  .writeSettings(SettingsModal(cardCornerRadius: cardCornerRadius));
+                              Provider.of<AppProvider>(context, listen: false).justRefresh();
+                            }),
+                          ),
+                          ClickableItem(
+                            label: "Grid columns",
+                            description: "$gridColumns per row",
+                            suffixIcon: Icon(Icons.arrow_drop_down, color: appTheme.textMainColor),
+                            onTap: () => _gridSheet(),
+                          ),
+                          _sectionTitle("Home sections"),
+                          ToggleItem(
+                            label: "Continue watching",
+                            value: homeShowContinueWatching,
+                            onTapFunction: () async {
+                              homeShowContinueWatching = !homeShowContinueWatching;
+                              await Settings().writeSettings(
+                                  SettingsModal(homeShowContinueWatching: homeShowContinueWatching));
+                              setState(() {});
+                            },
+                          ),
+                          ToggleItem(
+                            label: "Trending row",
+                            value: homeShowTrending,
+                            onTapFunction: () async {
+                              homeShowTrending = !homeShowTrending;
+                              await Settings()
+                                  .writeSettings(SettingsModal(homeShowTrending: homeShowTrending));
+                              setState(() {});
+                            },
+                          ),
+                          ToggleItem(
+                            label: "Top airing row",
+                            value: homeShowTopAiring,
+                            onTapFunction: () async {
+                              homeShowTopAiring = !homeShowTopAiring;
+                              await Settings()
+                                  .writeSettings(SettingsModal(homeShowTopAiring: homeShowTopAiring));
+                              setState(() {});
+                            },
+                          ),
                         ],
                       )
                     : Container(),
@@ -395,5 +484,163 @@ class _ThemeSettingState extends State<ThemeSetting> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 22, bottom: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: textStyle().copyWith(fontSize: 16, color: appTheme.accentColor),
+        ),
+      ),
+    );
+  }
+
+  void _fontSheet() {
+    showPopup(
+      context: context,
+      showSheetHandle: true,
+      isScrollControlledSheet: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 12, left: 20, right: 20, bottom: 20),
+        margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 10, bottom: 12),
+              child: Text("App font", style: textStyle().copyWith(fontSize: 23)),
+            ),
+            for (final font in Appearance.availableFonts)
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: appFontFamily == font ? appTheme.accentColor : appTheme.backgroundSubColor,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () async {
+                      appFontFamily = font;
+                      await Settings().writeSettings(SettingsModal(appFontFamily: font));
+                      Provider.of<AppProvider>(context, listen: false).justRefresh();
+                      setState(() {});
+                      if (mounted) Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Text(
+                        font,
+                        style: TextStyle(
+                          fontFamily: font,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: appFontFamily == font ? appTheme.onAccent : appTheme.textMainColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _accentGrid() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (final color in Appearance.accentPresets)
+            GestureDetector(
+              onTap: () async {
+                customAccentColor = color.toARGB32();
+                await Settings().writeSettings(SettingsModal(
+                  useCustomAccent: true,
+                  customAccentColor: color.toARGB32(),
+                ));
+                Provider.of<AppProvider>(context, listen: false).justRefresh();
+                setState(() {});
+              },
+              child: Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: customAccentColor == color.toARGB32() ? appTheme.textMainColor : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+                child: customAccentColor == color.toARGB32()
+                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                    : null,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _gridSheet() {
+    showPopup(
+      context: context,
+      showSheetHandle: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 12, left: 20, right: 20, bottom: 20),
+        margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 10, bottom: 12),
+              child: Text("Grid columns", style: textStyle().copyWith(fontSize: 23)),
+            ),
+            for (int i = 2; i <= 6; i++)
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: gridColumns == i ? appTheme.accentColor : appTheme.backgroundSubColor,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () async {
+                      gridColumns = i;
+                      await Settings().writeSettings(SettingsModal(gridColumns: i));
+                      Provider.of<AppProvider>(context, listen: false).justRefresh();
+                      setState(() {});
+                      if (mounted) Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Text(
+                        "$i per row",
+                        style: textStyle().copyWith(
+                          color: gridColumns == i ? appTheme.onAccent : appTheme.textMainColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/data/preferences.dart';
+import 'package:anifox/core/data/search_history.dart';
 import 'package:anifox/core/data/types.dart';
 import 'package:anifox/core/database/handler/handler.dart';
 import 'package:anifox/core/database/types.dart';
@@ -34,6 +35,8 @@ class _SearchState extends State<Search> {
   Future addCards(String query) async {
     results = []; //for cleaning the UI
     exactMatches = [];
+    await SearchHistoryService.add(query);
+    if (mounted) setState(() {});
     final searchResults = await db.search(query);
     results = []; //for removing the data from previous search invokation due to debouncing
     exactMatches = [];
@@ -79,6 +82,7 @@ class _SearchState extends State<Search> {
                   children: [
                     _searchBar(),
                     _searchOptions(),
+                    _historyChips(),
                   ],
                 ),
               ),
@@ -272,6 +276,49 @@ class _SearchState extends State<Search> {
         contentPadding: EdgeInsets.only(left: 20, right: 20, top: 15, bottom: 15),
       ),
       style: TextStyle(color: appTheme.textMainColor, fontFamily: "Poppins"),
+    );
+  }
+
+  Widget _historyChips() {
+    final history = SearchHistoryService.history;
+    if (history.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.only(top: 8),
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final h in history.take(8))
+            GestureDetector(
+              onTap: () {
+                textEditingController.text = h;
+                setState(() => _searching = true);
+                addCards(h);
+              },
+              onLongPress: () async {
+                await SearchHistoryService.remove(h);
+                setState(() {});
+              },
+              child: Chip(
+                label: Text(h, style: const TextStyle(fontSize: 12)),
+                deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                onDeleted: () async {
+                  await SearchHistoryService.remove(h);
+                  setState(() {});
+                },
+              ),
+            ),
+          TextButton(
+            onPressed: () async {
+              await SearchHistoryService.clear();
+              setState(() {});
+            },
+            child: const Text("clear", style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
     );
   }
 

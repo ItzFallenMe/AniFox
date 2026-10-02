@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:anifox/core/commons/enums.dart';
 import 'package:anifox/core/database/handler/syncHandler.dart';
@@ -52,6 +53,7 @@ class _AnimeCardState extends State<AnimeCard> {
 
   @override
   Widget build(BuildContext context) {
+    final radius = Appearance.cardRadius;
     return Container(
       width: widget.isMobile ? width : width + 5,
       margin: EdgeInsets.only(left: 5, right: 5),
@@ -137,10 +139,10 @@ class _AnimeCardState extends State<AnimeCard> {
                                 )
                               : null,
                       borderRadius: BorderRadius.circular(widget.isMobile
-                          ? 20
+                          ? radius
                           : isFocused
-                              ? 5
-                              : 10),
+                              ? (radius * 0.3).clamp(2.0, 8.0)
+                              : (radius * 0.6).clamp(4.0, 14.0)),
                     ),
                     clipBehavior: Clip.hardEdge,
                     child: CachedNetworkImage(
@@ -161,9 +163,9 @@ class _AnimeCardState extends State<AnimeCard> {
                       duration: Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(15),
+                            topLeft: Radius.circular(radius * 0.75),
                             bottomRight: Radius.circular(widget.isMobile
-                                ? 15
+                                ? radius * 0.75
                                 : isFocused
                                     ? 4
                                     : 9)),

@@ -7,13 +7,24 @@ class AniFoxLoading extends StatefulWidget {
   final Color color;
   final double size;
   final Duration duration;
+  final String? label;
 
   const AniFoxLoading({
     Key? key,
     this.color = Colors.purple,
     this.size = 80.0,
     this.duration = const Duration(milliseconds: 1800),
+    this.label,
   }) : super(key: key);
+
+  /// Compact inline spinner for buttons / list tiles.
+  const AniFoxLoading.compact({
+    Key? key,
+    this.color = Colors.purple,
+    this.label,
+  })  : size = 28.0,
+        duration = const Duration(milliseconds: 1200),
+        super(key: key);
 
   @override
   _AniFoxLoadingState createState() => _AniFoxLoadingState();
@@ -40,19 +51,64 @@ class _AniFoxLoadingState extends State<AniFoxLoading>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: widget.size,
-      height: widget.size,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return CustomPaint(
-            painter: _SimpleAnimePainter(
-              color: widget.color,
-              animation: _controller,
+    return RepaintBoundary(
+      child: Semantics(
+        label: widget.label ?? 'Loading',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: widget.size,
+              height: widget.size,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: _SimpleAnimePainter(
+                      color: widget.color,
+                      animation: _controller,
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        },
+            if (widget.label != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  widget.label!,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Determinate thin progress bar matching the loader's accent.
+class AniFoxProgressBar extends StatelessWidget {
+  final double progress;
+  final Color color;
+  final double height;
+  const AniFoxProgressBar({
+    super.key,
+    required this.progress,
+    required this.color,
+    this.height = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress.clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height),
+      child: LinearProgressIndicator(
+        value: p,
+        minHeight: height,
+        backgroundColor: color.withAlpha(40),
+        valueColor: AlwaysStoppedAnimation<Color>(color),
       ),
     );
   }

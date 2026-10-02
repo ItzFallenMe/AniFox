@@ -1,3 +1,4 @@
+import 'package:anifox/core/app/appearance.dart';
 import 'package:anifox/core/app/runtimeDatas.dart';
 import 'package:flutter/material.dart';
 
@@ -43,6 +44,9 @@ class CustomSliderState extends State<CustomSlider> {
 
   @override
   Widget build(BuildContext context) {
+    // Clamp stale persisted values (real crash source: value outside min/max
+    // throws in the framework Slider).
+    final safeValue = widget.value.clamp(widget.min, widget.max).toDouble();
     return SliderTheme(
       data: SliderThemeData(
         thumbColor: appTheme.accentColor,
@@ -69,10 +73,13 @@ class CustomSliderState extends State<CustomSlider> {
         max: widget.max,
         onChanged: widget.onChanged,
         onChangeStart: widget.onDragStart,
-        onChangeEnd: widget.onDragEnd,
+        onChangeEnd: (val) {
+          softHaptic(HapticIntensity.selection);
+          widget.onDragEnd?.call(val);
+        },
         divisions: widget.divisions,
-        value: widget.value,
-        label: widget.showValueIndicator! ? "${widget.value}" : null,
+        value: safeValue,
+        label: widget.showValueIndicator! ? "${safeValue.toStringAsFixed(safeValue % 1 == 0 ? 0 : 1)}" : null,
       ),
     );
   }

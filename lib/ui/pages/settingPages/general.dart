@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:anifox/core/app/runtimeDatas.dart';
+import 'package:anifox/core/app/settings_backup.dart';
 import 'package:anifox/core/data/preferences.dart';
 import 'package:anifox/core/data/settings.dart';
 import 'package:anifox/core/data/types.dart';
+import 'package:anifox/ui/models/snackBar.dart';
 import 'package:anifox/ui/models/sources.dart';
 import 'package:anifox/ui/models/widgets/clickableItem.dart';
 import 'package:anifox/ui/models/widgets/toggleItem.dart';
@@ -11,6 +13,7 @@ import 'package:anifox/ui/pages/settingPages/cache.dart';
 import 'package:anifox/ui/pages/settingPages/common.dart';
 import 'package:anifox/ui/pages/settingPages/plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class GeneralSetting extends StatefulWidget {
   const GeneralSetting({super.key});
@@ -36,6 +39,15 @@ class _GeneralSettingState extends State<GeneralSetting> {
       fasterDownloads = settings.fasterDownloads!;
       useQueuedDownloads = settings.useQueuedDownloads!;
       enableLogging = settings.enableLogging!;
+      startupTab = settings.startupTab ?? 0;
+      autoplayNext = settings.autoplayNextEpisode ?? true;
+      rememberPosition = settings.rememberPlaybackPosition ?? true;
+      showFillerBadges = settings.showFillerBadges ?? true;
+      hapticFeedback = settings.hapticFeedback ?? true;
+      hideNsfw = settings.hideNsfw ?? true;
+      preferredAudio = settings.preferredAudio ?? "sub";
+      episodeSortAscending = userPreferences?.episodeSortAscending ?? true;
+      showThumbnails = userPreferences?.showEpisodeThumbnails ?? true;
     });
   }
 
@@ -54,6 +66,16 @@ class _GeneralSettingState extends State<GeneralSetting> {
   bool enableDiscordPresence = false;
   bool useDesktopNativeDiscordPresence = false;
   bool enableLogging = false;
+  int startupTab = 0;
+  bool autoplayNext = true;
+  bool rememberPosition = true;
+  bool showFillerBadges = true;
+  bool hapticFeedback = true;
+  bool hideNsfw = true;
+  String preferredAudio = "sub";
+  bool episodeSortAscending = true;
+  bool showThumbnails = true;
+  bool _backupBusy = false;
 
   final sources = SourceManager.instance.sources;
 
@@ -157,13 +179,245 @@ class _GeneralSettingState extends State<GeneralSetting> {
                       label: "Enable Logging",
                       description: "Helps with debugging issues",
                       value: enableLogging,
-                    )
+                    ),
+                    _sectionTitle("Startup"),
+                    ClickableItem(
+                      onTap: () => _startupSheet(),
+                      label: "Startup tab",
+                      description: ["Home", "Discover", "Lists"][startupTab.clamp(0, 2)],
+                      suffixIcon: const Icon(Icons.arrow_drop_down),
+                    ),
+                    _sectionTitle("Playback"),
+                    ToggleItem(
+                      label: "Autoplay next episode",
+                      description: "Start the next episode automatically",
+                      value: autoplayNext,
+                      onTapFunction: () {
+                        setState(() => autoplayNext = !autoplayNext);
+                        writeSettings(SettingsModal(autoplayNextEpisode: autoplayNext));
+                      },
+                    ),
+                    ToggleItem(
+                      label: "Remember playback position",
+                      description: "Resume where you left off",
+                      value: rememberPosition,
+                      onTapFunction: () {
+                        setState(() => rememberPosition = !rememberPosition);
+                        writeSettings(SettingsModal(rememberPlaybackPosition: rememberPosition));
+                      },
+                    ),
+                    ClickableItem(
+                      onTap: () => _audioSheet(),
+                      label: "Preferred audio",
+                      description: preferredAudio == "dub" ? "Dubbed" : "Subbed",
+                      suffixIcon: const Icon(Icons.arrow_drop_down),
+                    ),
+                    _sectionTitle("Library & episodes"),
+                    ToggleItem(
+                      label: "Filler / dub badges",
+                      description: "Show badges on episode lists",
+                      value: showFillerBadges,
+                      onTapFunction: () {
+                        setState(() => showFillerBadges = !showFillerBadges);
+                        writeSettings(SettingsModal(showFillerBadges: showFillerBadges));
+                      },
+                    ),
+                    ToggleItem(
+                      label: "Ascending episode order",
+                      description: "Oldest episode first",
+                      value: episodeSortAscending,
+                      onTapFunction: () async {
+                        await UserPreferences.saveUserPreferences(
+                            UserPreferencesModal(episodeSortAscending: !episodeSortAscending));
+                        setState(() => episodeSortAscending = !episodeSortAscending);
+                      },
+                    ),
+                    ToggleItem(
+                      label: "Episode thumbnails",
+                      description: "Show thumbnails where available",
+                      value: showThumbnails,
+                      onTapFunction: () async {
+                        await UserPreferences.saveUserPreferences(
+                            UserPreferencesModal(showEpisodeThumbnails: !showThumbnails));
+                        setState(() => showThumbnails = !showThumbnails);
+                      },
+                    ),
+                    ToggleItem(
+                      label: "Hide NSFW",
+                      description: "Filter adult entries from browse lists",
+                      value: hideNsfw,
+                      onTapFunction: () {
+                        setState(() => hideNsfw = !hideNsfw);
+                        writeSettings(SettingsModal(hideNsfw: hideNsfw));
+                      },
+                    ),
+                    _sectionTitle("Feedback"),
+                    ToggleItem(
+                      label: "Haptic feedback",
+                      description: "Vibrate on taps & switches",
+                      value: hapticFeedback,
+                      onTapFunction: () {
+                        setState(() => hapticFeedback = !hapticFeedback);
+                        writeSettings(SettingsModal(hapticFeedback: hapticFeedback));
+                      },
+                    ),
+                    _sectionTitle("Backup"),
+                    ClickableItem(
+                      onTap: _backupBusy ? () {} : _exportBackup,
+                      label: "Export settings",
+                      description: _backupBusy ? "Working..." : "Save settings as JSON",
+                      suffixIcon: const Icon(Icons.upload_rounded),
+                    ),
+                    ClickableItem(
+                      onTap: _backupBusy ? () {} : _importBackup,
+                      label: "Import settings",
+                      description: "Restore from a backup file",
+                      suffixIcon: const Icon(Icons.download_rounded),
+                    ),
                   ],
                 ),
               ),
             )
           : Container(),
     );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 22, bottom: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: textStyle().copyWith(fontSize: 16, color: appTheme.accentColor),
+        ),
+      ),
+    );
+  }
+
+  void _startupSheet() {
+    const tabs = ["Home", "Discover", "Lists"];
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text("Startup tab", style: textStyle().copyWith(fontSize: 23)),
+            ),
+            for (int i = 0; i < tabs.length; i++)
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: startupTab == i ? appTheme.accentColor : appTheme.backgroundSubColor,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () async {
+                      await writeSettings(SettingsModal(startupTab: i));
+                      setState(() => startupTab = i);
+                      if (mounted) Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Text(
+                        tabs[i],
+                        style: textStyle().copyWith(
+                          color: startupTab == i ? appTheme.onAccent : appTheme.textMainColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _audioSheet() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text("Preferred audio", style: textStyle().copyWith(fontSize: 23)),
+            ),
+            for (final entry in const [("sub", "Subbed"), ("dub", "Dubbed")])
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: preferredAudio == entry.$1 ? appTheme.accentColor : appTheme.backgroundSubColor,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () async {
+                      await writeSettings(SettingsModal(preferredAudio: entry.$1));
+                      await UserPreferences.saveUserPreferences(
+                          UserPreferencesModal(preferDubs: entry.$1 == "dub"));
+                      setState(() => preferredAudio = entry.$1);
+                      if (mounted) Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      child: Text(
+                        entry.$2,
+                        style: textStyle().copyWith(
+                          color: preferredAudio == entry.$1 ? appTheme.onAccent : appTheme.textMainColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportBackup() async {
+    setState(() => _backupBusy = true);
+    try {
+      final path = await SettingsBackupService.exportToFile();
+      await Clipboard.setData(ClipboardData(text: path));
+      floatingSnackBar("Backup saved — path copied to clipboard");
+    } catch (e) {
+      floatingSnackBar("Export failed: $e");
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
+
+  Future<void> _importBackup() async {
+    setState(() => _backupBusy = true);
+    try {
+      await SettingsBackupService.importFromFile();
+      await readSettings();
+      floatingSnackBar("Settings restored — restart may be needed");
+    } catch (e) {
+      floatingSnackBar("Import cancelled/failed: $e");
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
   }
 
   StatefulBuilder _providerSheet(BuildContext context) {
