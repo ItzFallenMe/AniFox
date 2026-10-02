@@ -157,7 +157,7 @@ https://github.com/ItzFallenMe/AniFox/releases
 
 ## Requirements
 
-- Flutter 3.41.6 (see `.fvmrc`)
+- Flutter 3.44.0 (see `.fvmrc`; Dart 3.12+ required)
 - Git
 - Android SDK (for APKs)
 - CMake, Ninja, and `libgtk-3-dev` (for Linux)
@@ -271,7 +271,7 @@ lib/
 
 # 🏗 Tech Stack
 
-- Flutter 3.41.6 / Dart
+- Flutter 3.44.0 / Dart 3.12
 - `provider` for state management
 - Material 3
 - Hive for local persistence
