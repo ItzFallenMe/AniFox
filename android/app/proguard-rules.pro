@@ -41,6 +41,11 @@
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
 
+# --- flutter_qjs (QuickJS) -------------------------------------------------
+-dontwarn soko.ekibun.flutter_qjs.**
+-keep class soko.ekibun.flutter_qjs.** { *; }
+-keep class io.flutter.plugins.flutter_qjs.** { *; }
+
 # --- Desugaring ------------------------------------------------------------
 -dontwarn javax.annotation.**
 -dontwarn sun.misc.**
