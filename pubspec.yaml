@@ -22,6 +22,7 @@ dependencies:
   url_launcher: ^6.3.1
   flutter_web_auth_2: ^4.0.1
   crypto: ^3.0.6
+  pointycastle: ^3.9.1
 
   # Core utils
   path_provider: ^2.0.11
@@ -70,6 +71,13 @@ dependencies:
   flutter_markdown_plus: ^1.0.7
   cached_network_image: ^3.3.1
   fl_chart: ^0.70.0
+
+  # Extensions: QuickJS runtime for Mangayomi-style JS sources
+  # (ShonenX-compatible; same package the AnymeX bridge uses)
+  flutter_qjs:
+    git:
+      url: https://github.com/kodjodevf/flutter_qjs.git
+      ref: f3cef51
 
   # Misc
   dart_discord_presence:

@@ -13,11 +13,13 @@ class Animegg implements AnimeProvider {
 
   @override
   Future<List<Map<String, String?>>> search(String query) async {
-    final url = "$baseUrl/search/auto/?q=$query";
+    final q = Uri.encodeQueryComponent(query.trim());
+    final url = "$baseUrl/search/auto/?q=$q";
     final res = await get(
       Uri.parse(url),
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('animegg search');
 
     final List<Map<String, dynamic>> items =
         List.castFrom(jsonDecode(res.body));
@@ -48,6 +50,7 @@ class Animegg implements AnimeProvider {
       Uri.parse(url),
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('animegg episodes');
 
     final html = parse(res.body);
 
@@ -70,8 +73,9 @@ class Animegg implements AnimeProvider {
 
       final title =
           div.getElementsByClassName("anititle").firstOrNull?.text.trim();
-      final url = baseUrl +
-          (a.attributes['href'] as String); // this line on hopes n dreams
+      final href = a.attributes['href'];
+      if (href == null || href.isEmpty) continue; // skip malformed rows
+      final url = href.startsWith('http') ? href : baseUrl + href;
 
       eps.add({
         'episodeNumber': tab.children.length - i,

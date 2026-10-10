@@ -11,26 +11,64 @@ class Anikoto implements AnimeProvider {
   @override
   final String providerName = "Anikoto";
 
-  //final _baseUrl = "https://anikototv.to";
-  final _ajaxUrl = "https://anikototv.to/ajax";
+  /// Official mirrors (anikototv.to is primary; cz/me/net/se are fallbacks).
+  /// The first mirror that answers the search probe wins for this session.
+  static const List<String> _mirrors = [
+    "https://anikototv.to",
+    "https://anikoto.cz",
+    "https://anikoto.me",
+    "https://anikoto.net",
+  ];
+
+  String _baseUrl = _mirrors.first;
+  String get _ajaxUrl => "$_baseUrl/ajax";
   final _mapperUrl = "https://mapper.nekostream.site/";
 
-  final _headers = {
-    "Referer": "https://anikototv.to/",
-    "X-Requested-With": "XMLHttpRequest",
-  };
+  Map<String, String> get _headers => {
+        "Referer": "$_baseUrl/",
+        "X-Requested-With": "XMLHttpRequest",
+      };
+
+  Future<void> _resolveMirror() async {
+    for (final mirror in _mirrors) {
+      try {
+        final res = await get(
+          Uri.parse("$mirror/ajax/anime/search?keyword=naruto"),
+          headers: {
+            "Referer": "$mirror/",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        );
+        if (res.statusCode != 200 || res.body.isEmpty) continue;
+        try {
+          final probe = jsonDecode(res.body);
+          final html = probe['result']?['html'] ?? probe['result'];
+          if (html is String && html.isNotEmpty) {
+            _baseUrl = mirror;
+            return;
+          }
+        } catch (_) {
+          continue;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+  }
 
   @override
   Future<List<Map<String, String?>>> search(String query) async {
-    final url = "$_ajaxUrl/anime/search?keyword=$query";
+    await _resolveMirror();
+    final url = "$_ajaxUrl/anime/search?keyword=${Uri.encodeQueryComponent(query.trim())}";
     final sr = <Map<String, String?>>[];
     final res = await get(
       Uri.parse(url),
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('anikoto search');
 
-    final json = jsonDecode(res.body);
+    final json = res.json;
     final htmlString = json['result']?['html'];
 
     if (htmlString == null) {
@@ -64,13 +102,16 @@ class Anikoto implements AnimeProvider {
 
   @override
   Future<List<Map<String, dynamic>>> getAnimeEpisodeLink(String aliasId, {bool dub = false}) async {
-    final url = Uri.parse(aliasId);
+    // aliasId may be a full watch URL or a site-relative path.
+    final pageUrl = aliasId.startsWith('http') ? aliasId : '$_baseUrl$aliasId';
+    final url = Uri.parse(pageUrl);
 
     final webRes = await get(
       url,
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
+    webRes.ensureSuccess('anikoto anime page');
 
     final html = parse(webRes.body);
     final id = html.querySelector("div#watch-main")?.attributes['data-id']?.trim();
@@ -86,8 +127,9 @@ class Anikoto implements AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
+    episodeListRes.ensureSuccess('anikoto episodes');
 
-    final episodeListJson = jsonDecode(episodeListRes.body);
+    final episodeListJson = episodeListRes.json;
     final episodeListHtml = episodeListJson['result'];
 
     if (episodeListHtml == null) {
@@ -157,8 +199,9 @@ class Anikoto implements AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(hours: 1),
     );
+    serverListRes.ensureSuccess('anikoto servers');
 
-    final serverListJson = jsonDecode(serverListRes.body);
+    final serverListJson = serverListRes.json;
     final serverListHtml = serverListJson['result'];
 
     if (serverListHtml == null) {
@@ -252,8 +295,9 @@ class Anikoto implements AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(hours: 1),
     );
+    mapperRes.ensureSuccess('anikoto mapper');
 
-    final mapperJson = jsonDecode(mapperRes.body);
+    final mapperJson = mapperRes.json;
 
     return Map.castFrom(mapperJson['Kiwi-Stream-'] ?? {});
   }

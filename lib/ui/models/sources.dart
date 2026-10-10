@@ -7,10 +7,7 @@ import 'package:anifox/core/anime/providers/animeonsen.dart';
 import 'package:anifox/core/anime/providers/animepahe.dart';
 import 'package:anifox/core/anime/providers/animeparadise.dart';
 import 'package:anifox/core/anime/providers/anizone.dart';
-import 'package:anifox/core/anime/providers/gojo.dart';
 import 'package:anifox/core/anime/providers/gogoanime.dart';
-import 'package:anifox/core/anime/providers/megaplay.dart';
-import 'package:anifox/core/anime/providers/anidb.dart';
 import 'package:anifox/core/anime/providers/animeProvider.dart';
 import 'package:anifox/core/anime/providers/providerDetails.dart';
 import 'package:anifox/core/anime/providers/providerManager.dart';
@@ -32,6 +29,12 @@ class SourceManager {
   ];
 
   /// v2: full inbuilt catalogue. Identifiers are `<lower>_inbuilt`.
+  ///
+  /// Removed providers (verified dead Oct 2026, kept out so health checks
+  /// and search-all don't waste time on them):
+  /// - MegaPlay (megaplay.buzz is now a file-sharing site, not anime)
+  /// - AniDB (anidb.app is now a spam APK landing page)
+  /// - Gojo (animetsu.live is offline)
   static const List<String> inbuiltSourceNames = [
     "AnimePahe",
     "AnimeKai",
@@ -39,12 +42,9 @@ class SourceManager {
     "Gogoanime",
     "AllAnime",
     "AnimeParadise",
-    "MegaPlay",
     "AnimeOnsen",
     "AniZone",
     "Animegg",
-    "AniDB",
-    "Gojo",
   ];
 
   final List<ProviderDetails> inbuiltSources = inbuiltSourceNames
@@ -181,12 +181,9 @@ final Map<String, AnimeProvider> sources = {
   "gogoanime": Gogoanime(),
   "allanime": AllAnime(),
   "animeparadise": AnimeParadise(),
-  "megaplay": MegaPlay(),
   "animeonsen": AnimeOnsen(),
-  "gojo": Gojo(),
   "anizone": AniZone(),
   "animegg": Animegg(),
-  "anidb": AniDB(),
 };
 
 AnimeProvider getClass(String source) {

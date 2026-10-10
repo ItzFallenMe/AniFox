@@ -408,6 +408,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.7"
+  flutter_qjs:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: f3cef51
+      resolved-ref: f3cef51939f30812c9635cb17fad206a9d54bfa7
+      url: "https://github.com/kodjodevf/flutter_qjs.git"
+    source: git
+    version: "0.0.1"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -940,7 +949,7 @@ packages:
     source: hosted
     version: "2.1.8"
   pointycastle:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pointycastle
       sha256: "4be0097fcf3fd3e8449e53730c631200ebc7b88016acecab2b0da2f0149222fe"

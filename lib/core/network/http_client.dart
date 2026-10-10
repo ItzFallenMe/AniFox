@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -19,6 +20,13 @@ class HTTP {
   factory HTTP({CacheManager? cacheManager}) {
     return _instance ??= HTTP._internal(cacheManager: cacheManager);
   }
+
+  /// Max automatic retries for transient failures (socket errors, timeouts,
+  /// HTTP 429/5xx). Total attempts = 1 + [maxRetries].
+  static int maxRetries = 2;
+
+  /// Base delay between retries (exponential backoff: base * 2^attempt).
+  static Duration retryBaseDelay = const Duration(milliseconds: 800);
 
   final HttpClient _client;
   final CacheManager? _cache;
@@ -85,6 +93,72 @@ class HTTP {
       }
     }
 
+    Object? lastError;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        await Future.delayed(retryBaseDelay * (1 << (attempt - 1)));
+      }
+      try {
+        final response = await _singleRequest(method, uri,
+            headers: headers, body: body);
+        // Retry rate-limits and server errors; don't cache them.
+        if (_isRetryableStatus(response.statusCode) && attempt < maxRetries) {
+          lastError = HttpException('HTTP ${response.statusCode} for $uri');
+          continue;
+        }
+        if (shouldCache &&
+            _cache != null &&
+            (method == 'GET' || method == 'POST') &&
+            response.statusCode >= 200 &&
+            response.statusCode < 300 &&
+            response.body.trim().isNotEmpty) {
+          await _cache.put(
+            key,
+            CacheEntry(
+              key: key,
+              bodyBytes: response.bodyBytes,
+              etag: null,
+              lastModified: null,
+              expiry: DateTime.now().add(cacheDuration!),
+            ),
+            cacheDuration,
+          );
+        }
+        return response;
+      } on HttpException catch (e) {
+        lastError = e;
+        if (!_isRetryableError(e) || attempt >= maxRetries) rethrow;
+      } on SocketException catch (e) {
+        lastError = e;
+        if (attempt >= maxRetries) rethrow;
+      } on TimeoutException catch (e) {
+        lastError = e;
+        if (attempt >= maxRetries) rethrow;
+      }
+    }
+    final err = lastError;
+    if (err is Exception) throw err;
+    throw Exception('Request failed for $uri: $err');
+  }
+
+  static bool _isRetryableStatus(int status) =>
+      status == 429 || (status >= 500 && status < 600);
+
+  static bool _isRetryableError(HttpException e) {
+    final msg = e.message.toLowerCase();
+    return msg.contains('timeout') ||
+        msg.contains('connection') ||
+        msg.contains('socket') ||
+        msg.contains('http 429') ||
+        msg.contains('http 5');
+  }
+
+  Future<HttpResponse> _singleRequest(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
     final req = await _client.openUrl(method, uri);
 
     if (AppValues.defaultClientUserAgent.isNotEmpty &&
@@ -93,6 +167,18 @@ class HTTP {
         HttpHeaders.userAgentHeader,
         AppValues.defaultClientUserAgent,
       );
+    }
+
+    // Browser-like defaults: many anime CDNs/anti-bot layers reject
+    // requests without Accept headers, or serve challenge pages.
+    bool hasHeader(String name) =>
+        headers?.keys.any((k) => k.toLowerCase() == name.toLowerCase()) ?? false;
+    if (!hasHeader('accept')) {
+      req.headers.set('Accept',
+          'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7');
+    }
+    if (!hasHeader('accept-language')) {
+      req.headers.set('Accept-Language', 'en-US,en;q=0.9');
     }
 
     headers?.forEach(req.headers.set);
@@ -116,17 +202,14 @@ class HTTP {
       }
     }
 
-    final res = await req.close().timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => throw HttpException('Request timeout'),
-        );
+    final res = await req.close().timeout(const Duration(seconds: 30));
 
     final bytes = await res.fold<List<int>>(
       <int>[],
       (buffer, element) => buffer..addAll(element),
     );
     final resBody = utf8.decode(bytes, allowMalformed: true);
-    final response = HttpResponse(
+    return HttpResponse(
       res.statusCode,
       resBody,
       bodyBytes: Uint8List.fromList(bytes),
@@ -134,26 +217,6 @@ class HTTP {
       headers: res.headers.contentType == null ? {} : {'content-type': res.headers.contentType!.mimeType},
       request: HttpRequestInfo(uri),
     );
-
-    if (shouldCache &&
-        _cache != null &&
-        (method == 'GET' || method == 'POST') &&
-        res.statusCode >= 200 &&
-        res.statusCode < 300 &&
-        resBody.trim().isNotEmpty) {
-      await _cache.put(
-        key,
-        CacheEntry(
-          key: key,
-          bodyBytes: bytes,
-          etag: res.headers.value(HttpHeaders.etagHeader),
-          lastModified: res.headers.value(HttpHeaders.lastModifiedHeader),
-          expiry: DateTime.now().add(cacheDuration!),
-        ),
-        cacheDuration,
-      );
-    }
-    return response;
   }
 
   Future<HttpResponse> get(

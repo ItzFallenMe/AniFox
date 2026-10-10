@@ -9,27 +9,46 @@ import 'package:anifox/core/network/network.dart';
 
 class AnimeOnsen extends AnimeProvider {
   Future<void> checkAndUpdateToken() async {
-    final Map<dynamic, dynamic> currentToken =
-        await getMiscVal("animeOnsenToken") ?? {};
-    final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
+    try {
+      final Map<dynamic, dynamic> currentToken =
+          await getMiscVal("animeOnsenToken") ?? {};
+      final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
 
-    //get the new token if the old one is expired
-    if ((currentToken.isNotEmpty &&
-            (currentToken['expiration'] < (currentTime + 3600))) ||
-        currentToken.isEmpty) {
-      print("[PROVIDER] Generating new animeonsen token");
-      final token = await getToken();
-      final modifiedMap = {
-        'token': token['token'],
-        'expiration': token['expiration'] + currentTime,
-      };
-      await storeMiscVal("animeOnsenToken", modifiedMap);
-      animeOnsenToken = token['token'];
-      print("[PROVIDER] AO Token Saved!");
-    } else {
-      //just save the current token in a variable
-      animeOnsenToken = currentToken['token'];
+      //get the new token if the old one is expired
+      if ((currentToken.isNotEmpty &&
+              (currentToken['expiration'] < (currentTime + 3600))) ||
+          currentToken.isEmpty) {
+        print("[PROVIDER] Generating new animeonsen token");
+        final token = await getToken();
+        final modifiedMap = {
+          'token': token['token'],
+          'expiration': token['expiration'] + currentTime,
+        };
+        await storeMiscVal("animeOnsenToken", modifiedMap);
+        animeOnsenToken = token['token'];
+        print("[PROVIDER] AO Token Saved!");
+      } else {
+        //just save the current token in a variable
+        animeOnsenToken = currentToken['token'];
+      }
+    } catch (e) {
+      // Token endpoint unreachable: leave animeOnsenToken null so callers
+      // fail with a readable message instead of a LateError/null crash.
+      print("[PROVIDER] AnimeOnsen token refresh failed: $e");
     }
+  }
+
+  /// Throws unless a usable bearer token is present (refreshing first).
+  Future<String> _requireToken() async {
+    if ((animeOnsenToken ?? '').isEmpty) {
+      await checkAndUpdateToken();
+    }
+    final token = animeOnsenToken;
+    if ((token ?? '').isEmpty) {
+      throw Exception(
+          "AnimeOnsen is unavailable: could not obtain an API token. Check your connection and retry.");
+    }
+    return token!;
   }
 
   Future<Map<String, dynamic>> getToken() async {
@@ -58,16 +77,18 @@ class AnimeOnsen extends AnimeProvider {
   @override
   Future<List<Map<String, dynamic>>> getAnimeEpisodeLink(String aliasId,
       {bool dub = false}) async {
+    final token = await _requireToken();
     final baseUrl = 'https://api.animeonsen.xyz/v4/content/${aliasId}/episodes';
     final apiHeader = {
-      "Authorization": "Bearer $animeOnsenToken",
+      "Authorization": "Bearer $token",
     };
     final res = await get(
       Uri.parse(baseUrl),
       headers: apiHeader,
       cacheDuration: const Duration(minutes: 5),
     );
-    final Map<String, dynamic> jsoned = jsonDecode(res.body);
+    res.ensureSuccess('animeonsen episodes');
+    final Map<String, dynamic> jsoned = res.json;
 
     List<Map<String, dynamic>> episodes = [];
 
@@ -111,11 +132,12 @@ class AnimeOnsen extends AnimeProvider {
 
   @override
   Future<List<Map<String, String?>>> search(String query) async {
-    query = query.replaceAll("-", "");
-    final baseUrl = "https://api.animeonsen.xyz/v4/search/$query";
+    final token = await _requireToken();
+    final baseUrl =
+        "https://api.animeonsen.xyz/v4/search/${Uri.encodeQueryComponent(query.replaceAll("-", ""))}";
 
     final headers = {
-      "Authorization": "Bearer $animeOnsenToken",
+      "Authorization": "Bearer $token",
       //   "Content-Type": "application/json",
     };
 
@@ -124,10 +146,11 @@ class AnimeOnsen extends AnimeProvider {
       headers: headers,
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('animeonsen search');
 
     final List<Map<String, String>> searchResults = [];
 
-    final jsoned = jsonDecode(res.body);
+    final jsoned = res.json;
 
     jsoned['result'].forEach((item) {
       searchResults.add({

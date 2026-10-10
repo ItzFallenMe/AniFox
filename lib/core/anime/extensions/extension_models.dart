@@ -29,6 +29,23 @@ class ExtensionSource {
   final bool supportsDub;
   final bool supportsDownload;
 
+  /// Direct URL of the extension source file (Mangayomi `sourceCodeUrl`).
+  /// Null for provins-style entries (derived from the repo base instead).
+  final String? sourceCodeUrl;
+
+  /// Mangayomi `sourceCodeLanguage`: 0 = Dart, 1 = JavaScript.
+  final int sourceCodeLanguage;
+
+  /// Mangayomi `itemType`: 1 = anime. Used to filter anime-only listings.
+  final int? itemType;
+
+  /// Whether the source declares Cloudflare protection (shown in UI).
+  final bool hasCloudflare;
+
+  /// Set at install/update time when a newer [version] is seen upstream.
+  final bool hasUpdate;
+  final String? versionLast;
+
   const ExtensionSource({
     required this.id,
     required this.name,
@@ -43,6 +60,12 @@ class ExtensionSource {
     this.isEnabled = true,
     this.supportsDub = true,
     this.supportsDownload = false,
+    this.sourceCodeUrl,
+    this.sourceCodeLanguage = 0,
+    this.itemType,
+    this.hasCloudflare = false,
+    this.hasUpdate = false,
+    this.versionLast,
   });
 
   ExtensionSource copyWith({
@@ -59,6 +82,12 @@ class ExtensionSource {
     bool? isEnabled,
     bool? supportsDub,
     bool? supportsDownload,
+    String? sourceCodeUrl,
+    int? sourceCodeLanguage,
+    int? itemType,
+    bool? hasCloudflare,
+    bool? hasUpdate,
+    String? versionLast,
   }) {
     return ExtensionSource(
       id: id ?? this.id,
@@ -74,6 +103,12 @@ class ExtensionSource {
       isEnabled: isEnabled ?? this.isEnabled,
       supportsDub: supportsDub ?? this.supportsDub,
       supportsDownload: supportsDownload ?? this.supportsDownload,
+      sourceCodeUrl: sourceCodeUrl ?? this.sourceCodeUrl,
+      sourceCodeLanguage: sourceCodeLanguage ?? this.sourceCodeLanguage,
+      itemType: itemType ?? this.itemType,
+      hasCloudflare: hasCloudflare ?? this.hasCloudflare,
+      hasUpdate: hasUpdate ?? this.hasUpdate,
+      versionLast: versionLast ?? this.versionLast,
     );
   }
 
@@ -92,6 +127,12 @@ class ExtensionSource {
       'isEnabled': isEnabled,
       'supportsDub': supportsDub,
       'supportsDownload': supportsDownload,
+      'sourceCodeUrl': sourceCodeUrl,
+      'sourceCodeLanguage': sourceCodeLanguage,
+      'itemType': itemType,
+      'hasCloudflare': hasCloudflare,
+      'hasUpdate': hasUpdate,
+      'versionLast': versionLast,
     };
   }
 
@@ -116,6 +157,12 @@ class ExtensionSource {
       isEnabled: (map['isEnabled'] ?? true) as bool,
       supportsDub: (map['supportsDub'] ?? true) as bool,
       supportsDownload: (map['supportsDownload'] ?? false) as bool,
+      sourceCodeUrl: map['sourceCodeUrl'] as String?,
+      sourceCodeLanguage: (map['sourceCodeLanguage'] as num?)?.toInt() ?? 0,
+      itemType: (map['itemType'] as num?)?.toInt(),
+      hasCloudflare: (map['hasCloudflare'] ?? false) as bool,
+      hasUpdate: (map['hasUpdate'] ?? false) as bool,
+      versionLast: map['versionLast'] as String?,
     );
   }
 

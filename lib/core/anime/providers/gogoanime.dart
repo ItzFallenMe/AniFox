@@ -35,7 +35,9 @@ class Gogoanime extends AnimeProvider {
     for (final mirror in _mirrors) {
       try {
         final res = await get(Uri.parse(mirror), headers: {'User-Agent': AppValues.defaultClientUserAgent});
-        if (res.statusCode == 200 && res.body.contains('gogo') || res.body.length > 5000) {
+        // NB: parenthesised — the old version relied on &&/|| precedence
+        // and accepted any >5KB error page as "working".
+        if (res.statusCode == 200 && (res.body.contains('gogo') || res.body.length > 5000)) {
           _baseUrl = mirror;
           return mirror;
         }
@@ -52,6 +54,7 @@ class Gogoanime extends AnimeProvider {
     final q = Uri.encodeQueryComponent(query.trim());
     final url = "$_baseUrl/search.html?keyword=$q";
     final res = await get(Uri.parse(url), headers: _headers, cacheDuration: const Duration(minutes: 5));
+    res.ensureSuccess('gogoanime search');
     final doc = html.parse(res.body);
     final results = <Map<String, String?>>[];
 
@@ -99,6 +102,7 @@ class Gogoanime extends AnimeProvider {
   Future<List<Map<String, dynamic>>> getAnimeEpisodeLink(String aliasId, {bool dub = false}) async {
     final pageUrl = aliasId.startsWith('http') ? aliasId : '$_baseUrl$aliasId';
     final res = await get(Uri.parse(pageUrl), headers: _headers, cacheDuration: const Duration(minutes: 5));
+    res.ensureSuccess('gogoanime episodes');
     final doc = html.parse(res.body);
 
     // episode range: #episode_page + #episode_related
@@ -199,17 +203,21 @@ class Gogoanime extends AnimeProvider {
     try {
       final pageUrl = episodeId.startsWith('http') ? episodeId : '$_baseUrl$episodeId';
       final res = await get(Uri.parse(pageUrl), headers: _headers, cacheDuration: const Duration(hours: 1));
+      res.ensureSuccess('gogoanime episode');
       final doc = html.parse(res.body);
 
-      final iframe = doc.querySelector('iframe')?.attributes['src'] ??
+      String? iframe = doc.querySelector('iframe')?.attributes['src'] ??
           doc.querySelector('.play-video iframe')?.attributes['src'] ??
           RegExp(r'<iframe[^>]+src="([^"]+)"').firstMatch(res.body)?.group(1);
+      // Protocol-relative URLs (//...) are valid — the old code checked
+      // startsWith('http') first, so they were silently dropped.
+      if (iframe != null && iframe.startsWith('//')) iframe = 'https:$iframe';
 
       // Download link is often direct and more reliable.
       final downloadLink = doc.querySelector('li.dowloads a, li.download a')?.attributes['href'];
 
       final targets = <String>[];
-      if (iframe != null && iframe.startsWith('http')) targets.add(iframe.startsWith('//') ? 'https:$iframe' : iframe);
+      if (iframe != null && iframe.startsWith('http')) targets.add(iframe);
       if (downloadLink != null && downloadLink.startsWith('http')) targets.add(downloadLink);
 
       // Server list (vidcdn, streamwish, etc.)

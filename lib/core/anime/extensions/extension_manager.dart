@@ -7,6 +7,7 @@ import 'package:anifox/core/anime/providers/providerDetails.dart';
 import 'package:anifox/core/app/logging.dart';
 import 'package:anifox/core/commons/enums/hiveEnums.dart';
 import 'package:anifox/core/network/network.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 /// ShonenX-inspired extension manager for AniFox.
@@ -29,8 +30,10 @@ class ExtensionManager {
 
   /// Default repos shipped with AniFox v2.
   ///
-  /// Users can add more via the Extensions settings page (any provins
-  /// `index.json` or Mangayomi repo json URL).
+  /// Users can add more via the Extensions settings page (any Mangayomi
+  /// anime `index.json`, provins `index.json`, or AniFox native index).
+  /// NOTE: the official kodjodevf index only lists manga — anime sources
+  /// come from community anime indexes like m2k3a's.
   static List<ExtensionRepo> get defaultRepos => [
         const ExtensionRepo(
           id: 'anifox-official',
@@ -40,8 +43,8 @@ class ExtensionManager {
         ),
         const ExtensionRepo(
           id: 'mangayomi-anime',
-          name: 'Mangayomi Anime',
-          indexUrl: 'https://raw.githubusercontent.com/kodjodevf/mangayomi-extensions/main/index.json',
+          name: 'Mangayomi Anime (m2k3a)',
+          indexUrl: 'https://m2k3a.github.io/mangayomi-extensions/anime_index.json',
           runtime: ExtensionRuntime.mangayomi,
         ),
       ];
@@ -145,8 +148,25 @@ class ExtensionManager {
   }
 
   /// Parse provins / Mangayomi / AniFox index formats into [ExtensionSource].
-  List<ExtensionSource> _parseIndex(String body, ExtensionRepo repo) {
-    final decoded = jsonDecode(body);
+  ///
+  /// Supported shapes (all observed in the wild):
+  /// - Mangayomi anime index: flat list of `{name, id, baseUrl, lang,
+  ///   typeSource, iconUrl, isNsfw, hasCloudflare, sourceCodeUrl, version,
+  ///   isManga, itemType, sourceCodeLanguage, ...}`. `itemType: 1` = anime.
+  /// - Old lnreader-style: `{name, site, url, lang, version, iconUrl}`.
+  /// - provins: `{name, identifier, version, icon, supportDownloads}`.
+  List<ExtensionSource> _parseIndex(String body, ExtensionRepo repo) =>
+      parseIndex(body, repo);
+
+  /// Static, pure version of [_parseIndex] for tests and reuse.
+  @visibleForTesting
+  static List<ExtensionSource> parseIndex(String body, ExtensionRepo repo) {
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (_) {
+      return [];
+    }
     final List<dynamic> list;
     if (decoded is List) {
       list = decoded;
@@ -158,9 +178,23 @@ class ExtensionManager {
     return list.map<ExtensionSource?>((raw) {
       try {
         final m = Map<String, dynamic>.from(raw as Map);
-        final id = (m['identifier'] ?? m['id'] ?? m['pkg'] ?? '').toString();
+        var id = (m['identifier'] ?? m['id'] ?? m['pkg'] ?? '').toString();
         final name = (m['name'] ?? id).toString();
-        if (id.isEmpty) return null;
+        if (name.isEmpty) return null;
+        if (id.isEmpty) {
+          // Old lnreader-style entries carry no id — derive a stable one
+          // from name+code URL so install/update matching still works.
+          final seed = '$name|${m['sourceCodeUrl'] ?? m['url'] ?? m['site'] ?? ''}';
+          id = seed.hashCode.abs().toString();
+        }
+        // Mangayomi anime indexes mix manga in; keep anime-only entries.
+        // (itemType 1 = anime; entries without itemType are kept.)
+        final itemType = (m['itemType'] as num?)?.toInt();
+        if (repo.runtime == ExtensionRuntime.mangayomi &&
+            (m['isManga'] == true || (itemType != null && itemType != 1))) {
+          return null;
+        }
+        final codeLang = (m['sourceCodeLanguage'] as num?)?.toInt() ?? 0;
         return ExtensionSource(
           id: '${repo.id}:$id',
           name: name,
@@ -168,10 +202,14 @@ class ExtensionManager {
           runtime: repo.runtime,
           version: (m['version'] ?? m['versionName'] ?? '1.0.0').toString(),
           iconUrl: m['icon']?.toString() ?? m['iconUrl']?.toString(),
-          baseUrl: m['baseUrl']?.toString() ?? m['host']?.toString(),
+          baseUrl: m['baseUrl']?.toString() ?? m['host']?.toString() ?? m['site']?.toString(),
           lang: m['lang']?.toString() ?? 'en',
-          isNsfw: (m['isNsfw'] ?? m['nsfw'] ?? false) as bool,
-          supportsDownload: (m['supportDownloads'] ?? false) as bool,
+          isNsfw: _asBool(m['isNsfw'] ?? m['nsfw']),
+          supportsDownload: _asBool(m['supportDownloads']),
+          sourceCodeUrl: m['sourceCodeUrl']?.toString() ?? m['url']?.toString(),
+          sourceCodeLanguage: codeLang,
+          itemType: itemType,
+          hasCloudflare: _asBool(m['hasCloudflare']),
         );
       } catch (_) {
         return null;
@@ -179,9 +217,26 @@ class ExtensionManager {
     }).whereType<ExtensionSource>().toList();
   }
 
-  /// Fetch raw extension source code/file URL for install.
+  static bool _asBool(dynamic v) {
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    if (v is String) {
+      final s = v.toLowerCase().trim();
+      return s == 'true' || s == '1' || s == 'yes';
+    }
+    return false;
+  }
+
+  /// Fetch raw extension source code for install/update.
+  ///
+  /// Resolution order: explicit `sourceCodeUrl` from the index (Mangayomi),
+  /// then provins `<repoBase>/<id>/<id>.dart` layout, then the source's own
+  /// base URL as a last resort.
   Future<String?> fetchExtensionCode(ExtensionSource ext) async {
-    // provins layout: <repoBase>/<identifier>/<identifier>.dart
+    final candidates = <String>[];
+    if (ext.sourceCodeUrl != null && ext.sourceCodeUrl!.isNotEmpty) {
+      candidates.add(ext.sourceCodeUrl!);
+    }
     final repos = await getRepos();
     final repoId = ext.id.split(':').first;
     final repo = repos.firstWhere(
@@ -189,7 +244,6 @@ class ExtensionManager {
       orElse: () => repos.first,
     );
     final shortId = ext.id.split(':').last;
-    final candidates = <String>[];
     if (repo.indexUrl.endsWith('index.json')) {
       final base = repo.indexUrl.substring(0, repo.indexUrl.length - 'index.json'.length);
       candidates.add('$base$shortId/$shortId.dart');
@@ -206,9 +260,27 @@ class ExtensionManager {
   }
 
   Future<void> install(ExtensionSource ext, {String? code}) async {
+    // Fail fast on empty/placeholder code instead of installing a source
+    // that can never execute.
+    if (code != null) {
+      if (code.trim().length < 100) {
+        throw Exception('Downloaded source for ${ext.name} is empty.');
+      }
+      if (ext.runtime == ExtensionRuntime.mangayomi &&
+          !code.contains('DefaultExtension') &&
+          !code.contains('searchResults')) {
+        throw Exception(
+            'Downloaded source for ${ext.name} is not a Mangayomi JS extension.');
+      }
+    }
     final installed = await _readInstalled();
     installed.removeWhere((e) => e.id == ext.id);
-    installed.add(ext.copyWith(isInstalled: true, isEnabled: true));
+    installed.add(ext.copyWith(
+      isInstalled: true,
+      isEnabled: true,
+      hasUpdate: false,
+      versionLast: ext.version,
+    ));
 
     // Persist Dart provider code in legacy box so ProviderManager keeps working.
     if (code != null && ext.runtime == ExtensionRuntime.dart) {
@@ -259,6 +331,55 @@ class ExtensionManager {
     if (idx == -1) return;
     installed[idx] = installed[idx].copyWith(isEnabled: enabled);
     await _saveInstalled(installed);
+  }
+
+  /// Compare installed versions against upstream indexes and flag updates.
+  /// Returns the number of extensions with updates available.
+  Future<int> checkForUpdates() async {
+    final repos = (await getRepos()).where((r) => r.enabled).toList();
+    final upstream = <String, ExtensionSource>{};
+    for (final repo in repos) {
+      try {
+        final res = await get(Uri.parse(repo.indexUrl));
+        if (res.statusCode != 200) continue;
+        for (final ext in _parseIndex(res.body, repo)) {
+          upstream[ext.id] = ext;
+        }
+      } catch (e) {
+        Logs.app.log('Update check failed for ${repo.name}: $e');
+      }
+    }
+    if (upstream.isEmpty) return 0;
+    final installed = await _readInstalled();
+    var count = 0;
+    for (var i = 0; i < installed.length; i++) {
+      final up = upstream[installed[i].id];
+      if (up == null || up.version == null) continue;
+      if (up.version != installed[i].versionLast &&
+          up.version != installed[i].version) {
+        installed[i] = installed[i].copyWith(hasUpdate: true, version: up.version);
+        count++;
+      }
+    }
+    await _saveInstalled(installed);
+    return count;
+  }
+
+  /// Re-download and reinstall an extension (used for updates).
+  /// Returns true on success.
+  Future<bool> updateExtension(String id) async {
+    final installed = await _readInstalled();
+    final idx = installed.indexWhere((e) => e.id == id);
+    if (idx == -1) return false;
+    final current = installed[idx];
+    final code = await fetchExtensionCode(current);
+    if (code == null) return false;
+    try {
+      await install(current, code: code);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<String?> getCachedCode(String id) async {

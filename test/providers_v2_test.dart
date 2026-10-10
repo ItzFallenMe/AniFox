@@ -12,21 +12,24 @@ void main() {
         'gogoanime',
         'allanime',
         'animeparadise',
-        'megaplay',
-        'anidb',
         'animeonsen',
         'anizone',
         'animegg',
-        'gojo',
       ];
       for (final id in expected) {
         expect(sources.containsKey(id), isTrue, reason: 'missing provider: $id');
+      }
+      // Verified dead Oct 2026 — must stay OUT of the registry:
+      // megaplay.buzz is a file-sharing site, anidb.app is a spam landing
+      // page, animetsu.live (gojo) is offline.
+      for (final id in ['megaplay', 'anidb', 'gojo']) {
+        expect(sources.containsKey(id), isFalse, reason: 'dead provider still registered: $id');
       }
     });
 
     test('inbuilt source names cover all providers', () {
       final ids = SourceManager.inbuiltSourceNames.map((e) => e.toLowerCase()).toSet();
-      for (final id in ['animepahe', 'animekai', 'gogoanime', 'allanime', 'animeparadise', 'megaplay', 'anidb', 'anikoto']) {
+      for (final id in ['animepahe', 'animekai', 'gogoanime', 'allanime', 'animeparadise', 'anikoto']) {
         expect(ids.contains(id), isTrue, reason: 'inbuilt missing: $id');
       }
     });

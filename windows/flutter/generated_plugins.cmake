@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   awesome_notifications
   desktop_webview_window
   dynamic_color
+  flutter_qjs
   flutter_secure_storage_windows
   fvp
   permission_handler_windows

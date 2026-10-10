@@ -15,4 +15,7 @@ UserPreferencesModal? userPreferences;
 //saved theme
 late AniFoxTheme appTheme;
 
-late String animeOnsenToken;
+// AnimeOnsen bearer token. Nullable + guarded: if the token endpoint is
+// unreachable the provider throws a readable error instead of a LateError
+// crashing the whole source load.
+String? animeOnsenToken;

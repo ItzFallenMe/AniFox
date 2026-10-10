@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:anifox/core/anime/providers/allanime_crypto.dart';
 import 'package:anifox/core/anime/providers/animeProvider.dart';
 import 'package:anifox/core/anime/providers/types.dart';
 import 'package:anifox/core/app/logging.dart';
@@ -45,8 +46,9 @@ class AllAnime extends AnimeProvider {
           cacheDuration: const Duration(minutes: 5),
         );
         if (res.statusCode == 200 && res.body.contains('data')) {
-          return jsonDecode(res.body)['data'];
+          return res.json['data'];
         }
+        lastErr = 'HTTP ${res.statusCode}';
       } catch (e) {
         lastErr = e;
       }
@@ -55,8 +57,9 @@ class AllAnime extends AnimeProvider {
         final uri = Uri.parse("$api?variables=${Uri.encodeComponent(jsonEncode(variables))}&query=${Uri.encodeComponent(query)}");
         final res = await get(uri, headers: _headers, cacheDuration: const Duration(minutes: 5));
         if (res.statusCode == 200 && res.body.contains('data')) {
-          return jsonDecode(res.body)['data'];
+          return res.json['data'];
         }
+        lastErr = 'HTTP ${res.statusCode}';
       } catch (e) {
         lastErr = e;
       }
@@ -147,23 +150,7 @@ class AllAnime extends AnimeProvider {
       final ep = parts.length > 1 ? parts[1] : (metadata ?? '1');
       final translation = dub ? 'dub' : 'sub';
 
-      const gql = r'''
-        query($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
-          episode(showId: $showId, translationType: $translationType, episodeString: $episodeString) {
-            episodeString
-            sourceUrls
-          }
-        }
-      ''';
-      dynamic data;
-      try {
-        data = await _graphql(gql, {"showId": showId, "translationType": translation, "episodeString": ep});
-      } catch (e) {
-        Logs.app.log("AllAnime episode query failed: $e");
-        update([], true);
-        return;
-      }
-      final sources = (data?['episode']?['sourceUrls'] as List?) ?? [];
+      final sources = await _fetchEpisodeSources(showId, translation, ep);
       if (sources.isEmpty) {
         update([], true);
         return;
@@ -183,6 +170,81 @@ class AllAnime extends AnimeProvider {
       Logs.app.log("AllAnime getStreams failed: $e");
       update([], true);
     }
+  }
+
+  /// Fetches `sourceUrls` via the signed persisted-query form.
+  ///
+  /// Plain (unsigned) episode queries are rejected with AA_CRYPTO_MISSING,
+  /// so this always sends the `aaReq` token (see [AllAnimeCrypto]). Handles
+  /// both response shapes: direct `sourceUrls` lists and encrypted
+  /// `tobeparsed` blobs.
+  Future<List<dynamic>> _fetchEpisodeSources(
+      String showId, String translation, String ep) async {
+    final variables = jsonEncode({
+      'showId': showId,
+      'translationType': translation,
+      'episodeString': ep,
+    });
+    Object? lastErr;
+    for (final api in _apis) {
+      try {
+        final uri = Uri.parse(
+            "$api?variables=${Uri.encodeComponent(variables)}"
+            "&extensions=${Uri.encodeComponent(AllAnimeCrypto.buildExtensionsParam())}");
+        final res = await get(uri, headers: _headers, cacheDuration: const Duration(minutes: 5));
+        if (res.statusCode != 200 || res.body.isEmpty) {
+          lastErr = 'HTTP ${res.statusCode}';
+          continue;
+        }
+        final decoded = jsonDecode(res.body);
+        // Surface server-side rejections with context (crypto rotation,
+        // captcha, rate limits) instead of silently returning nothing.
+        final errors = decoded['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          final msg = errors.map((e) => e['message']).join('; ');
+          Logs.app.log('AllAnime episode errors ($api): $msg');
+          if (msg.contains('NEED_CAPTCHA')) {
+            throw Exception(
+                'AllAnime is asking for captcha verification right now. Try again later or switch source.');
+          }
+          lastErr = msg;
+          continue;
+        }
+        final data = decoded['data']?['episode'];
+        if (data == null) {
+          // Encrypted shape: {"tobeparsed": "<base64>"} somewhere in body.
+          final m = RegExp(r'"tobeparsed"\s*:\s*"([^"]+)"').firstMatch(res.body);
+          if (m != null) {
+            try {
+              final plain = AllAnimeCrypto.decryptTobeparsed(m.group(1)!);
+              final parsed = jsonDecode(plain);
+              final list = _extractSourceList(parsed);
+              if (list.isNotEmpty) return list;
+            } catch (e) {
+              Logs.app.log('AllAnime tobeparsed decrypt failed: $e');
+            }
+          }
+          lastErr = 'empty episode data';
+          continue;
+        }
+        final list = _extractSourceList(data);
+        if (list.isNotEmpty) return list;
+        lastErr = 'no sources in episode data';
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    Logs.app.log('AllAnime episode sources failed on all mirrors: $lastErr');
+    return [];
+  }
+
+  List<dynamic> _extractSourceList(dynamic data) {
+    if (data is Map) {
+      final direct = data['sourceUrls'];
+      if (direct is List) return direct;
+    }
+    if (data is List) return data;
+    return [];
   }
 
   VideoStream? _parseSourceUrl(dynamic s, String showId, String ep) {

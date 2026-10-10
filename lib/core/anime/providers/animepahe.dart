@@ -11,11 +11,13 @@ class AnimePahe extends AnimeProvider {
   @override
   String providerName = "animepahe";
 
+  /// Official domains only (per animepahe's own homepage warning).
+  /// `.ru` and `.pw` are dead/clones — probing them first only wastes time
+  /// and can return block pages that get cached.
   static const List<String> _mirrors = [
-    "https://animepahe.ru",
+    "https://animepahe.si",
     "https://animepahe.com",
     "https://animepahe.org",
-    "https://animepahe.pw",
   ];
 
   String _baseUrl = _mirrors.first;
@@ -32,9 +34,16 @@ class AnimePahe extends AnimeProvider {
           Uri.parse("$mirror/api?m=search&q=naruto"),
           headers: {'referer': "$mirror/"},
         );
-        if (res.statusCode == 200 && res.body.contains('data')) {
-          _baseUrl = mirror;
-          return;
+        // Guard against block/parked pages: must be 200 AND carry data.
+        if (res.statusCode != 200 || res.body.isEmpty) continue;
+        try {
+          final probe = json.decode(res.body);
+          if (probe is Map && (probe['data'] as List?)?.isNotEmpty == true) {
+            _baseUrl = mirror;
+            return;
+          }
+        } catch (_) {
+          continue;
         }
       } catch (_) {
         continue;
@@ -52,8 +61,8 @@ class AnimePahe extends AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
-    final Map<String, dynamic> decoded = json.decode(res.body);
-    final List<dynamic> results = decoded['data'];
+    final Map<String, dynamic> decoded = res.json;
+    final List<dynamic> results = decoded['data'] ?? [];
     final List<Map<String, String?>> searchResults = [];
     for (final result in results) {
       searchResults.add({
@@ -75,9 +84,9 @@ class AnimePahe extends AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
-    final bodyDecoded = json.decode(data.body);
+    final bodyDecoded = data.json as Map<String, dynamic>;
 
-    list.add(bodyDecoded['data']);
+    list.add(bodyDecoded['data'] ?? []);
     final int totalPages = (bodyDecoded['last_page'] as num?)?.toInt() ?? 1;
 
     for (int i = 1; i < totalPages; i++) {
@@ -87,7 +96,11 @@ class AnimePahe extends AnimeProvider {
         headers: _headers,
         cacheDuration: const Duration(minutes: 5),
       );
-      list.add(json.decode(res.body)['data']);
+      try {
+        list.add((res.json as Map<String, dynamic>)['data'] ?? []);
+      } catch (_) {
+        break; // a bad page shouldn't nuke the episodes we already have
+      }
     }
 
     list = list.expand((item) => item).toList();
@@ -127,6 +140,7 @@ class AnimePahe extends AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(hours: 1),
     );
+    data.ensureSuccess('animepahe episode page');
     final document = html.parse(data.body);
     final streams = document.querySelectorAll('div#resolutionMenu > button');
     final links = [];

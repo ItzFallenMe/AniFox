@@ -10,11 +10,13 @@ class AniZone extends AnimeProvider {
 
   @override
   Future<List<Map<String, String?>>> search(String query) async {
-    final url = "$baseUrl/anime?search=$query";
+    final q = Uri.encodeQueryComponent(query.trim());
+    final url = "$baseUrl/anime?search=$q";
     final res = await get(
       Uri.parse(url),
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('anizone search');
 
     final doc = parse(res.body);
     final grid = doc.querySelector("div.grid.grid-cols-1.gap-4");
@@ -68,6 +70,7 @@ class AniZone extends AnimeProvider {
       Uri.parse(url),
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('anizone episodes');
     final doc = parse(res.body);
 
     final list = doc.querySelector("ul.grid.grid-cols-1")?.children;
@@ -125,6 +128,7 @@ class AniZone extends AnimeProvider {
       Uri.parse(url),
       cacheDuration: const Duration(hours: 1),
     );
+    res.ensureSuccess('anizone episode');
     final doc = parse(res.body);
 
     final mediaPlayer = doc.querySelector("media-player");
@@ -134,22 +138,25 @@ class AniZone extends AnimeProvider {
 
     final src = mediaPlayer.attributes['src'];
 
-    if (src == null) {
+    if (src == null || src.isEmpty) {
       throw Exception("Failed to resolve the source link");
     }
 
     final tracks = mediaPlayer.querySelectorAll("track");
 
-    final List<Map<String, String>> subs = [];
-
+    // Subtitle tracks are optional — never index into an empty list
+    // (this used to throw StateError and kill the whole stream load).
+    String? subUrl;
+    String? subType;
     for (final track in tracks) {
       if (track.attributes['srclang'] == "en" &&
-          track.attributes['kind'] == "subtitles" &&
-          track.attributes.containsKey("default")) {
-        subs.add({
-          'url': track.attributes['src']!,
-          'type': track.attributes['data-type']!
-        });
+          track.attributes['kind'] == "subtitles") {
+        final isDefault = track.attributes.containsKey("default");
+        if (subUrl == null || isDefault) {
+          subUrl = track.attributes['src'];
+          subType = track.attributes['data-type'] ?? 'vtt';
+        }
+        if (isDefault) break;
       }
     }
 
@@ -157,16 +164,23 @@ class AniZone extends AnimeProvider {
             .querySelector(
                 ".flex.gap-2.relative.items-center.p-3.rounded-lg.text-white.bg-teal-600")
             ?.text
-            .trim() ??
-        "single";
+            .trim()
+            .isNotEmpty ==
+        true
+        ? doc
+            .querySelector(
+                ".flex.gap-2.relative.items-center.p-3.rounded-lg.text-white.bg-teal-600")!
+            .text
+            .trim()
+        : "single";
 
     update([
       VideoStream(
           quality: "multi-quality",
           url: src,
           server: srcName,
-          subtitle: subs.first['url'],
-          subtitleFormat: subs.first['type'],
+          subtitle: subUrl,
+          subtitleFormat: subUrl != null ? subType : null,
           backup: false)
     ], true);
   }

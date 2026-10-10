@@ -26,9 +26,7 @@ class HttpResponse {
         bodyBytes = bodyBytes ?? Uint8List.fromList(utf8.encode(body));
 
   dynamic get json {
-    if (statusCode < 200 || statusCode >= 300) {
-      throw HttpException('HTTP $statusCode: $body');
-    }
+    ensureSuccess();
     if (body.trimLeft().startsWith('<')) {
       throw Exception(
         'Expected JSON but received HTML (status $statusCode). '
@@ -36,6 +34,36 @@ class HttpResponse {
       );
     }
     return jsonDecode(body);
+  }
+
+  /// Throws a descriptive [HttpException] unless the status is 2xx.
+  /// Providers should call this right after fetching HTML pages so
+  /// Cloudflare blocks / dead mirrors fail fast with context instead of
+  /// producing empty selector results downstream.
+  void ensureSuccess([String? what]) {
+    if (statusCode < 200 || statusCode >= 300) {
+      final snippet = body.length > 160 ? '${body.substring(0, 160)}...' : body;
+      throw HttpException(
+        'HTTP $statusCode${what != null ? ' for $what' : ''}'
+        '${reasonPhrase != null ? ' ($reasonPhrase)' : ''}. Body: $snippet',
+      );
+    }
+    if (body.trim().isEmpty) {
+      throw HttpException(
+        'Empty response body${what != null ? ' for $what' : ''} (status $statusCode).',
+      );
+    }
+  }
+
+  /// True when the body looks like a Cloudflare / anti-bot challenge page.
+  bool get looksLikeChallenge {
+    final b = body.toLowerCase();
+    return statusCode == 403 ||
+        b.contains('just a moment') ||
+        b.contains('attention required') ||
+        b.contains('cf-challenge') ||
+        b.contains('cf_challenge') ||
+        b.contains('cf_clearance') && b.contains('challenge');
   }
 }
 

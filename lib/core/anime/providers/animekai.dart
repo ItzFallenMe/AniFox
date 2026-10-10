@@ -21,17 +21,53 @@ class AnimeKai extends AnimeProvider {
   @override
   String providerName = "animekai";
 
-  static const _baseUrl = "https://animekai.to";
-  static const _ajaxUrl = "https://animekai.to/ajax";
+  /// anikai.to is the current primary domain (animekai.to is frequently
+  /// challenged/blocked); the resolver probes both each session.
+  static const List<String> _mirrors = [
+    "https://anikai.to",
+    "https://animekai.to",
+  ];
 
-  final Map<String, String> _headers = {
-    'Referer': '$_baseUrl/',
-    'User-Agent': AppValues.defaultClientUserAgent,
-    'X-Requested-With': 'XMLHttpRequest',
-  };
+  String _baseUrl = _mirrors.first;
+  String get _ajaxUrl => "$_baseUrl/ajax";
+
+  Map<String, String> get _headers => {
+        'Referer': '$_baseUrl/',
+        'User-Agent': AppValues.defaultClientUserAgent,
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+
+  Future<void> _resolveMirror() async {
+    for (final mirror in _mirrors) {
+      try {
+        final res = await get(
+          Uri.parse("$mirror/ajax/anime/search?keyword=naruto"),
+          headers: {
+            'Referer': '$mirror/',
+            'User-Agent': AppValues.defaultClientUserAgent,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        );
+        if (res.statusCode != 200 || res.body.isEmpty) continue;
+        try {
+          final probe = jsonDecode(res.body);
+          final html = probe['result']?['html'] ?? probe['result'];
+          if (html is String && html.isNotEmpty) {
+            _baseUrl = mirror;
+            return;
+          }
+        } catch (_) {
+          continue;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+  }
 
   @override
   Future<List<Map<String, String?>>> search(String query) async {
+    await _resolveMirror();
     final q = Uri.encodeQueryComponent(query.trim());
     // Primary: ajax search endpoint (same shape as hianime template).
     try {
@@ -40,7 +76,8 @@ class AnimeKai extends AnimeProvider {
         headers: _headers,
         cacheDuration: const Duration(minutes: 5),
       );
-      final decoded = jsonDecode(res.body);
+      res.ensureSuccess('animekai search');
+      final decoded = res.json;
       final htmlString = decoded['result']?['html'] ?? decoded['result'];
       if (htmlString is String && htmlString.isNotEmpty) {
         final parsed = _parseSearchHtml(htmlString);
@@ -56,6 +93,7 @@ class AnimeKai extends AnimeProvider {
       headers: {'Referer': '$_baseUrl/', 'User-Agent': AppValues.defaultClientUserAgent},
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('animekai browse');
     return _parseSearchHtml(res.body);
   }
 
@@ -93,6 +131,7 @@ class AnimeKai extends AnimeProvider {
       headers: {'Referer': '$_baseUrl/', 'User-Agent': AppValues.defaultClientUserAgent},
       cacheDuration: const Duration(minutes: 5),
     );
+    res.ensureSuccess('animekai anime page');
     final doc = html.parse(res.body);
 
     // data-id used by /ajax/episodes/list
@@ -141,7 +180,8 @@ class AnimeKai extends AnimeProvider {
       headers: _headers,
       cacheDuration: const Duration(minutes: 5),
     );
-    final decoded = jsonDecode(res.body);
+    res.ensureSuccess('animekai episodes');
+    final decoded = res.json;
     final htmlString = decoded['result'] as String?;
     if (htmlString == null || htmlString.isEmpty) return [];
     final doc = html.parse(htmlString);
@@ -187,6 +227,7 @@ class AnimeKai extends AnimeProvider {
         headers: {'Referer': '$_baseUrl/', 'User-Agent': AppValues.defaultClientUserAgent},
         cacheDuration: const Duration(hours: 1),
       );
+      res.ensureSuccess('animekai watch page');
       final doc = html.parse(res.body);
 
       // Collect iframe / server links.
@@ -230,7 +271,8 @@ class AnimeKai extends AnimeProvider {
   Future<void> _getStreamsViaAjax(String token, Function(List<VideoStream>, bool) update, {bool dub = false}) async {
     final url = "$_ajaxUrl/links/list?token=$token";
     final res = await get(Uri.parse(url), headers: _headers, cacheDuration: const Duration(hours: 1));
-    final decoded = jsonDecode(res.body);
+    res.ensureSuccess('animekai servers');
+    final decoded = res.json;
     final htmlString = decoded['result'] as String?;
     if (htmlString == null || htmlString.isEmpty) {
       update([], true);
@@ -251,7 +293,8 @@ class AnimeKai extends AnimeProvider {
       }
       try {
         final viewRes = await get(Uri.parse("$_ajaxUrl/links/view?id=$lid"), headers: _headers);
-        final viewJson = jsonDecode(viewRes.body);
+        viewRes.ensureSuccess('animekai server view');
+        final viewJson = viewRes.json;
         final iframeUrl = viewJson['result']?['url'] as String?;
         if (iframeUrl == null) {
           done++;

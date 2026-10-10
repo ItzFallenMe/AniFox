@@ -1,42 +1,90 @@
 import 'package:anifox/core/anime/extractors/type.dart';
 import 'package:anifox/core/anime/providers/types.dart';
+import 'package:anifox/core/app/logging.dart';
+import 'package:anifox/core/app/values.dart';
 import 'package:anifox/core/network/network.dart';
 import 'package:html/parser.dart' as html;
 
+/// Kwik (AnimePahe's file host) extractor.
+///
+/// Notes from the live site (verified Oct 2026):
+/// - Embed domain is `kwik.cx`, but it Cloudflare-blocks requests that
+///   don't come through the AnimePahe watch page. The Referer must be the
+///   origin of the kwik URL itself (or the animepahe page), with a real
+///   browser UA — a hardcoded dead-domain referer gets a block page.
+/// - The player JS is PACKER-packed (`eval(function(p,a,c,k,e,d...)`) and
+///   the stream shows up as `source=<url>` (sometimes `const source =
+///   '...m3u8'`). Both shapes are handled.
 class Kwik extends AnimeExtractor {
   Future<List<VideoStream>> extract(String streamUrl,
       {String? quality, String? server}) async {
+    final uri = Uri.parse(streamUrl);
+    // Mimic navigation from the embed origin — this is what un-blocks kwik.
+    final originReferer = uri.hasScheme && uri.host.isNotEmpty
+        ? '${uri.scheme}://${uri.host}/'
+        : 'https://kwik.cx/';
     final res = await get(
-      Uri.parse(streamUrl),
-      headers: {'referer': 'https://animepahe.pw/'},
+      uri,
+      headers: {
+        'referer': originReferer,
+        'User-Agent': AppValues.defaultClientUserAgent,
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
       cacheDuration: const Duration(hours: 1),
     );
+    res.ensureSuccess('kwik embed');
+    if (res.looksLikeChallenge) {
+      throw Exception(
+          'Kwik served a Cloudflare challenge for $streamUrl. Retry later or switch server.');
+    }
+
     final doc = html.parse(res.body);
     String? streamLink;
-    doc.querySelectorAll("script").forEach((element) {
-      final html = element.innerHtml;
-      final regex = RegExp(r'eval\(function\(p,a,c,k,e,d\)');
-      final match = regex.firstMatch(html);
-      if (match != null) {
-        final unpacked = JsUnpack(html).unpack();
-        final dataMatch = RegExp(r"const\s+source\s*=\s*'([^']+\.m3u8)'")
-                .allMatches(unpacked)
-                .firstOrNull?[1] ??
-            '';
-        streamLink = dataMatch.replaceAll(RegExp(r'{|}|\"|file:'), '');
+    for (final element in doc.querySelectorAll("script")) {
+      final scriptHtml = element.innerHtml;
+      if (!scriptHtml.contains('eval(function(p,a,c,k,e,d)')) continue;
+      String unpacked;
+      try {
+        unpacked = JsUnpack(scriptHtml).unpack();
+      } catch (e) {
+        Logs.app.log('Kwik unpack failed, trying raw script: $e');
+        unpacked = scriptHtml;
       }
-    });
+      // Shape 1 (current): source=https://...m3u8 (may be split as
+      // `https.split("://")` obfuscation — rejoin it).
+      // Shape 2 (older): const source = '...m3u8'.
+      streamLink = RegExp(r"source\s*=\s*(https?://[^;'\s]+)")
+              .firstMatch(unpacked)
+              ?.group(1) ??
+          RegExp(r"const\s+source\s*=\s*'([^']+\.m3u8[^']*)'")
+              .firstMatch(unpacked)
+              ?.group(1);
+      if (streamLink != null) {
+        final cleaned = streamLink
+            .replaceAll(RegExp(r'\s+'), '')
+            .replaceAll('.split("://")', '://')
+            .replaceAll(".split('://')", '://');
+        if (cleaned.startsWith('http')) {
+          streamLink = cleaned;
+          break;
+        }
+        streamLink = null;
+      }
+    }
 
-    if (streamLink == null)
-      throw new Exception("UNABLE TO EXTRACT KWIK STREAM");
+    final link = streamLink;
+    if (link == null || link.isEmpty) {
+      throw Exception("UNABLE TO EXTRACT KWIK STREAM from $streamUrl");
+    }
 
     return [
       VideoStream(
           quality: quality ?? "single",
-          url: streamLink!,
+          url: link,
           server: server ?? "Kwik",
           backup: false,
-          customHeaders: {'referer': "https://kwik.cx/"})
+          customHeaders: {'referer': originReferer})
     ];
   }
 }
