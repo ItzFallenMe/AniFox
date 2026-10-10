@@ -74,7 +74,8 @@ build_macos() {
     --dart-define-from-file="$ENV_FILE" \
     --build-number="$VERSION_CODE" --build-name="$VERSION"
   rm -f build/macos.zip
-  (cd build/macos/Build/Products/Release && zip -qr ../../../../../macos.zip ./*.app)
+  # From build/macos/Build/Products/Release, 4 levels up = build/
+  (cd build/macos/Build/Products/Release && zip -qr ../../../../macos.zip ./*.app)
   echo "→ build/macos.zip (unsigned — sign/notarize before distributing)"
 }
 

@@ -376,8 +376,9 @@ jobs:
 
       - name: Archive macOS build
         run: |
+          # From build/macos/Build/Products/Release, 4 levels up = build/
           cd build/macos/Build/Products/Release
-          zip -r ../../../../../macos.zip ./*.app
+          zip -r ../../../../macos.zip ./*.app
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -424,6 +425,20 @@ jobs:
 
           echo "Release files:"
           ls -lh release-files
+
+          # Fail loudly if an expected desktop artifact is missing (this is how
+          # v2.0.0 shipped without macos.zip: the archive landed in the wrong
+          # directory and the upload step silently found nothing).
+          for f in windows.zip linux.zip macos.zip; do
+            if [ ! -f "release-files/$f" ]; then
+              echo "::error::Expected release asset $f is missing!"
+              exit 1
+            fi
+          done
+          if ! ls release-files/*.apk >/dev/null 2>&1; then
+            echo "::error::No APK artifacts found!"
+            exit 1
+          fi
 
       - name: Detect prerelease
         id: pre
