@@ -1,0 +1,548 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ArrowLeft, Clock, Film, Play, Star } from 'lucide-react-native';
+import LinearGradient from 'react-native-linear-gradient';
+
+import { APP_INFO } from '../config/env';
+import { useDetails, useSeasonEpisodes } from '../hooks/useDetails';
+import { TMDBService } from '../services/tmdb';
+import { colors, fonts, radius, spacing } from '../theme';
+import {
+  getTitle,
+  getYear,
+  isMovie,
+  type CastMember,
+  type Episode,
+  type MediaItem,
+  type Season,
+  type TVShowDetails,
+} from '../types';
+import { formatRating, formatRuntime } from '../utils/format';
+import type { RootStackParamList } from '../navigation/types';
+import { ContentRow } from '../components/ContentRow';
+import {
+  Chip,
+  ErrorState,
+  GlassCard,
+  IconButton,
+  Kicker,
+  PrimaryButton,
+  Screen,
+  SectionHeader,
+  Skeleton,
+} from '../components/ui/Primitives';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Route = { params: { item: MediaItem } };
+
+export const DetailScreen = () => {
+  const navigation = useNavigation<Nav>();
+  const route = useRoute() as Route;
+  const { item } = route.params;
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const movie = isMovie(item);
+
+  const { details, cast, similar, loading, error, retry } = useDetails(item);
+  const [selectedSeason, setSelectedSeason] = useState<number | undefined>();
+
+  const seasons: Season[] = useMemo(
+    () => (!movie && details ? ((details as TVShowDetails).seasons ?? []) : []),
+    [details, movie],
+  );
+  const playableSeasons = seasons.filter(season => season.season_number > 0);
+
+  useEffect(() => {
+    if (movie || !seasons.length) return;
+    if (selectedSeason != null) return;
+    const first = seasons.find(season => season.season_number > 0) ?? seasons[0];
+    if (first) setSelectedSeason(first.season_number);
+  }, [movie, seasons, selectedSeason]);
+
+  const { episodes, loading: episodesLoading } = useSeasonEpisodes(
+    item.id,
+    movie ? undefined : selectedSeason,
+  );
+
+  const backdrop = TMDBService.backdropUrl(details?.backdrop_path ?? item.backdrop_path, 'w780');
+  const genres = details?.genres ?? [];
+  const year = getYear(item);
+  const runtime = movie ? (details as { runtime?: number } | null)?.runtime : undefined;
+  const seasonCount = (details as TVShowDetails | null)?.number_of_seasons;
+
+  const openPlayer = (episode?: Episode) =>
+    navigation.navigate('Player', {
+      item,
+      season: movie ? undefined : episode?.season_number ?? selectedSeason ?? 1,
+      episode: movie ? undefined : episode?.episode_number ?? 1,
+      episodeName: episode?.name,
+    });
+
+  const openDetail = (next: MediaItem) =>
+    navigation.replace('Detail', { item: next });
+
+  if (loading) {
+    return <DetailSkeleton onBack={navigation.goBack} topInset={insets.top} />;
+  }
+
+  if (error || !details) {
+    return (
+      <Screen edges={[]} style={styles.errorScreen}>
+        <View style={[styles.absoluteBack, { top: insets.top + 8 }]}>
+          <IconButton icon={ArrowLeft} onPress={navigation.goBack} accessibilityLabel="Back" />
+        </View>
+        <ErrorState message={error ?? 'This title is unavailable.'} onRetry={retry} />
+      </Screen>
+    );
+  }
+
+  const metaLine = [
+    year,
+    movie ? 'Movie' : 'Series',
+    runtime ? formatRuntime(runtime) : seasonCount ? `${seasonCount} seasons` : '',
+  ].filter(Boolean);
+
+  return (
+    <Screen edges={[]}>
+      <View style={[styles.absoluteBack, { top: insets.top + 8 }]}>
+        <IconButton icon={ArrowLeft} onPress={navigation.goBack} accessibilityLabel="Back" />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
+        <View style={[styles.backdrop, { width, height: width * 0.72 }]}>
+          {backdrop ? (
+            <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.backdropFallback]} />
+          )}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.15)', colors.background]}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+
+        <GlassCard style={styles.titleCard}>
+          <Kicker>{movie ? 'Feature film' : 'Series'}</Kicker>
+          <Text style={styles.title}>{getTitle(item)}</Text>
+
+          <View style={styles.metaRow}>
+            <View style={styles.ratingChip}>
+              <Star color={colors.onPrimary} size={10} strokeWidth={2.6} fill={colors.onPrimary} />
+              <Text style={styles.ratingText}>{formatRating(details.vote_average)}</Text>
+            </View>
+            {metaLine.map(piece => (
+              <View key={piece} style={styles.metaItem}>
+                <Text style={styles.metaText}>{piece}</Text>
+                <View style={styles.metaSeparator} />
+              </View>
+            ))}
+          </View>
+
+          {details.tagline ? (
+            <Text style={styles.tagline}>“{details.tagline}”</Text>
+          ) : null}
+
+          {genres.length > 0 ? (
+            <View style={styles.genreRow}>
+              {genres.slice(0, 4).map(genre => (
+                <View key={genre.id} style={styles.genreChip}>
+                  <Text style={styles.genreText}>{genre.name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <PrimaryButton
+            label={movie ? 'Watch now' : 'Watch episode'}
+            icon={Play}
+            onPress={() => openPlayer(movie ? undefined : episodes[0])}
+            style={styles.playButton}
+          />
+
+          <View style={styles.hintRow}>
+            <Film color={colors.textFaint} size={12} strokeWidth={2} />
+            <Text style={styles.hint}>
+              Playback picks the best working server automatically.
+            </Text>
+          </View>
+        </GlassCard>
+
+        <View style={styles.section}>
+          <Kicker style={styles.sectionKicker}>Storyline</Kicker>
+          <Text style={styles.overview}>{details.overview || 'No synopsis available yet.'}</Text>
+        </View>
+
+        {!movie && playableSeasons.length > 0 ? (
+          <View style={styles.sectionNoPad}>
+            <SectionHeader kicker="Episodes" title={`Season ${selectedSeason ?? 1}`} />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.seasonChips}>
+              {playableSeasons.map(season => (
+                <Chip
+                  key={season.season_number}
+                  label={season.name.replace(/^Season\s*/i, 'S')}
+                  active={selectedSeason === season.season_number}
+                  onPress={() => setSelectedSeason(season.season_number)}
+                />
+              ))}
+            </ScrollView>
+
+            <View style={styles.episodeList}>
+              {episodesLoading
+                ? [0, 1, 2].map(index => (
+                    <Skeleton key={index} height={64} style={styles.episodeSkeleton} />
+                  ))
+                : episodes.map(episode => (
+                    <EpisodeRow
+                      key={episode.id}
+                      episode={episode}
+                      onPress={() => openPlayer(episode)}
+                    />
+                  ))}
+              {!episodesLoading && episodes.length === 0 ? (
+                <Text style={styles.emptyEpisodes}>No episodes listed for this season.</Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {cast.length > 0 ? (
+          <View style={styles.sectionNoPad}>
+            <SectionHeader kicker="Starring" title="Cast" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.castList}>
+              {cast.map(member => (
+                <CastCard key={member.id} member={member} />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {similar.length > 0 ? (
+          <View style={styles.similar}>
+            <ContentRow
+              kicker="Because you watched"
+              title="More like this"
+              items={similar}
+              onPress={openDetail}
+            />
+          </View>
+        ) : null}
+
+        <View style={styles.footer}>
+          <View style={styles.footerLine} />
+          <Kicker>{APP_INFO.name} · curated by {APP_INFO.creator}</Kicker>
+        </View>
+      </ScrollView>
+    </Screen>
+  );
+};
+
+const EpisodeRow = ({ episode, onPress }: { episode: Episode; onPress: () => void }) => (
+  <Pressable
+    accessibilityRole="button"
+    onPress={onPress}
+    style={({ pressed }) => [styles.episodeRow, pressed && styles.pressed]}>
+    <Text style={styles.episodeNumber}>
+      {String(episode.episode_number).padStart(2, '0')}
+    </Text>
+    <View style={styles.episodeInfo}>
+      <Text numberOfLines={1} style={styles.episodeName}>
+        {episode.name}
+      </Text>
+      <View style={styles.episodeMeta}>
+        {episode.runtime ? (
+          <>
+            <Clock color={colors.textFaint} size={10} strokeWidth={2} />
+            <Text style={styles.episodeMetaText}>{formatRuntime(episode.runtime)}</Text>
+          </>
+        ) : (
+          <Text style={styles.episodeMetaText}>
+            {episode.air_date ? episode.air_date.slice(0, 4) : 'Episode'}
+          </Text>
+        )}
+      </View>
+    </View>
+    <View style={styles.episodePlay}>
+      <Play color={colors.primary} size={13} strokeWidth={2.4} fill={colors.primary} />
+    </View>
+  </Pressable>
+);
+
+const CastCard = ({ member }: { member: CastMember }) => {
+  const [failed, setFailed] = useState(false);
+  const uri = TMDBService.profileUrl(member.profile_path);
+  const initials = member.name
+    .split(' ')
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('');
+
+  return (
+    <View style={styles.castCard}>
+      <View style={styles.castAvatar}>
+        {uri && !failed ? (
+          <Image source={{ uri }} style={styles.castImage} onError={() => setFailed(true)} />
+        ) : (
+          <Text style={styles.castInitials}>{initials}</Text>
+        )}
+      </View>
+      <Text numberOfLines={2} style={styles.castName}>
+        {member.name}
+      </Text>
+      {member.character ? (
+        <Text numberOfLines={1} style={styles.castRole}>
+          {member.character}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+const DetailSkeleton = ({
+  onBack,
+  topInset,
+}: {
+  onBack: () => void;
+  topInset: number;
+}) => (
+  <Screen edges={[]}>
+    <View style={[styles.absoluteBack, { top: topInset + 8 }]}>
+      <IconButton icon={ArrowLeft} onPress={onBack} accessibilityLabel="Back" />
+    </View>
+    <Skeleton height={280} style={styles.skeletonBackdrop} />
+    <View style={styles.skeletonBody}>
+      <Skeleton width={70} height={10} />
+      <Skeleton height={30} style={styles.skeletonTitle} />
+      <Skeleton width={160} height={12} />
+      <Skeleton height={92} style={styles.skeletonCard} />
+      <Skeleton width={110} height={14} style={styles.skeletonCard} />
+      <Skeleton height={14} />
+      <Skeleton height={14} style={styles.skeletonLine} />
+    </View>
+  </Screen>
+);
+
+const styles = StyleSheet.create({
+  scroll: { paddingBottom: spacing.xxxl },
+  errorScreen: { alignItems: 'stretch', justifyContent: 'center' },
+  absoluteBack: { position: 'absolute', left: spacing.xl, zIndex: 10 },
+  backdrop: { backgroundColor: colors.surface },
+  backdropFallback: { backgroundColor: colors.surfaceRaised },
+  titleCard: {
+    marginTop: -28,
+    marginHorizontal: spacing.xl,
+    padding: spacing.xxl,
+  },
+  title: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 30,
+    lineHeight: 33,
+    letterSpacing: -1,
+    color: colors.text,
+    marginTop: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  ratingChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  ratingText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.onPrimary,
+  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  metaText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  metaSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.textFaint,
+  },
+  tagline: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    fontStyle: 'italic',
+    color: colors.textMuted,
+    marginTop: spacing.md,
+  },
+  genreRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  genreChip: {
+    height: 26,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+    justifyContent: 'center',
+  },
+  genreText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  playButton: { marginTop: spacing.xl },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textFaint,
+  },
+
+  section: { paddingHorizontal: spacing.xl + 4, marginTop: spacing.xxl },
+  sectionNoPad: { marginTop: spacing.xxxl },
+  sectionKicker: { marginBottom: spacing.sm },
+  overview: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 21,
+    color: colors.textSecondary,
+  },
+  seasonChips: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  episodeList: { paddingHorizontal: spacing.xl, gap: spacing.sm },
+  episodeSkeleton: { borderRadius: radius.md },
+  episodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.surface,
+  },
+  episodeNumber: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.textFaint,
+    width: 28,
+  },
+  episodeInfo: { flex: 1 },
+  episodeName: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12.5,
+    color: colors.text,
+  },
+  episodeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  episodeMetaText: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textFaint,
+  },
+  episodePlay: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyEpisodes: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.textMuted,
+    paddingVertical: spacing.lg,
+  },
+  pressed: { opacity: 0.7 },
+
+  castList: { paddingHorizontal: spacing.xl, gap: spacing.lg },
+  castCard: { width: 74, alignItems: 'center' },
+  castAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  castImage: { width: '100%', height: '100%' },
+  castInitials: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: colors.textMuted,
+  },
+  castName: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    lineHeight: 13,
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  castRole: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    color: colors.textFaint,
+    textAlign: 'center',
+    marginTop: 1,
+  },
+
+  similar: { marginTop: spacing.xxl },
+  footer: { alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
+  footerLine: { width: 32, height: 1, backgroundColor: colors.border },
+
+  skeletonBackdrop: { borderRadius: 0 },
+  skeletonBody: { paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, gap: spacing.md },
+  skeletonTitle: { width: '72%' },
+  skeletonCard: { marginTop: spacing.lg, borderRadius: radius.lg },
+  skeletonLine: { width: '80%' },
+});
