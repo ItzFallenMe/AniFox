@@ -67,7 +67,7 @@ dependencies:
       url: https://github.com/ItzFallenMe/betterplayer.git
 
   # UI
-  pull_to_refresh: ^2.0.0
+  pull_to_refresh: ^2.0.2
   flutter_markdown_plus: ^1.0.7
   cached_network_image: ^3.3.1
   fl_chart: ^0.70.0
@@ -115,7 +115,7 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "./lib/assets/icons/logo_foreground.png"
   adaptive_icon_monochrome: "./lib/assets/icons/logo_monochrome.png"
 
-  flutter_lints: ^2.0.0
+  flutter_lints: ^2.0.2
 
 flutter:
   # The following line ensures that the Material Icons font is
