@@ -66,6 +66,9 @@ yarn-error.log
 # testing
 /coverage
 
+# built APKs
+dist/
+
 # Yarn
 .yarn/*
 !.yarn/patches

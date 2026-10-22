@@ -79,6 +79,16 @@ The APK lands in `android/app/build/outputs/apk/release/`. The template signs
 release builds with the debug keystore — generate your own keystore and update
 `android/app/build.gradle` before distributing.
 
+### Build with GitHub Actions
+
+The **Android APK** workflow builds a universal release APK on every push to
+`main`, on `v*` tags, or from **Actions → Android APK → Run workflow**. The
+finished APK is uploaded as the `AniFox-APK` artifact.
+
+Add `TMDB_API_KEY` under **Settings → Secrets and variables → Actions** so the
+built app ships with a working catalog. Without that secret the APK installs
+normally but opens on the TMDB setup screen.
+
 ## Project layout
 
 ```
