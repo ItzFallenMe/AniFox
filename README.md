@@ -10,11 +10,11 @@ Created and maintained by **ItzFallenMe** · [github.com/ItzFallenMe](https://gi
 
 | Area | What it does |
 |------|----------------|
-| **Home** | Auto-rotating hero carousel of trending anime, plus rows for airing anime, anime films, popular movies, top-rated series, action and all-time greats. |
+| **Home** | Auto-rotating hero carousel of trending anime, plus Flickv4's feed in two waves: airing anime, regional Top 10 movies/TV (numbered rows), then provider, genre and worldwide trending rows. |
 | **Anime** | Category browser — trending, airing this season, series, movies and top rated — in a three-column poster grid. |
 | **Search** | Debounced multi-search across anime, movies and series with quick suggestions. |
 | **Details** | Backdrop hero, ratings, genres, synopsis, cast, similar titles, and a full season/episode picker for series. |
-| **Player** | Resolves a direct stream from nine embed providers with Flickv4's scraper, custom playback controls, server switching and automatic failover. |
+| **Player** | Resolves a direct stream from twenty embed providers with Flickv4's scraper, custom playback controls (playback speed, buffered scrub bar, double-tap seek), Flickv4's subtitle system (Vidrock/Wyzie track search, cue rendering, sync offset), server switching and automatic failover. |
 | **You** | Project, creator credit, server list, data sources and disclaimer. |
 
 The catalog is metadata for anime, movies and series from **TMDB**; playback is resolved from third-party embed providers, exactly like Flickv4.
@@ -99,18 +99,23 @@ normally but opens on the TMDB setup screen.
 ├── index.js                      entry point
 ├── src/
 │   ├── components/               hero, rows, posters, scraper, TMDB setup
+│   │   ├── player/               caption overlay (Flickv4 port)
 │   │   └── ui/                   dashboard-style primitives
-│   ├── config/env.ts             TMDB key, region, app/creator info
+│   ├── config/env.ts             TMDB key, region, subtitle keys, app info
+│   ├── config/homeFeed.ts        spec-driven home feed (Flickv4 port)
 │   ├── hooks/                    home, anime, search and detail data
 │   ├── navigation/               root stack, tabs, floating tab bar
 │   ├── screens/                  Splash, Home, Anime, Search, Detail, Player, You
 │   ├── services/
 │   │   ├── tmdb.ts               TMDB client
+│   │   ├── categories.ts         feed category queries
+│   │   ├── subtitleService.ts    Vidrock + Wyzie subtitle search
 │   │   └── servers.ts            playback servers + headers
 │   ├── theme/                    colours, fonts, spacing, glow
 │   ├── types/                    TMDB models and helpers
 │   └── utils/
 │       ├── streamUrl.ts          embed URL builder (from Flickv4)
+│       ├── subtitles.ts          SRT/VTT cue parsing (from Flickv4)
 │       └── format.ts             rating/runtime/clock formatting
 └── __tests__/                    unit tests (embed URLs, scraper script, TMDB)
 ```

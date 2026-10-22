@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -8,6 +14,8 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
+  type GestureResponderEvent,
   type LayoutChangeEvent,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -21,10 +29,14 @@ import Video, {
 import LinearGradient from 'react-native-linear-gradient';
 import {
   ArrowLeft,
+  Captions,
   Check,
+  Minus,
   Pause,
   Play,
+  Plus,
   RotateCcw,
+  Settings2,
   SkipBack,
   SkipForward,
   TriangleAlert,
@@ -36,11 +48,15 @@ import {
   playbackHeadersFor,
   type PlaybackServer,
 } from '../services/servers';
+import type { SubtitleTrack } from '../services/subtitleService';
 import { getTitle, type MediaItem } from '../types';
 import { formatClock } from '../utils/format';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import { WebViewScraper, type ExtractedStream } from '../components/WebViewScraper';
+import { SubtitleOverlay } from '../components/player/SubtitleOverlay';
+import { useSubtitles } from '../hooks/useSubtitles';
+import { useSubtitleSettings } from '../hooks/useSubtitleSettings';
 import { GhostButton, Kicker, PrimaryButton } from '../components/ui/Primitives';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -61,6 +77,12 @@ interface PlayableSource {
   headers: Record<string, string>;
 }
 
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+
+const SEEK_STEP_SECONDS = 10;
+const DOUBLE_TAP_MS = 320;
+const SUBTITLE_OFFSET_STEP = 0.5;
+
 const sourceType = (uri: string): string | undefined => {
   if (uri.includes('.m3u8')) return 'm3u8';
   if (uri.includes('.mpd')) return 'mpd';
@@ -72,6 +94,7 @@ export const PlayerScreen = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute() as Route;
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const { item, season, episode, episodeName } = route.params;
 
   const mediaType: 'movie' | 'tv' = item.media_type === 'tv' ? 'tv' : 'movie';
@@ -84,19 +107,59 @@ export const PlayerScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [failedServers, setFailedServers] = useState<string[]>([]);
   const [serverSheet, setServerSheet] = useState(false);
+  const [settingsSheet, setSettingsSheet] = useState(false);
+  const [subtitleSheet, setSubtitleSheet] = useState(false);
 
   const [playing, setPlaying] = useState(true);
   const [buffering, setBuffering] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playableDuration, setPlayableDuration] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [barWidth, setBarWidth] = useState(1);
   const [ended, setEnded] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [seekFlash, setSeekFlash] = useState<'back' | 'forward' | null>(null);
 
   const videoRef = useRef<VideoRef>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sheetOpenRef = useRef(false);
+  const lastTapRef = useRef(0);
 
   const server = PLAYBACK_SERVERS[serverIndex];
+
+  const { settings: subtitleSettings, setSettings: setSubtitleSettings } =
+    useSubtitleSettings();
+
+  const {
+    tracks: subtitleTracks,
+    selectedId: subtitleId,
+    selectedTrack,
+    selectTrack,
+    cueAt,
+    loading: subtitlesLoading,
+    loadingCues,
+    error: subtitlesError,
+  } = useSubtitles({
+    tmdbId: item.id,
+    season,
+    episode,
+    enabled: status !== 'scraping',
+    defaultLanguage: subtitleSettings.defaultLanguage,
+  });
+
+  // Session-only sync offset for the selected track; reset on track change.
+  const [subtitleOffset, setSubtitleOffset] = useState(0);
+  useEffect(() => {
+    setSubtitleOffset(0);
+  }, [subtitleId]);
+
+  const subtitlesOpen = subtitleSheet || settingsSheet || serverSheet;
+  useEffect(() => {
+    sheetOpenRef.current = subtitlesOpen;
+    if (subtitlesOpen) setControlsVisible(true);
+  }, [subtitlesOpen]);
 
   useEffect(() => {
     StatusBar.setHidden(true);
@@ -106,13 +169,16 @@ export const PlayerScreen = () => {
   useEffect(
     () => () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
     },
     [],
   );
 
   const scheduleHide = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setControlsVisible(false), 4200);
+    hideTimer.current = setTimeout(() => {
+      if (!sheetOpenRef.current) setControlsVisible(false);
+    }, 4200);
   }, []);
 
   const poke = useCallback(() => {
@@ -129,6 +195,7 @@ export const PlayerScreen = () => {
     setPlaying(true);
     setBuffering(true);
     setEnded(false);
+    setPlayableDuration(0);
   }, []);
 
   const markFailed = useCallback((serverId: string) => {
@@ -180,19 +247,27 @@ export const PlayerScreen = () => {
     tryNextServer();
   }, [tryNextServer]);
 
-  const seekTo = (seconds: number) => {
-    const clamped = Math.max(0, Math.min(seconds, duration || seconds));
-    videoRef.current?.seek(clamped);
-    setCurrentTime(clamped);
-    setEnded(false);
-    poke();
-  };
+  const seekTo = useCallback(
+    (seconds: number) => {
+      const clamped = Math.max(0, Math.min(seconds, duration || seconds));
+      videoRef.current?.seek(clamped);
+      setCurrentTime(clamped);
+      setEnded(false);
+      poke();
+    },
+    [duration, poke],
+  );
+
+  const flashSeek = useCallback((direction: 'back' | 'forward') => {
+    setSeekFlash(direction);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setSeekFlash(null), 550);
+  }, []);
 
   const togglePlay = () => {
     if (ended) {
       seekTo(0);
       setPlaying(true);
-      poke();
       return;
     }
     setPlaying(value => !value);
@@ -201,9 +276,16 @@ export const PlayerScreen = () => {
 
   const onProgress = (data: OnProgressData) => {
     setCurrentTime(data.currentTime);
+    if (typeof data.playableDuration === 'number') {
+      setPlayableDuration(data.playableDuration);
+    }
   };
 
   const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+  const buffered =
+    duration > 0 && playableDuration > 0
+      ? Math.min(playableDuration / duration, 1)
+      : 0;
 
   const onBarPress = (locationX: number) => {
     if (duration <= 0) return;
@@ -214,10 +296,40 @@ export const PlayerScreen = () => {
     setBarWidth(event.nativeEvent.layout.width || 1);
   };
 
+  /** Single tap toggles the controls; a double tap on a side seeks. */
+  const handleOverlayTap = (event: GestureResponderEvent) => {
+    const x = event.nativeEvent.locationX;
+    const now = Date.now();
+    const isDoubleTap = now - lastTapRef.current < DOUBLE_TAP_MS;
+    lastTapRef.current = now;
+
+    if (isDoubleTap && x < windowWidth * 0.38) {
+      seekTo(currentTime - SEEK_STEP_SECONDS);
+      flashSeek('back');
+      return;
+    }
+    if (isDoubleTap && x > windowWidth * 0.62) {
+      seekTo(currentTime + SEEK_STEP_SECONDS);
+      flashSeek('forward');
+      return;
+    }
+
+    if (controlsVisible) setControlsVisible(false);
+    else poke();
+  };
+
+  const activeCue = cueAt(currentTime - subtitleOffset);
+
   const subtitle =
     mediaType === 'tv' && season != null && episode != null
       ? `S${season} · E${episode}${episodeName ? ` — ${episodeName}` : ''}`
       : 'Movie';
+
+  const closeSheets = () => {
+    setServerSheet(false);
+    setSettingsSheet(false);
+    setSubtitleSheet(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -243,6 +355,7 @@ export const PlayerScreen = () => {
           style={StyleSheet.absoluteFill}
           resizeMode="contain"
           paused={!playing}
+          rate={playbackRate}
           controls={false}
           onLoad={(data: OnLoadData) => {
             setDuration(data.duration);
@@ -280,7 +393,29 @@ export const PlayerScreen = () => {
       ) : null}
 
       {status === 'ready' ? (
-        <Pressable style={StyleSheet.absoluteFill} onPress={poke}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleOverlayTap}
+          onLongPress={poke}>
+          <SubtitleOverlay
+            text={activeCue?.text ?? null}
+            controlsVisible={controlsVisible}
+            bottomInset={insets.bottom}
+          />
+
+          {seekFlash ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.seekFlash,
+                seekFlash === 'back' ? styles.seekFlashLeft : styles.seekFlashRight,
+              ]}>
+              <Text style={styles.seekFlashText}>
+                {seekFlash === 'back' ? '−10s' : '+10s'}
+              </Text>
+            </View>
+          ) : null}
+
           {controlsVisible ? (
             <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
               <LinearGradient
@@ -313,7 +448,7 @@ export const PlayerScreen = () => {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Back 10 seconds"
-                  onPress={() => seekTo(currentTime - 10)}
+                  onPress={() => seekTo(currentTime - SEEK_STEP_SECONDS)}
                   style={styles.skipButton}>
                   <RotateCcw color={colors.text} size={24} strokeWidth={2} />
                   <Text style={styles.skipLabel}>10</Text>
@@ -334,7 +469,7 @@ export const PlayerScreen = () => {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Forward 10 seconds"
-                  onPress={() => seekTo(currentTime + 10)}
+                  onPress={() => seekTo(currentTime + SEEK_STEP_SECONDS)}
                   style={styles.skipButton}>
                   <SkipForward color={colors.text} size={24} strokeWidth={2} />
                   <Text style={styles.skipLabel}>10</Text>
@@ -354,6 +489,9 @@ export const PlayerScreen = () => {
                   onPress={event => onBarPress(event.nativeEvent.locationX)}
                   style={styles.progressTouch}>
                   <View style={styles.progressTrack}>
+                    <View
+                      style={[styles.progressBuffered, { width: `${buffered * 100}%` }]}
+                    />
                     <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
                     <View style={[styles.progressThumb, { left: `${progress * 100}%` }]} />
                   </View>
@@ -368,13 +506,36 @@ export const PlayerScreen = () => {
                     <Text style={styles.serverButtonText}>{server.name}</Text>
                     <Text style={styles.serverButtonHint}>CHANGE</Text>
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Restart"
-                    onPress={() => seekTo(0)}
-                    style={styles.circleButton}>
-                    <SkipBack color={colors.text} size={16} strokeWidth={2.2} />
-                  </Pressable>
+
+                  <View style={styles.actionGroup}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Subtitles"
+                      onPress={() => setSubtitleSheet(true)}
+                      style={[
+                        styles.circleButton,
+                        subtitleId != null && styles.circleButtonActive,
+                      ]}>
+                      <Captions color={colors.text} size={16} strokeWidth={2.2} />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Playback settings"
+                      onPress={() => setSettingsSheet(true)}
+                      style={[
+                        styles.circleButton,
+                        playbackRate !== 1 && styles.circleButtonActive,
+                      ]}>
+                      <Settings2 color={colors.text} size={16} strokeWidth={2.2} />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Restart"
+                      onPress={() => seekTo(0)}
+                      style={styles.circleButton}>
+                      <SkipBack color={colors.text} size={16} strokeWidth={2.2} />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
             </View>
@@ -402,14 +563,72 @@ export const PlayerScreen = () => {
         servers={PLAYBACK_SERVERS}
         activeId={server.id}
         failed={failedServers}
-        onClose={() => setServerSheet(false)}
+        onClose={closeSheets}
         onSelect={index => {
-          setServerSheet(false);
+          closeSheets();
           startServer(index);
         }}
       />
+
+      <SettingsSheet
+        visible={settingsSheet}
+        playbackRate={playbackRate}
+        subtitleLabel={subtitleLabelFor(selectedTrack)}
+        onClose={closeSheets}
+        onSelectRate={rate => {
+          setPlaybackRate(rate);
+          closeSheets();
+          poke();
+        }}
+        onOpenSubtitles={() => {
+          setSettingsSheet(false);
+          setSubtitleSheet(true);
+        }}
+      />
+
+      <SubtitleSheet
+        visible={subtitleSheet}
+        tracks={subtitleTracks}
+        selectedId={subtitleId}
+        loading={subtitlesLoading}
+        loadingCues={loadingCues}
+        error={subtitlesError}
+        offset={subtitleOffset}
+        fontSize={subtitleSettings.fontSize}
+        backgroundOpacity={subtitleSettings.backgroundOpacity}
+        onClose={closeSheets}
+        onSelect={id => {
+          selectTrack(id);
+          closeSheets();
+          poke();
+        }}
+        onOffsetChange={delta =>
+          setSubtitleOffset(current =>
+            Math.round((current + delta) * 10) / 10,
+          )
+        }
+        onFontSizeChange={delta =>
+          setSubtitleSettings({
+            fontSize: Math.min(28, Math.max(10, subtitleSettings.fontSize + delta)),
+          })
+        }
+        onBackgroundOpacityChange={delta =>
+          setSubtitleSettings({
+            backgroundOpacity:
+              Math.round(
+                Math.min(1, Math.max(0, subtitleSettings.backgroundOpacity + delta)) *
+                  100,
+              ) / 100,
+          })
+        }
+      />
     </View>
   );
+};
+
+const subtitleLabelFor = (track: SubtitleTrack | null): string => {
+  if (!track) return 'Off';
+  return `${track.display}${track.isHearingImpaired ? ' (CC)' : ''}`;
 };
 
 const ScrapingState = ({
@@ -493,6 +712,55 @@ const ErrorOverlay = ({
   );
 };
 
+const SheetShell = ({
+  visible,
+  onClose,
+  kicker,
+  title,
+  children,
+  note,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  kicker: string;
+  title: string;
+  children: ReactNode;
+  note?: string;
+}) => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.sheetBackdrop} onPress={onClose}>
+        <Pressable
+          style={[styles.sheet, { paddingBottom: insets.bottom + spacing.xl }]}
+          onPress={() => {}}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.sheetHeader}>
+            <View>
+              <Kicker>{kicker}</Kicker>
+              <Text style={styles.sheetTitle}>{title}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close sheet"
+              onPress={onClose}
+              style={styles.circleButton}>
+              <X color={colors.text} size={16} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetList}>
+            {children}
+          </ScrollView>
+
+          {note ? <Text style={styles.sheetNote}>{note}</Text> : null}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+};
+
 const ServerSheet = ({
   visible,
   servers,
@@ -507,71 +775,233 @@ const ServerSheet = ({
   failed: string[];
   onSelect: (index: number) => void;
   onClose: () => void;
-}) => {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.sheetBackdrop} onPress={onClose}>
+}) => (
+  <SheetShell
+    visible={visible}
+    onClose={onClose}
+    kicker="Playback source"
+    title="Choose a server"
+    note="Streams come from third-party providers. If one fails, try another.">
+    {servers.map((server, index) => {
+      const active = server.id === activeId;
+      const hasFailed = failed.includes(server.id);
+      return (
         <Pressable
-          style={[styles.sheet, { paddingBottom: insets.bottom + spacing.xl }]}
-          onPress={() => {}}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <View>
-              <Kicker>Playback source</Kicker>
-              <Text style={styles.sheetTitle}>Choose a server</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close server list"
-              onPress={onClose}
-              style={styles.circleButton}>
-              <X color={colors.text} size={16} strokeWidth={2.2} />
-            </Pressable>
+          key={server.id}
+          onPress={() => onSelect(index)}
+          style={({ pressed }) => [
+            styles.serverRow,
+            active && styles.serverRowActive,
+            pressed && styles.serverRowPressed,
+          ]}>
+          <View style={styles.serverRowText}>
+            <Text style={styles.serverRowName}>{server.name}</Text>
+            <Text style={styles.serverRowMeta}>
+              {hasFailed ? 'Did not resolve · ' : ''}
+              {server.scraperTimeoutSeconds ?? 60}s timeout
+            </Text>
           </View>
+          {active ? (
+            <Check color={colors.primary} size={16} strokeWidth={2.6} />
+          ) : (
+            <Text style={styles.serverRowIndex}>
+              {String(index + 1).padStart(2, '0')}
+            </Text>
+          )}
+        </Pressable>
+      );
+    })}
+  </SheetShell>
+);
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={styles.sheetList}>
-            {servers.map((server, index) => {
-              const active = server.id === activeId;
-              const hasFailed = failed.includes(server.id);
-              return (
-                <Pressable
-                  key={server.id}
-                  onPress={() => onSelect(index)}
-                  style={({ pressed }) => [
-                    styles.serverRow,
-                    active && styles.serverRowActive,
-                    pressed && styles.serverRowPressed,
-                  ]}>
-                  <View style={styles.serverRowText}>
-                    <Text style={styles.serverRowName}>{server.name}</Text>
-                    <Text style={styles.serverRowMeta}>
-                      {hasFailed ? 'Did not resolve · ' : ''}
-                      {server.scraperTimeoutSeconds ?? 60}s timeout
-                    </Text>
-                  </View>
-                  {active ? (
-                    <Check color={colors.primary} size={16} strokeWidth={2.6} />
-                  ) : (
-                    <Text style={styles.serverRowIndex}>
-                      {String(index + 1).padStart(2, '0')}
-                    </Text>
-                  )}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={styles.sheetNote}>
-            Streams come from third-party providers. If one fails, try another.
+const SettingsSheet = ({
+  visible,
+  playbackRate,
+  subtitleLabel,
+  onSelectRate,
+  onOpenSubtitles,
+  onClose,
+}: {
+  visible: boolean;
+  playbackRate: number;
+  subtitleLabel: string;
+  onSelectRate: (rate: number) => void;
+  onOpenSubtitles: () => void;
+  onClose: () => void;
+}) => (
+  <SheetShell
+    visible={visible}
+    onClose={onClose}
+    kicker="Playback"
+    title="Player settings">
+    <Text style={styles.groupLabel}>Speed</Text>
+    <View style={styles.chipRow}>
+      {PLAYBACK_SPEEDS.map(rate => (
+        <Pressable
+          key={rate}
+          onPress={() => onSelectRate(rate)}
+          style={[styles.chip, rate === playbackRate && styles.chipActive]}>
+          <Text
+            style={[styles.chipText, rate === playbackRate && styles.chipTextActive]}>
+            {rate === 1 ? 'Normal' : `${rate}×`}
           </Text>
         </Pressable>
+      ))}
+    </View>
+
+    <Text style={styles.groupLabel}>Captions</Text>
+    <Pressable onPress={onOpenSubtitles} style={styles.settingRow}>
+      <View style={styles.settingRowText}>
+        <Text style={styles.settingRowTitle}>Subtitles</Text>
+        <Text style={styles.settingRowMeta} numberOfLines={1}>
+          {subtitleLabel}
+        </Text>
+      </View>
+      <Text style={styles.settingRowAction}>MANAGE</Text>
+    </Pressable>
+  </SheetShell>
+);
+
+const SubtitleSheet = ({
+  visible,
+  tracks,
+  selectedId,
+  loading,
+  loadingCues,
+  error,
+  offset,
+  fontSize,
+  backgroundOpacity,
+  onSelect,
+  onOffsetChange,
+  onFontSizeChange,
+  onBackgroundOpacityChange,
+  onClose,
+}: {
+  visible: boolean;
+  tracks: SubtitleTrack[];
+  selectedId: string | null;
+  loading: boolean;
+  loadingCues: boolean;
+  error: string | null;
+  offset: number;
+  fontSize: number;
+  backgroundOpacity: number;
+  onSelect: (id: string | null) => void;
+  onOffsetChange: (delta: number) => void;
+  onFontSizeChange: (delta: number) => void;
+  onBackgroundOpacityChange: (delta: number) => void;
+  onClose: () => void;
+}) => (
+  <SheetShell
+    visible={visible}
+    onClose={onClose}
+    kicker="Accessibility"
+    title="Subtitles"
+    note="Tracks are searched across Vidrock and Wyzie.">
+    <Pressable
+      onPress={() => onSelect(null)}
+      style={({ pressed }) => [styles.serverRow, pressed && styles.serverRowPressed]}>
+      <View style={styles.serverRowText}>
+        <Text style={styles.serverRowName}>Off</Text>
+        <Text style={styles.serverRowMeta}>No captions</Text>
+      </View>
+      {selectedId == null ? (
+        <Check color={colors.primary} size={16} strokeWidth={2.6} />
+      ) : null}
+    </Pressable>
+
+    {loading ? (
+      <View style={styles.sheetLoading}>
+        <ActivityIndicator color={colors.primary} size="small" />
+        <Text style={styles.sheetLoadingText}>Searching tracks…</Text>
+      </View>
+    ) : null}
+
+    {!loading && error ? (
+      <Text style={styles.sheetNote}>{error}</Text>
+    ) : null}
+
+    {tracks.map(track => {
+      const active = track.id === selectedId;
+      return (
+        <Pressable
+          key={track.id}
+          onPress={() => onSelect(track.id)}
+          style={({ pressed }) => [
+            styles.serverRow,
+            active && styles.serverRowActive,
+            pressed && styles.serverRowPressed,
+          ]}>
+          <View style={styles.serverRowText}>
+            <Text style={styles.serverRowName}>
+              {track.display}
+              {track.isHearingImpaired ? ' (CC)' : ''}
+            </Text>
+            <Text style={styles.serverRowMeta}>
+              {track.language.toUpperCase()} · {track.format.toUpperCase()} ·{' '}
+              {track.source}
+            </Text>
+          </View>
+          {active ? (
+            <Check color={colors.primary} size={16} strokeWidth={2.6} />
+          ) : null}
+        </Pressable>
+      );
+    })}
+
+    {loadingCues ? (
+      <Text style={styles.sheetNote}>Loading cues…</Text>
+    ) : null}
+
+    <Text style={styles.groupLabel}>Sync offset</Text>
+    <View style={styles.stepperRow}>
+      <Pressable
+        onPress={() => onOffsetChange(-SUBTITLE_OFFSET_STEP)}
+        style={styles.stepperButton}>
+        <Minus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
-    </Modal>
-  );
+      <Text style={styles.stepperValue}>{formatOffset(offset)}</Text>
+      <Pressable
+        onPress={() => onOffsetChange(SUBTITLE_OFFSET_STEP)}
+        style={styles.stepperButton}>
+        <Plus color={colors.text} size={16} strokeWidth={2.4} />
+      </Pressable>
+    </View>
+
+    <Text style={styles.groupLabel}>Text size</Text>
+    <View style={styles.stepperRow}>
+      <Pressable onPress={() => onFontSizeChange(-1)} style={styles.stepperButton}>
+        <Minus color={colors.text} size={16} strokeWidth={2.4} />
+      </Pressable>
+      <Text style={styles.stepperValue}>{Math.round(fontSize)}</Text>
+      <Pressable onPress={() => onFontSizeChange(1)} style={styles.stepperButton}>
+        <Plus color={colors.text} size={16} strokeWidth={2.4} />
+      </Pressable>
+    </View>
+
+    <Text style={styles.groupLabel}>Background</Text>
+    <View style={styles.stepperRow}>
+      <Pressable
+        onPress={() => onBackgroundOpacityChange(-0.1)}
+        style={styles.stepperButton}>
+        <Minus color={colors.text} size={16} strokeWidth={2.4} />
+      </Pressable>
+      <Text style={styles.stepperValue}>
+        {Math.round(backgroundOpacity * 100)}%
+      </Text>
+      <Pressable
+        onPress={() => onBackgroundOpacityChange(0.1)}
+        style={styles.stepperButton}>
+        <Plus color={colors.text} size={16} strokeWidth={2.4} />
+      </Pressable>
+    </View>
+  </SheetShell>
+);
+
+const formatOffset = (seconds: number): string => {
+  if (seconds === 0) return '0.0s';
+  return `${seconds > 0 ? '+' : ''}${seconds.toFixed(1)}s`;
 };
 
 const styles = StyleSheet.create({
@@ -602,6 +1032,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)',
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  circleButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   topTitleWrap: { flex: 1 },
   topTitle: {
@@ -668,6 +1102,25 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     elevation: 8,
   },
+  seekFlash: {
+    position: 'absolute',
+    top: '42%',
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+  },
+  seekFlashLeft: { left: 32 },
+  seekFlashRight: { right: 32 },
+  seekFlashText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: colors.text,
+  },
   bottomBar: {
     position: 'absolute',
     left: 0,
@@ -689,6 +1142,14 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
+  progressBuffered: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
   progressFill: {
     height: 4,
     borderRadius: 2,
@@ -709,6 +1170,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing.md,
   },
+  actionGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   serverButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -859,6 +1321,114 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sheetList: { maxHeight: 380 },
+  sheetNote: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    lineHeight: 16,
+    color: colors.textFaint,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  sheetLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  sheetLoadingText: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  groupLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+    letterSpacing: 1.8,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  chip: {
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+  },
+  chipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  chipText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  chipTextActive: {
+    fontFamily: fonts.bodyBold,
+    color: colors.onPrimary,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+  },
+  settingRowText: { flex: 1 },
+  settingRowTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.text,
+  },
+  settingRowMeta: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textFaint,
+    marginTop: 2,
+  },
+  settingRowAction: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: colors.textMuted,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  stepperButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.glass,
+  },
+  stepperValue: {
+    minWidth: 64,
+    textAlign: 'center',
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.text,
+  },
   serverRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -892,13 +1462,5 @@ const styles = StyleSheet.create({
     fontSize: 9,
     letterSpacing: 1.2,
     color: colors.textFaint,
-  },
-  sheetNote: {
-    fontFamily: fonts.body,
-    fontSize: 10,
-    lineHeight: 16,
-    color: colors.textFaint,
-    textAlign: 'center',
-    marginTop: spacing.md,
   },
 });

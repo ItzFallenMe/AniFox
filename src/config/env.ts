@@ -24,6 +24,24 @@ export const isTmdbConfigured =
 /** Region used for "popular in your country" style rows. */
 export const CATALOG_REGION = 'US';
 
+/**
+ * Subtitle search — the same two catalogues Flickv4 uses.
+ *
+ * Vidrock's catalogue is keyless and needs no setup. Wyzie Subs
+ * (https://docs.wyzie.io/subs/usage/direct) only contributes tracks once you
+ * paste a key; leave `API_KEY` empty to search Vidrock alone.
+ */
+export const VDRK_SUBS_CONFIG = {
+  BASE_URL: 'https://sub.vdrk.site/v1',
+  TIMEOUT_MS: 10000,
+} as const;
+
+export const WYZIE_SUBS_CONFIG = {
+  BASE_URL: 'https://sub.wyzie.io',
+  API_KEY: '',
+  TIMEOUT_MS: 10000,
+} as const;
+
 export const APP_INFO = {
   name: 'AniFox',
   tagline: 'Anime & movies, beautifully unified.',

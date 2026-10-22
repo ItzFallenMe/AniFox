@@ -13,6 +13,8 @@ interface PosterCardProps {
   onPress: (item: MediaItem) => void;
   /** Tighter typography for grid layouts. */
   compact?: boolean;
+  /** 1-based position, drawn as a rank numeral (Top 10 rows). */
+  rank?: number;
 }
 
 export const PosterCard = ({
@@ -20,6 +22,7 @@ export const PosterCard = ({
   width = 118,
   onPress,
   compact = false,
+  rank,
 }: PosterCardProps) => {
   const [failed, setFailed] = useState(false);
   const uri = TMDBService.posterUrl(item.poster_path, 'w500');
@@ -53,6 +56,12 @@ export const PosterCard = ({
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{item.media_type === 'tv' ? 'TV' : 'FILM'}</Text>
         </View>
+
+        {rank != null ? (
+          <View style={styles.rank}>
+            <Text style={styles.rankText}>{rank}</Text>
+          </View>
+        ) : null}
       </View>
 
       <Text numberOfLines={1} style={[styles.title, compact && styles.titleCompact]}>
@@ -114,6 +123,25 @@ const styles = StyleSheet.create({
     fontSize: 7,
     letterSpacing: 1,
     color: colors.textSecondary,
+  },
+  rank: {
+    position: 'absolute',
+    left: 6,
+    bottom: 4,
+    minWidth: 30,
+    height: 30,
+    paddingHorizontal: 4,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  rankText: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 15,
+    color: colors.text,
   },
   title: {
     fontFamily: fonts.bodyMedium,

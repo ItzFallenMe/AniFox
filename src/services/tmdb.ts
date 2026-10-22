@@ -98,8 +98,24 @@ class TMDBServiceImpl {
     return this.request<TMDBResponse<Movie>>('/movie/popular', { page, region });
   }
 
+  getPopularTVShows(page = 1, region?: string) {
+    return this.request<TMDBResponse<TVShow>>('/tv/popular', { page, region });
+  }
+
   getTopRatedTVShows(page = 1) {
     return this.request<TMDBResponse<TVShow>>('/tv/top_rated', { page });
+  }
+
+  getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = 'day') {
+    return this.request<TMDBResponse<Movie>>(`/trending/movie/${timeWindow}`, {
+      page,
+    });
+  }
+
+  getTrendingTVShows(page = 1, timeWindow: 'day' | 'week' = 'day') {
+    return this.request<TMDBResponse<TVShow>>(`/trending/tv/${timeWindow}`, {
+      page,
+    });
   }
 
   discoverMoviesByGenre(genreId: number, page = 1, region?: string) {
@@ -109,6 +125,31 @@ class TMDBServiceImpl {
       page,
       region,
       watch_region: region,
+    });
+  }
+
+  discoverTVByGenre(genreId: number, page = 1, region?: string) {
+    return this.request<TMDBResponse<TVShow>>('/discover/tv', {
+      with_genres: genreId,
+      sort_by: 'popularity.desc',
+      page,
+      region,
+      watch_region: region,
+    });
+  }
+
+  /** Titles carried by a streaming provider in the catalog region. */
+  discoverByWatchProvider(
+    type: 'movie' | 'tv',
+    providerId: number,
+    page = 1,
+    region?: string,
+  ) {
+    return this.request<TMDBResponse<Movie | TVShow>>(`/discover/${type}`, {
+      with_watch_providers: providerId,
+      watch_region: region,
+      sort_by: 'popularity.desc',
+      page,
     });
   }
 

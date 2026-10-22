@@ -11,6 +11,7 @@ import type { MediaItem } from '../types';
 import { AppHeader } from '../components/AppHeader';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { ContentRow } from '../components/ContentRow';
+import { TopTenRow } from '../components/TopTenRow';
 import { TmdbSetup } from '../components/TmdbSetup';
 import {
   ErrorState,
@@ -79,15 +80,25 @@ export const HomeScreen = () => {
           <HeroCarousel items={hero} onPlay={play} onInfo={openDetail} />
 
           <View style={styles.rows}>
-            {rows.map(row => (
-              <ContentRow
-                key={row.key}
-                kicker={row.kicker}
-                title={row.title}
-                items={row.items}
-                onPress={openDetail}
-              />
-            ))}
+            {rows.map(row =>
+              row.variant === 'topTen' ? (
+                <TopTenRow
+                  key={row.key}
+                  kicker={row.kicker}
+                  title={row.title}
+                  items={row.items}
+                  onPress={openDetail}
+                />
+              ) : (
+                <ContentRow
+                  key={row.key}
+                  kicker={row.kicker}
+                  title={row.title}
+                  items={row.items}
+                  onPress={openDetail}
+                />
+              ),
+            )}
           </View>
 
           <View style={styles.footer}>
