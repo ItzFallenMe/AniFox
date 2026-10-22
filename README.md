@@ -1,6 +1,6 @@
 # AniFox
 
-**Anime & movies, beautifully unified.** A bare React Native Android app — no Expo — written in TypeScript and built around the ItzFallenMe dashboard's black-glass design language.
+**Anime & movies, beautifully unified.** A bare React Native Android app  written in TypeScript language.
 
 Created and maintained by **ItzFallenMe** · [github.com/ItzFallenMe](https://github.com/ItzFallenMe)
 
