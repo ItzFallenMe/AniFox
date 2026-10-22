@@ -40,7 +40,7 @@ import { getTitle, type MediaItem } from '../types';
 import { formatClock } from '../utils/format';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
-import { WebViewScraper } from '../components/WebViewScraper';
+import { WebViewScraper, type ExtractedStream } from '../components/WebViewScraper';
 import { GhostButton, Kicker, PrimaryButton } from '../components/ui/Primitives';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -138,11 +138,11 @@ export const PlayerScreen = () => {
   }, []);
 
   const handleExtracted = useCallback(
-    (data: { videoUrl: string }) => {
+    (data: ExtractedStream) => {
       setSource({
         uri: data.videoUrl,
         type: sourceType(data.videoUrl),
-        headers: playbackHeadersFor(server),
+        headers: playbackHeadersFor(server, data.pageUrl, data.cookies),
       });
       setStatus('ready');
       setBuffering(true);

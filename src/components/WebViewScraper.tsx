@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type {
-  WebViewMessageEvent,
   WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+  WebViewMessageEvent,
 } from 'react-native-webview/lib/WebViewTypes';
 import { buildEmbedUrl, type ServerUrlConfig } from '../utils/streamUrl';
 import { DEFAULT_SCRAPER_TIMEOUT_SECONDS } from '../services/servers';
@@ -11,6 +12,16 @@ import { DEFAULT_SCRAPER_TIMEOUT_SECONDS } from '../services/servers';
 export interface ExtractedStream {
   videoUrl: string;
   isWebM: boolean;
+  /** URL of the document that produced the stream (the embed page, or the
+   * nested player frame it was promoted to). Used as `Referer`/`Origin` —
+   * most CDNs 403 when those do not match the page that played the video. */
+  pageUrl?: string;
+  /** Same-site cookies for the page that produced the stream. Only set when
+   * the stream host shares a registrable domain with that page, so the
+   * header is never sent to an unrelated CDN. */
+  cookies?: string;
+  /** Best guess at the container: `hls`, `dash`, `mp4` or empty. */
+  format?: 'hls' | 'dash' | 'mp4' | '';
 }
 
 interface WebViewScraperProps {
@@ -63,12 +74,29 @@ interface WebViewScraperProps {
    * is off; debug leaves the page alone so you can tap yourself.
    */
   autoTap?: boolean;
+  /**
+   * How many times to reload the embed after a load failure (WebView error
+   * or a 403/429/5xx response) before reporting an error. Retries back off
+   * linearly (900ms, 1.8s, …) and each one gets a fresh WebView, so a
+   * Cloudflare challenge that just set `cf_clearance` can succeed on the
+   * second pass. Defaults to 2; `0` disables retries.
+   */
+  maxRetries?: number;
+  /**
+   * Reload once when the scrape times out without ever seeing a candidate.
+   * The retry is capped at 20s so a dead server cannot hold up failover for
+   * a second full timeout. Defaults to true.
+   */
+  retryOnTimeout?: boolean;
 }
 
 interface MessageData {
   type: string;
   responseURL?: string;
   isWebM?: boolean;
+  format?: '' | 'hls' | 'dash' | 'mp4';
+  pageUrl?: string;
+  cookies?: string;
   message?: string;
   frame?: string;
 }
@@ -87,19 +115,65 @@ const log = (...args: unknown[]) => console.log(TAG, ...args);
 /** Native-side URL check — mirrors the injected `VIDEO_RE` / `VIDEO_HINT_RE`. */
 const NATIVE_VIDEO_RE = /\.(m3u8|mpd|mp4|webm|mkv)($|\?)|m3u8|mpegurl/i;
 
+/** Backoff between scrapes of the same embed, multiplied by the attempt. */
+const RETRY_BACKOFF_MS = 900;
+/** A timeout recovery gets at most this long, so failover stays snappy. */
+const RETRY_TIMEOUT_CAP_MS = 20000;
+
+const BLOCKED_NAVIGATION_SCHEME_RE =
+  /^(intent|market|tg|whatsapp|tel|mailto|sms|file|content|javascript):/i;
+
+/**
+ * Top-level navigations to ad/popunder networks. With
+ * `setSupportMultipleWindows={false}` a `window.open()` popunder takes over
+ * the scrape WebView and the real player never loads.
+ */
+const BLOCKED_TOP_LEVEL_HOST_RE =
+  /(doubleclick|googlesyndication|googleadservices|adsterra|popads|propellerads|hilltopads|exoclick|juicyads|trafficjunky|adcash|clickadu|monetag|profitableratecpm|revcontent|onclck|taboola|outbrain|mgid|zedo|criteo|adnxs|rubiconproject)\./i;
+
+/** Subresource/media URLs — an HTTP error on one of these is not a reason to
+ * throw away a page that may still be working. */
+const STATIC_ASSET_RE =
+  /\.(jpe?g|png|gif|webp|svg|ico|css|woff2?|ttf|mp4|webm|m3u8|mpd|vtt|js)(\?|$)/i;
+
+/** Same scheme + host + port. */
+const sameOrigin = (a: string, b: string): boolean => {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+};
+
+/** Should the scraper refuse to navigate the main frame to `url`? */
+export const isBlockedTopLevelNavigation = (url: string): boolean => {
+  if (!url) return false;
+  if (BLOCKED_NAVIGATION_SCHEME_RE.test(url)) return true;
+  try {
+    return BLOCKED_TOP_LEVEL_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+};
+
 // Injected into the page (and every frame): hooks XMLHttpRequest, fetch(),
-// <video>.src, and resource timings to catch video (m3u8/mpd/mp4/webm/mkv)
-// and posts the resolved URL back to React Native. Some players (VidLink,
-// Vidstack, JW) never put `.m3u8` on the request URL — they return JSON
-// with `stream.playlist` and then assign it to a media element, or fetch a
-// proxied manifest whose path has no extension — so we also walk JSON
-// bodies and treat `#EXTM3U` / DASH MPD responses as streams.
-// Also forwards debug logs (type: 'log') so they surface in devtools.
+// <video>.src, video.js and resource timings to catch video
+// (m3u8/mpd/mp4/webm/mkv), walks JSON bodies, and posts the resolved URL back
+// to React Native.
+//
+// Resolved URLs are *ranked* rather than reported on sight. A page typically
+// emits several video-looking requests — prerolls, thumbnails, tracker
+// beacons, low-bitrate stubs, the real manifest — and whichever arrives first
+// is usually not the one that plays. Candidates are scored (playlist/master
+// HLS > DASH > MP4, media-element evidence > JSON > resource timing, minus
+// ad/proxied/thumbnail penalties), a strong candidate commits immediately and
+// a weaker field gets `SETTLE_MS` to improve. The best candidate is flushed
+// on timeout so a scrape that *did* find something never returns nothing.
 //
 // `timeoutMs` (the same give-up timeout the component arms in
 // `handleLoadEnd`) is threaded in so the page-side center-click retry loop
-// below knows when to stop trying — `<= 0` means "no timeout" (retry
-// indefinitely, matching the component's own "wait indefinitely" semantics).
+// knows when to stop trying — `<= 0` means "no timeout" (retry indefinitely,
+// matching the component's own "wait indefinitely" semantics).
 export const buildInjectedJavaScript = (
   timeoutMs: number,
   muted: boolean,
@@ -117,7 +191,12 @@ export const buildInjectedJavaScript = (
   var VIDEO_HINT_RE = /m3u8|mpegurl|\\.mpd($|\\?)/i;
   var SKIP_RE = /\\.(jpe?g|png|gif|webp|svg|ico|css|woff2?|js|vtt|srt)($|\\?)/i;
   var SKIP_HOST_RE = /image\\.tmdb\\.org|wsrv\\.nl|googletagmanager|doubleclick|adsystem|google-analytics|clarity\\.ms|yandex/i;
-  function isStreamFound() { return !!window.__anifoxStreamFound; }
+  // Ads, trackers and non-playable decoys. Scored far below real streams so a
+  // preroll that loads first never wins, and dropped outright when they also
+  // match SKIP_HOST_RE.
+  var AD_HOST_RE = /doubleclick|googlesyndication|googleadservices|adsterra|popads|propellerads|hilltopads|exoclick|juicyads|trafficjunky|adcash|clickadu|monetag|profitableratecpm|revcontent|onclck|taboola|outbrain|zedo|criteo|adnxs|rubiconproject|adsystem/i;
+  var AD_PATH_RE = /\\/(ads?|adserver|advert|adverts|preroll|midroll|vast|vpaid|banner|popunder|tracking|tracker|analytics|beacon)(\\/|$)/i;
+  var NONSTREAM_PATH_RE = /\\/(posters?|thumbnails?|thumbs?|sprites?|storyboards?|subtitles?|captions?|trailers?|teasers?)(\\/|$)/i;
 
   function isHttpUrl(url) {
     return typeof url === 'string' && /^https?:\\/\\//i.test(url);
@@ -125,25 +204,257 @@ export const buildInjectedJavaScript = (
   function isSkippable(url) {
     return !isHttpUrl(url) || SKIP_RE.test(url) || SKIP_HOST_RE.test(url);
   }
-  function emitVideo(url, source) {
-    if (isStreamFound() || isSkippable(url)) return;
+
+  // ---------------------------------------------------------------- stealth
+  // Cheap, non-destructive cover for the handful of signals embed pages
+  // actually check. Everything is masked so Function.prototype.toString
+  // still reports "[native code]" for the functions we replaced.
+  function maskNative(fn, name) {
+    try {
+      Object.defineProperty(fn, '__anifoxNativeName', { value: name });
+    } catch (e) {}
+    return fn;
+  }
+
+  if (!window.__anifoxStealth) {
+    window.__anifoxStealth = true;
+    try {
+      var origFnToString = Function.prototype.toString;
+      maskNative(origFnToString, 'toString');
+      Function.prototype.toString = maskNative(function() {
+        var name = this && this.__anifoxNativeName;
+        if (name) return 'function ' + name + '() { [native code] }';
+        return origFnToString.call(this);
+      }, 'toString');
+    } catch (e) {}
+
+    try {
+      var navProto = Object.getPrototypeOf(navigator);
+      var defineNav = function(name, value) {
+        try {
+          Object.defineProperty(navProto, name, {
+            configurable: true,
+            get: function() { return value; }
+          });
+        } catch (e) {}
+      };
+      // The single strongest headless signal.
+      defineNav('webdriver', false);
+      if (!navigator.languages || navigator.languages.length === 0) {
+        defineNav('languages', ['en-US', 'en']);
+      }
+      if (typeof navigator.hardwareConcurrency !== 'number' || navigator.hardwareConcurrency < 4) {
+        defineNav('hardwareConcurrency', 8);
+      }
+      if (!navigator.deviceMemory) defineNav('deviceMemory', 8);
+    } catch (e) {}
+
+    try {
+      if (!window.chrome) {
+        window.chrome = { runtime: {}, app: { isInstalled: false }, csi: function() {}, loadTimes: function() {} };
+      }
+    } catch (e) {}
+
+    // Chrome reports "default" for backgrounded notification permission and
+    // some embeds only start their player when it looks like a real browser.
+    try {
+      var permissions = navigator.permissions;
+      if (permissions && permissions.query) {
+        var origQuery = permissions.query;
+        permissions.query = maskNative(function(desc) {
+          if (desc && desc.name === 'notifications') {
+            return Promise.resolve({ state: 'prompt', onchange: null });
+          }
+          return origQuery.apply(permissions, arguments);
+        }, 'query');
+      }
+    } catch (e) {}
+  }
+
+  // -------------------------------------------------------------- candidates
+  var CANDIDATES = {};
+  var CANDIDATE_ORDER = [];
+  var MAX_CANDIDATES = 16;
+  var SETTLE_MS = 900;
+  var COMMIT_SCORE = 62;   // commit as soon as something this good shows up
+  var MIN_COMMIT_SCORE = 22; // after settling, take the best of a weak field
+  var settleTimer = null;
+  var committed = false;
+
+  function isStreamFound() { return committed; }
+
+  function normalizeUrl(url) {
+    try {
+      var u = new URL(url, location.href);
+      u.hash = '';
+      return u.href;
+    } catch (e) {
+      return String(url).split('#')[0];
+    }
+  }
+  function hostOf(url) {
+    try { return new URL(url, location.href).hostname.toLowerCase(); } catch (e) { return ''; }
+  }
+  function registrableDomain(host) {
+    var parts = String(host || '').toLowerCase().replace(/\\.$/, '').split('.');
+    if (parts.length <= 2) return parts.join('.');
+    return parts.slice(-2).join('.');
+  }
+  // Only hand the page's cookies to hosts on the same site — never leak them
+  // to an unrelated CDN that happens to serve the manifest.
+  function cookiesFor(url) {
+    try {
+      if (!document.cookie) return '';
+      if (registrableDomain(hostOf(url)) !== registrableDomain(location.hostname)) return '';
+      return document.cookie;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function kindScore(url) {
+    var u = String(url).toLowerCase();
+    if (/\\.m3u8($|\\?)/.test(u) || u.indexOf('mpegurl') !== -1) return 40;
+    if (/\\.mpd($|\\?)/.test(u)) return 34;
+    if (/\\.mp4($|\\?)/.test(u)) return 28;
+    if (/\\.webm($|\\?)/.test(u)) return 26;
+    if (/\\.mkv($|\\?)/.test(u)) return 24;
+    return 12;
+  }
+  var SOURCE_SCORE = {
+    'video.playing': 46,
+    'videojs.currentSource': 34,
+    'video.currentSrc': 34,
+    'videojs.src': 28,
+    'video.src': 26,
+    'video.attr': 24,
+    'json.playlist': 24,
+    'json.file': 18,
+    'json.url': 16,
+    'perf': 4,
+    'nav': 6
+  };
+  function sourceScore(source) {
+    source = String(source || '');
+    if (SOURCE_SCORE[source] != null) return SOURCE_SCORE[source];
+    if (/hls|dash/.test(source) && /json|fetch|xhr/.test(source)) return 30;
+    if (/^video/.test(source)) return 24;
+    if (/playlist/.test(source)) return 24;
+    return 10;
+  }
+
+  function addCandidate(rawUrl, source, opts) {
+    if (committed) return;
+    if (!isHttpUrl(rawUrl) || isSkippable(rawUrl)) return;
+    var url = normalizeUrl(rawUrl);
+    var score = kindScore(url) + sourceScore(source);
+    if (opts && opts.master) score += 14;
+    if (opts && opts.playlist) score += 8;
+    if (opts && opts.proxied) score -= 25;
+    if (AD_HOST_RE.test(url) || AD_PATH_RE.test(url)) score -= 100;
+    if (NONSTREAM_PATH_RE.test(url)) score -= 40;
+
+    var existing = CANDIDATES[url];
+    if (existing) {
+      if (score > existing.score) {
+        existing.score = score;
+        existing.source = source;
+        existing.master = !!(opts && opts.master);
+        maybeCommit(false);
+      }
+      return;
+    }
+    if (CANDIDATE_ORDER.length >= MAX_CANDIDATES) return;
+
+    var entry = {
+      url: url,
+      score: score,
+      source: source,
+      master: !!(opts && opts.master),
+      at: Date.now()
+    };
+    CANDIDATES[url] = entry;
+    CANDIDATE_ORDER.push(entry);
+    log('candidate ' + score + ' ' + source + ' ' + url);
+    // Native uses this to tell "found nothing" from "found but late".
+    post({ type: 'candidate' });
+
+    if (settleTimer === null) {
+      settleTimer = setTimeout(function() {
+        settleTimer = null;
+        maybeCommit(true);
+      }, SETTLE_MS);
+    }
+    maybeCommit(false);
+  }
+
+  function bestCandidate() {
+    var best = null;
+    for (var i = 0; i < CANDIDATE_ORDER.length; i++) {
+      if (!best || CANDIDATE_ORDER[i].score > best.score) best = CANDIDATE_ORDER[i];
+    }
+    return best;
+  }
+
+  function formatOf(entry) {
+    var u = entry.url.toLowerCase();
+    if (/\\.m3u8($|\\?)/.test(u) || u.indexOf('mpegurl') !== -1) return 'hls';
+    if (/\\.mpd($|\\?)/.test(u)) return 'dash';
+    if (/\\.(mp4|webm|mkv)($|\\?)/.test(u)) return 'mp4';
+    return entry.master ? 'hls' : '';
+  }
+
+  function commit(entry) {
+    if (committed || !entry) return;
+    committed = true;
     window.__anifoxStreamFound = true;
-    log(source + ' ' + url);
+    if (settleTimer !== null) {
+      clearTimeout(settleTimer);
+      settleTimer = null;
+    }
+    log('committing ' + entry.score + ' ' + entry.source + ' ' + entry.url);
     post({
       type: 'video',
-      responseURL: url,
-      isWebM: /\\.webm($|\\?)/i.test(url)
+      responseURL: entry.url,
+      isWebM: /\\.webm($|\\?)/i.test(entry.url),
+      format: formatOf(entry),
+      pageUrl: location.href,
+      cookies: cookiesFor(entry.url)
     });
+    stopCenterClicking();
   }
-  function reportIfVideo(url, source) {
+
+  function maybeCommit(settled) {
+    if (committed) return;
+    var best = bestCandidate();
+    if (!best) return;
+    if (!settled && best.score < COMMIT_SCORE) return;
+    if (settled && best.score < MIN_COMMIT_SCORE) return;
+    commit(best);
+  }
+
+  // Hand over the best URL seen so far — but never an ad/tracker just because
+  // it was the only thing on the page.
+  function flushCandidates() {
+    if (committed) return false;
+    var best = bestCandidate();
+    if (!best || best.score < MIN_COMMIT_SCORE) return false;
+    commit(best);
+    return committed;
+  }
+
+  function emitVideo(url, source, opts) {
+    addCandidate(url, source, opts);
+  }
+  function reportIfVideo(url, source, opts) {
     if (!url || (!VIDEO_RE.test(url) && !VIDEO_HINT_RE.test(url))) return;
-    emitVideo(url, source);
+    addCandidate(url, source, opts);
+  }
+  function reportPlaylist(url, source, opts) {
+    addCandidate(url, source, opts);
   }
   function reportMediaSrc(url, source) {
     reportIfVideo(url, source);
-  }
-  function reportPlaylist(url, source) {
-    emitVideo(url, source);
   }
 
   function walkJson(node) {
@@ -160,8 +471,12 @@ export const buildInjectedJavaScript = (
     // VidLink (and similar): { stream: { playlist, requiresProxy, qualities } }.
     // If the playlist needs their proxy rewrite, skip it and wait for the
     // player to request the rewritten URL (caught via fetch/video.src).
-    if (typeof node.playlist === 'string' && node.requiresProxy !== true) {
-      reportPlaylist(node.playlist, 'json.playlist');
+    if (typeof node.playlist === 'string') {
+      if (node.requiresProxy !== true) {
+        reportPlaylist(node.playlist, 'json.playlist');
+      } else {
+        addCandidate(node.playlist, 'json.playlist', { proxied: true });
+      }
       if (isStreamFound()) return;
     }
     if (typeof node.file === 'string') reportIfVideo(node.file, 'json.file');
@@ -169,7 +484,7 @@ export const buildInjectedJavaScript = (
     if (typeof node.url === 'string' && isHttpUrl(node.url)) {
       var kind = String(node.type || node.kind || node.format || '').toLowerCase();
       if (VIDEO_RE.test(node.url) || VIDEO_HINT_RE.test(node.url) || /^(hls|dash|mp4|mpegurl|m3u8|mpd)$/i.test(kind)) {
-        emitVideo(node.url, 'json.url');
+        addCandidate(node.url, 'json.url');
         if (isStreamFound()) return;
       }
     }
@@ -185,23 +500,46 @@ export const buildInjectedJavaScript = (
     if (!text || isStreamFound()) return;
     var trimmed = String(text).trim();
     if (trimmed.indexOf('#EXTM3U') === 0) {
-      reportPlaylist(url, source + '-hls');
+      var isMaster = /#EXT-X-STREAM-INF/i.test(trimmed);
+      reportPlaylist(url, source + '-hls', { playlist: true, master: isMaster });
       return;
     }
     if (trimmed.indexOf('<') === 0 && /<MPD[\\s>]/i.test(trimmed.slice(0, 400))) {
-      reportPlaylist(url, source + '-dash');
+      reportPlaylist(url, source + '-dash', { playlist: true });
       return;
     }
     if (trimmed.charAt(0) !== '{' && trimmed.charAt(0) !== '[') return;
     try { walkJson(JSON.parse(trimmed)); } catch (e) {}
   }
 
+  // ----------------------------------------------------- frame traversal
+  // Android WebView injects this script into every frame, but same-origin
+  // frames can still have already-initialized players whose requests we only
+  // see by reading their documents directly.
+  function viewOf(doc) {
+    try { return (doc && doc.defaultView) || window; } catch (e) { return window; }
+  }
+  function forEachDocument(visit, depth, doc) {
+    depth = depth || 0;
+    doc = doc || document;
+    try { visit(doc); } catch (e) {}
+    if (depth >= 3) return;
+    var frames;
+    try { frames = doc.querySelectorAll('iframe, frame'); } catch (e) { return; }
+    for (var i = 0; i < frames.length; i++) {
+      var inner = null;
+      try { inner = frames[i].contentDocument; } catch (e) { inner = null; }
+      if (inner && inner.documentElement) forEachDocument(visit, depth + 1, inner);
+    }
+  }
+
   log('hook installed');
 
   var MUTE_MEDIA = ${muted ? 'true' : 'false'};
-  function muteMedia() {
+  function muteMedia(doc) {
     if (!MUTE_MEDIA) return;
-    var nodes = document.querySelectorAll('video, audio');
+    doc = doc || document;
+    var nodes = doc.querySelectorAll('video, audio');
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].muted = true;
       nodes[i].defaultMuted = true;
@@ -210,10 +548,10 @@ export const buildInjectedJavaScript = (
   }
   if (MUTE_MEDIA && !window.__anifoxScraperMuted) {
     window.__anifoxScraperMuted = true;
-    muteMedia();
-    setInterval(muteMedia, 1000);
+    forEachDocument(muteMedia);
+    setInterval(function() { forEachDocument(muteMedia); }, 1000);
     try {
-      new MutationObserver(muteMedia).observe(document.documentElement, {
+      new MutationObserver(function() { forEachDocument(muteMedia); }).observe(document.documentElement, {
         childList: true,
         subtree: true,
       });
@@ -222,10 +560,10 @@ export const buildInjectedJavaScript = (
 
   // Lowercase autoplay=true — nxsha/Videasy/VidFast check
   // searchParams.get("autoplay") === "true"; autoplay=1 and autoPlay=true are ignored.
-  function withAutoplay(url) {
+  function withAutoplay(url, base) {
     if (!url || url === 'about:blank' || url === 'about:srcdoc') return url;
     try {
-      var u = new URL(url, location.href);
+      var u = new URL(url, base || location.href);
       if (u.protocol !== 'http:' && u.protocol !== 'https:') return url;
       var current = u.searchParams.get('autoplay') || u.searchParams.get('autoPlay');
       if (current === 'true') return url;
@@ -236,9 +574,11 @@ export const buildInjectedJavaScript = (
     }
   }
 
-  function harvestPlayingVideo() {
+  function harvestDoc(doc) {
     if (isStreamFound()) return;
-    var nodes = document.querySelectorAll('video');
+    var win = viewOf(doc);
+
+    var nodes = doc.querySelectorAll('video');
     for (var i = 0; i < nodes.length; i++) {
       var v = nodes[i];
       var url = v.currentSrc || v.getAttribute('src') || '';
@@ -246,12 +586,13 @@ export const buildInjectedJavaScript = (
       reportIfVideo(url, 'video.currentSrc');
       if (!v.paused && isHttpUrl(url) && !isSkippable(url) &&
           url.split('#')[0] !== location.href.split('#')[0]) {
-        emitVideo(url, 'video.playing');
+        addCandidate(url, 'video.playing');
       }
     }
+
     try {
-      if (window.videojs && typeof window.videojs.getPlayers === 'function') {
-        var players = window.videojs.getPlayers();
+      if (win.videojs && typeof win.videojs.getPlayers === 'function') {
+        var players = win.videojs.getPlayers();
         for (var k in players) {
           var p = players[k];
           if (!p || typeof p.currentSource !== 'function') continue;
@@ -261,36 +602,54 @@ export const buildInjectedJavaScript = (
           if (!u) continue;
           reportIfVideo(u, 'videojs.currentSource');
           if (isHttpUrl(u) && !isSkippable(u) && /mpegurl|m3u8|mp4|dash|mpd/i.test(mime)) {
-            emitVideo(u, 'videojs.currentSource');
+            addCandidate(u, 'videojs.currentSource');
           }
         }
       }
     } catch (e) {}
+
+    // Resource timings for frames our PerformanceObserver never saw.
+    try {
+      var perf = win.performance;
+      if (perf && typeof perf.getEntriesByType === 'function') {
+        var entries = perf.getEntriesByType('resource');
+        for (var j = 0; j < entries.length; j++) {
+          reportIfVideo(entries[j].name, 'perf');
+        }
+      }
+    } catch (e) {}
+  }
+
+  function harvestPlayingVideo() {
+    if (isStreamFound()) return;
+    forEachDocument(harvestDoc);
   }
 
   if (!window.__anifoxScraperHooked) {
   window.__anifoxScraperHooked = true;
 
   var originalOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function() {
+  XMLHttpRequest.prototype.open = maskNative(function() {
     this.addEventListener('load', function() {
       try {
         var responseURL = this.responseURL;
         if (!responseURL) return;
         log('xhr ' + responseURL);
         reportIfVideo(responseURL, 'xhr');
-        var text = typeof this.responseText === 'string' ? this.responseText : '';
+        var text = this.responseType === '' || this.responseType === 'text'
+          ? (typeof this.responseText === 'string' ? this.responseText : '')
+          : '';
         inspectBody(text, responseURL, 'xhr');
       } catch (error) {
         log('xhr listener error: ' + error);
       }
     });
-    originalOpen.apply(this, arguments);
-  };
+    return originalOpen.apply(this, arguments);
+  }, 'open');
 
   if (window.fetch) {
     var originalFetch = window.fetch;
-    window.fetch = function(input, init) {
+    window.fetch = maskNative(function(input, init) {
       var requestUrl = typeof input === 'string' ? input : (input && input.url);
       return originalFetch.apply(this, arguments).then(function(response) {
         try {
@@ -299,7 +658,7 @@ export const buildInjectedJavaScript = (
           reportIfVideo(responseURL, 'fetch');
           var ct = '';
           try { ct = (response.headers && response.headers.get('content-type')) || ''; } catch (e) {}
-          if (!ct || /json|mpegurl|m3u8|dash|mpd|text|octet-stream|video|mpegurl|application\\/vnd/i.test(ct) || /\\/api\\//i.test(responseURL || '')) {
+          if (!ct || /json|mpegurl|m3u8|dash|mpd|text|octet-stream|video|application\\/vnd/i.test(ct) || /\\/api\\//i.test(responseURL || '')) {
             response.clone().text().then(function(text) {
               inspectBody(text, responseURL, 'fetch');
             }).catch(function() {});
@@ -309,7 +668,7 @@ export const buildInjectedJavaScript = (
         }
         return response;
       });
-    };
+    }, 'fetch');
   }
 
   try {
@@ -322,19 +681,19 @@ export const buildInjectedJavaScript = (
           configurable: true,
           enumerable: srcDesc.enumerable,
           get: function() { return srcDesc.get.call(this); },
-          set: function(v) {
+          set: maskNative(function(v) {
             reportMediaSrc(String(v || ''), 'video.src');
             srcDesc.set.call(this, v);
-          }
+          }, 'set src')
         });
       }
       var origSetAttr = mediaProto.setAttribute;
-      mediaProto.setAttribute = function(name, value) {
+      mediaProto.setAttribute = maskNative(function(name, value) {
         if (String(name).toLowerCase() === 'src') {
           reportMediaSrc(String(value || ''), 'video.attr');
         }
         return origSetAttr.apply(this, arguments);
-      };
+      }, 'setAttribute');
     }
   } catch (e) {}
 
@@ -349,7 +708,7 @@ export const buildInjectedJavaScript = (
       if (!Player || !Player.prototype || typeof Player.prototype.src !== 'function') return;
       vjs.__anifoxSrcHooked = true;
       var origVjsSrc = Player.prototype.src;
-      Player.prototype.src = function(source) {
+      Player.prototype.src = maskNative(function(source) {
         try {
           var list = Array.isArray(source) ? source : (source ? [source] : []);
           for (var i = 0; i < list.length; i++) {
@@ -362,12 +721,12 @@ export const buildInjectedJavaScript = (
             // (ScreenScape also src()'s failed servers / embed pages).
             if (!isStreamFound() && isHttpUrl(url) && !isSkippable(url) &&
                 /mpegurl|m3u8|mp4|dash|mpd/i.test(mime)) {
-              emitVideo(String(url), 'videojs.src');
+              addCandidate(String(url), 'videojs.src');
             }
           }
         } catch (e) {}
         return origVjsSrc.apply(this, arguments);
-      };
+      }, 'src');
       log('videojs.src hooked');
     } catch (e) {}
   }
@@ -389,8 +748,8 @@ export const buildInjectedJavaScript = (
 
   // VidSrc (and similar wrappers) load the real player in a nested iframe
   // *without* forwarding autoplay, and often with a sandbox attribute that
-  // blocks playback. Normalize iframe URLs to \`autoplay=true\` (the value
-  // nxsha / Videasy / VidFast actually check — \`autoplay=1\` is ignored)
+  // blocks playback. Normalize iframe URLs to autoplay=true (the value
+  // nxsha / Videasy / VidFast actually check — autoplay=1 is ignored)
   // and strip sandbox *before* the iframe navigates.
   try {
     var iframeProto = window.HTMLIFrameElement && window.HTMLIFrameElement.prototype;
@@ -402,13 +761,13 @@ export const buildInjectedJavaScript = (
           configurable: true,
           enumerable: iframeSrcDesc.enumerable,
           get: function() { return iframeSrcDesc.get.call(this); },
-          set: function(v) {
+          set: maskNative(function(v) {
             iframeSrcDesc.set.call(this, withAutoplay(String(v || '')));
-          }
+          }, 'set src')
         });
       }
       var origIframeSetAttr = iframeProto.setAttribute;
-      iframeProto.setAttribute = function(name, value) {
+      iframeProto.setAttribute = maskNative(function(name, value) {
         var n = String(name).toLowerCase();
         if (n === 'sandbox') {
           log('blocked iframe sandbox');
@@ -416,7 +775,7 @@ export const buildInjectedJavaScript = (
         }
         if (n === 'src') value = withAutoplay(String(value || ''));
         return origIframeSetAttr.apply(this, arguments);
-      };
+      }, 'setAttribute');
     }
   } catch (e) {}
 
@@ -439,7 +798,9 @@ export const buildInjectedJavaScript = (
     '.vjs-big-play-button',
     '.jw-icon-playback',
     '.jw-display-icon-container',
+    '.jw-display-icon-container .jw-icon-display',
     '.plyr__control--overlaid',
+    '.plyr__control[data-plyr="play"]',
     '.mejs-overlay-play',
     '.mejs-overlay-button',
     '.fluid_initial_play',
@@ -447,11 +808,25 @@ export const buildInjectedJavaScript = (
     '.clappr-play-wrapper',
     '.vjs-poster',
     'button.vjs-big-play-button',
+    // YouTube iframe API, Shaka, DPlayer, ArtPlayer, Flowplayer.
+    '.ytp-large-play-button',
+    '.shaka-play-button',
+    '.dplayer .dplayer-play-icon',
+    '.dplayer-play-icon',
+    '.artplayer .artplayer-play-icon',
+    '.artplayer-play-icon',
+    '.flowplayer .fp-play',
+    '.fp-play',
+    // Generic hand-rolled overlays.
+    '#play-button',
+    '#playButton',
+    '[data-testid="play-button"]',
+    '[data-testid="player-play"]',
     '[aria-label*="play" i]',
     '[title="Play" i]',
     '[title="play" i]',
   ];
-  var PLAY_CLASS_RE = /play-btn|playbtn|playbutton|play-button|big-play|overlay-play|icon-play|play-icon/i;
+  var PLAY_CLASS_RE = /play-btn|playbtn|playbutton|play-button|big-play|overlay-play|icon-play|play-icon|play-overlay|player-play|fp-play|shaka-play|dplayer-play|artplayer-play/i;
   var PLAY_TEXT_RE = /^(play|play now|play video|watch now|start watching|tap to play|click to play)$/i;
 
   function classNameOf(el) {
@@ -464,7 +839,8 @@ export const buildInjectedJavaScript = (
 
   function inPlayerChrome(el) {
     var n = el;
-    while (n && n !== document && n !== document.documentElement) {
+    var root = el && el.ownerDocument;
+    while (n && n !== root && n !== (root && root.documentElement)) {
       var c = classNameOf(n).toLowerCase();
       if (c.indexOf('controls-bar') !== -1 || c.indexOf('control-bar') !== -1 ||
           c.indexOf('vjs-control') !== -1) return true;
@@ -476,15 +852,17 @@ export const buildInjectedJavaScript = (
   function isVisible(el) {
     var rect = el.getBoundingClientRect();
     if (rect.width < 8 || rect.height < 8) return false;
-    var style = window.getComputedStyle(el);
+    var win = (el.ownerDocument && el.ownerDocument.defaultView) || window;
+    var style = win.getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return false;
     return true;
   }
 
-  function findBySelector() {
+  function findBySelector(doc) {
+    doc = doc || document;
     for (var i = 0; i < PLAY_BUTTON_SELECTORS.length; i++) {
       try {
-        var matches = document.querySelectorAll(PLAY_BUTTON_SELECTORS[i]);
+        var matches = doc.querySelectorAll(PLAY_BUTTON_SELECTORS[i]);
         for (var j = 0; j < matches.length; j++) {
           if (isVisible(matches[j]) && !inPlayerChrome(matches[j])) return matches[j];
         }
@@ -493,8 +871,9 @@ export const buildInjectedJavaScript = (
     return null;
   }
 
-  function findByText() {
-    var candidates = document.querySelectorAll('button, [role="button"], a, div, span');
+  function findByText(doc) {
+    doc = doc || document;
+    var candidates = doc.querySelectorAll('button, [role="button"], a, div, span');
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
       var text = (el.textContent || '').trim();
@@ -503,8 +882,9 @@ export const buildInjectedJavaScript = (
     return null;
   }
 
-  function findByClassPlay() {
-    var candidates = document.querySelectorAll('button, [role="button"], a, div, span, i');
+  function findByClassPlay(doc) {
+    doc = doc || document;
+    var candidates = doc.querySelectorAll('button, [role="button"], a, div, span, i');
     for (var i = 0; i < candidates.length; i++) {
       if (PLAY_CLASS_RE.test(classNameOf(candidates[i])) && isVisible(candidates[i]) && !inPlayerChrome(candidates[i])) {
         return candidates[i];
@@ -515,13 +895,15 @@ export const buildInjectedJavaScript = (
 
   // Icon-only circular play buttons (e.g. nxsha's rounded-full SVG button)
   // have no "play" class/label and often no cursor:pointer.
-  function findCenterIconButton() {
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
+  function findCenterIconButton(doc) {
+    doc = doc || document;
+    var win = viewOf(doc);
+    var vw = win.innerWidth || window.innerWidth;
+    var vh = win.innerHeight || window.innerHeight;
     var cx = vw / 2;
     var cy = vh / 2;
     var maxDist = Math.min(vw, vh) * 0.45;
-    var buttons = document.querySelectorAll('button, [role="button"]');
+    var buttons = doc.querySelectorAll('button, [role="button"]');
     var best = null;
     var bestDist = Infinity;
     for (var i = 0; i < buttons.length; i++) {
@@ -547,13 +929,15 @@ export const buildInjectedJavaScript = (
     return best;
   }
 
-  function findNearCenterClickable() {
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
+  function findNearCenterClickable(doc) {
+    doc = doc || document;
+    var win = viewOf(doc);
+    var vw = win.innerWidth || window.innerWidth;
+    var vh = win.innerHeight || window.innerHeight;
     var cx = vw / 2;
     var cy = vh / 2;
     var maxDist = Math.min(vw, vh) * 0.4;
-    var candidates = document.querySelectorAll('button, [role="button"], a, div, span, svg, path, i, label');
+    var candidates = doc.querySelectorAll('button, [role="button"], a, div, span, svg, path, i, label');
     var best = null;
     var bestScore = Infinity;
     for (var i = 0; i < candidates.length; i++) {
@@ -567,7 +951,7 @@ export const buildInjectedJavaScript = (
       if (dist > maxDist) continue;
       if (!isVisible(el) || inPlayerChrome(el)) continue;
       var tag = (el.tagName || '').toLowerCase();
-      var style = window.getComputedStyle(el);
+      var style = win.getComputedStyle(el);
       var clickable = tag === 'button' || el.getAttribute('role') === 'button' || style.cursor === 'pointer';
       if (!clickable) continue;
       var score = dist + rect.width * rect.height * 0.02;
@@ -579,51 +963,54 @@ export const buildInjectedJavaScript = (
     return best;
   }
 
-  function findVideoEl() {
-    var nodes = document.querySelectorAll('video');
+  function findVideoEl(doc) {
+    doc = doc || document;
+    var nodes = doc.querySelectorAll('video');
     for (var i = 0; i < nodes.length; i++) {
       if (isVisible(nodes[i]) || nodes[i].readyState > 0) return nodes[i];
     }
     return nodes[0] || null;
   }
 
-  function findPlayButton() {
-    return findBySelector() || findByText() || findByClassPlay() ||
-      findCenterIconButton() || findNearCenterClickable() || findVideoEl();
+  function findPlayButton(doc) {
+    return findBySelector(doc) || findByText(doc) || findByClassPlay(doc) ||
+      findCenterIconButton(doc) || findNearCenterClickable(doc) || findVideoEl(doc);
   }
 
   function dispatchClick(el, x, y) {
+    var win = (el.ownerDocument && el.ownerDocument.defaultView) || window;
     var opts = {
       bubbles: true,
       cancelable: true,
-      view: window,
+      view: win,
       clientX: x,
       clientY: y,
       button: 0,
       buttons: 1,
     };
     try {
-      el.dispatchEvent(new PointerEvent('pointerdown', {
-        bubbles: true, cancelable: true, view: window,
+      el.dispatchEvent(new win.PointerEvent('pointerdown', {
+        bubbles: true, cancelable: true, view: win,
         clientX: x, clientY: y, button: 0, buttons: 1,
         pointerId: 1, pointerType: 'touch', isPrimary: true
       }));
     } catch (e) {}
-    try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch (e) {}
+    try { el.dispatchEvent(new win.MouseEvent('mousedown', opts)); } catch (e) {}
     try {
-      el.dispatchEvent(new PointerEvent('pointerup', {
-        bubbles: true, cancelable: true, view: window,
+      el.dispatchEvent(new win.PointerEvent('pointerup', {
+        bubbles: true, cancelable: true, view: win,
         clientX: x, clientY: y, button: 0, buttons: 1,
         pointerId: 1, pointerType: 'touch', isPrimary: true
       }));
     } catch (e) {}
-    try { el.dispatchEvent(new MouseEvent('mouseup', opts)); } catch (e) {}
+    try { el.dispatchEvent(new win.MouseEvent('mouseup', opts)); } catch (e) {}
     try { el.click(); } catch (e) {}
-    try { el.dispatchEvent(new MouseEvent('click', opts)); } catch (e) {}
+    try { el.dispatchEvent(new win.MouseEvent('click', opts)); } catch (e) {}
   }
 
   function playAllMedia(root) {
     root = root || document;
+    var win = viewOf(root);
     var nodes = root.querySelectorAll('video, audio');
     for (var i = 0; i < nodes.length; i++) {
       try {
@@ -638,8 +1025,8 @@ export const buildInjectedJavaScript = (
       } catch (e) {}
     }
     try {
-      if (window.videojs && typeof window.videojs.getPlayers === 'function') {
-        var players = window.videojs.getPlayers();
+      if (win.videojs && typeof win.videojs.getPlayers === 'function') {
+        var players = win.videojs.getPlayers();
         for (var k in players) {
           if (!players[k]) continue;
           try { if (MUTE_MEDIA && players[k].muted) players[k].muted(true); } catch (e) {}
@@ -648,15 +1035,16 @@ export const buildInjectedJavaScript = (
       }
     } catch (e) {}
     try {
-      if (typeof window.jwplayer === 'function') {
-        var jw = window.jwplayer();
+      if (typeof win.jwplayer === 'function') {
+        var jw = win.jwplayer();
         if (jw && jw.play) jw.play();
       }
     } catch (e) {}
   }
 
-  function unlockIframes() {
-    var frames = document.querySelectorAll('iframe');
+  function unlockIframes(doc) {
+    doc = doc || document;
+    var frames = doc.querySelectorAll('iframe');
     for (var i = 0; i < frames.length; i++) {
       var f = frames[i];
       if (f.hasAttribute('sandbox')) {
@@ -669,13 +1057,12 @@ export const buildInjectedJavaScript = (
       } catch (e) {}
       var src = f.getAttribute('src') || '';
       if (!src) continue;
-      var next = withAutoplay(src);
+      var next = withAutoplay(src, doc.baseURI || location.href);
       if (next && next !== src) {
         log('iframe autoplay rewrite ' + src + ' -> ' + next);
         f.src = next;
       }
     }
-    promotePlayerIframe();
   }
 
   // Android WebView only injects our hooks into the *main* frame, so a
@@ -735,8 +1122,25 @@ export const buildInjectedJavaScript = (
     }
   }
 
+  // Walk up to 3 levels of same-origin frames and click their play overlays.
+  // Cross-origin frames are invisible to us — those rely on iframe promotion.
+  function clickPlayInFrames() {
+    if (isStreamFound()) return false;
+    var clicked = false;
+    forEachDocument(function(doc) {
+      if (clicked || isStreamFound() || doc === document) return;
+      var el = findBySelector(doc) || findByText(doc) || findByClassPlay(doc);
+      if (!el) return;
+      var rect = el.getBoundingClientRect();
+      dispatchClick(el, Math.floor(rect.left + rect.width / 2), Math.floor(rect.top + rect.height / 2));
+      log('clicked play overlay inside same-origin frame');
+      clicked = true;
+    });
+    return clicked;
+  }
+
   function stopCenterClicking() {
-    if (centerClickIntervalId !== null) {
+    if (centerClickIntervalId !== null && centerClickIntervalId !== undefined) {
       clearInterval(centerClickIntervalId);
       centerClickIntervalId = null;
     }
@@ -749,14 +1153,16 @@ export const buildInjectedJavaScript = (
       return;
     }
     if (CENTER_CLICK_TIMEOUT_MS > 0 && (Date.now() - centerClickStartedAt) >= CENTER_CLICK_TIMEOUT_MS) {
+      // Out of attempts: hand over the best URL we saw rather than nothing.
+      if (flushCandidates()) log('center click: committed best candidate at timeout');
       log('center click: timeout reached, stopping retries');
       stopCenterClicking();
       return;
     }
     try {
-      unlockIframes();
+      forEachDocument(unlockIframes);
       if (promotePlayerIframe()) return;
-      playAllMedia();
+      forEachDocument(playAllMedia);
       harvestPlayingVideo();
       // ScreenScape's play button toggles pause and its control bar also
       // switches *their* server. Once a <video> is loading/playing, only
@@ -773,6 +1179,7 @@ export const buildInjectedJavaScript = (
         log('video already started, skipping overlay click');
         return;
       }
+      if (clickPlayInFrames()) return;
       var target = findPlayButton();
       var x, y;
       if (target) {
@@ -824,13 +1231,13 @@ export const buildInjectedJavaScript = (
     window.__anifoxScraperClicking = true;
     centerClickStartedAt = Date.now();
     hidePlayerChrome();
-    unlockIframes();
+    forEachDocument(unlockIframes);
     clickCenter();
     centerClickIntervalId = setInterval(clickCenter, CENTER_CLICK_INTERVAL_MS);
     try {
       new MutationObserver(function() {
         if (isStreamFound()) return;
-        unlockIframes();
+        forEachDocument(unlockIframes);
       }).observe(document.documentElement, { childList: true, subtree: true });
     } catch (e) {}
   }
@@ -877,12 +1284,24 @@ export const WebViewScraper = ({
   previewStyle,
   muted,
   autoTap,
+  maxRetries = 2,
+  retryOnTimeout = true,
 }: WebViewScraperProps) => {
   const [webViewKey, setWebViewKey] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasExtractedDataRef = useRef(false);
+  const attemptRef = useRef(0);
+  const sawCandidatesRef = useRef(false);
   const timeoutMs =
     (timeoutSeconds ?? DEFAULT_SCRAPER_TIMEOUT_SECONDS) * 1000;
+  // A recovery attempt gets a shorter budget: a server that produced nothing
+  // after a full timeout should not be given another full timeout.
+  const attemptTimeoutMs =
+    attempt === 0 || timeoutMs <= 0
+      ? timeoutMs
+      : Math.min(timeoutMs, RETRY_TIMEOUT_CAP_MS);
 
   const embedUrl = useMemo(
     () =>
@@ -901,38 +1320,93 @@ export const WebViewScraper = ({
   const muteMedia = muted ?? !debug;
   const shouldAutoTap = autoTap ?? !debug;
   const injectedJavaScript = useMemo(
-    () => buildInjectedJavaScript(timeoutMs, muteMedia, shouldAutoTap),
-    [timeoutMs, muteMedia, shouldAutoTap],
+    () => buildInjectedJavaScript(attemptTimeoutMs, muteMedia, shouldAutoTap),
+    [attemptTimeoutMs, muteMedia, shouldAutoTap],
   );
 
-  // Reset the WebView when the target changes.
+  // Reset the WebView (and retry budget) when the target changes.
   useEffect(() => {
     hasExtractedDataRef.current = false;
+    sawCandidatesRef.current = false;
+    attemptRef.current = 0;
+    setAttempt(0);
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
     log('loading embed:', embedUrl);
     setWebViewKey((prev) => prev + 1);
   }, [embedUrl]);
 
+  const clearLoadingTimer = useCallback(() => {
+    if (loadingTimerRef.current) {
+      clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = null;
+    }
+  }, []);
+
   const emitExtracted = useCallback(
-    (url: string, isWebM: boolean) => {
+    (data: ExtractedStream) => {
       if (hasExtractedDataRef.current) return;
       hasExtractedDataRef.current = true;
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current);
-        loadingTimerRef.current = null;
+      clearLoadingTimer();
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
       }
-      log('resolved stream:', url, `(webm=${isWebM})`);
-      onDataExtracted({ videoUrl: url, isWebM });
+      log(
+        'resolved stream:',
+        data.videoUrl,
+        `(format=${data.format || '?'}, page=${data.pageUrl || '?'})`,
+      );
+      onDataExtracted(data);
       onLoading?.(false);
     },
-    [onDataExtracted, onLoading],
+    [clearLoadingTimer, onDataExtracted, onLoading],
   );
 
   const extractFromUrl = useCallback(
     (url?: string) => {
       if (!url || !NATIVE_VIDEO_RE.test(url)) return;
-      emitExtracted(url, /\.webm($|\?)/i.test(url));
+      emitExtracted({
+        videoUrl: url,
+        isWebM: /\.webm($|\?)/i.test(url),
+        format: /\.m3u8|mpegurl/i.test(url)
+          ? 'hls'
+          : /\.mpd/i.test(url)
+            ? 'dash'
+            : 'mp4',
+      });
     },
     [emitExtracted],
+  );
+
+  /**
+   * Reload the embed with backoff. Returns false when the retry budget is
+   * spent, so the caller can report the failure.
+   */
+  const scheduleRetry = useCallback(
+    (reason: string): boolean => {
+      if (hasExtractedDataRef.current) return true;
+      // A retry is already queued — don't let a burst of errors burn the
+      // whole budget or stack remounts.
+      if (retryTimerRef.current) return true;
+      const next = attemptRef.current + 1;
+      if (next > maxRetries) return false;
+      attemptRef.current = next;
+      setAttempt(next);
+      log(`retrying after ${reason} (attempt ${next}/${maxRetries})`);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = setTimeout(() => {
+        retryTimerRef.current = null;
+        if (hasExtractedDataRef.current) return;
+        // Candidates describe one page instance; the reload starts fresh.
+        sawCandidatesRef.current = false;
+        setWebViewKey(prev => prev + 1);
+      }, RETRY_BACKOFF_MS * next);
+      return true;
+    },
+    [maxRetries],
   );
 
   // Handle messages posted from the page.
@@ -952,8 +1426,19 @@ export const WebViewScraper = ({
         return;
       }
 
+      if (data.type === 'candidate') {
+        sawCandidatesRef.current = true;
+        return;
+      }
+
       if (data.type === 'video' && data.responseURL) {
-        emitExtracted(data.responseURL, !!data.isWebM);
+        emitExtracted({
+          videoUrl: data.responseURL,
+          isWebM: !!data.isWebM,
+          pageUrl: data.pageUrl,
+          cookies: data.cookies,
+          format: data.format ?? '',
+        });
       }
     },
     [emitExtracted, onError],
@@ -964,41 +1449,78 @@ export const WebViewScraper = ({
     onLoading?.(true);
   }, [onLoading]);
 
-  // On load end, arm a timeout: if nothing was extracted, give up. This is
+  // On load end, arm a timeout: if nothing was extracted, try one recovery
+  // load (the page usually had nothing at all — a fresh pass often gets past
+  // a challenge that had just been solved), then give up. This is
   // deliberately independent of `debug` (visibility) — a `0`/negative
-  // `timeoutSeconds` (per-server "no timeout") is what actually disables
-  // it, e.g. to leave time to solve a captcha by hand.
+  // `timeoutSeconds` (per-server "no timeout") is what actually disables it,
+  // e.g. to leave time to solve a captcha by hand.
   const handleLoadEnd = useCallback(() => {
     log('load end');
-    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-    if (timeoutMs <= 0) return;
+    clearLoadingTimer();
+    if (attemptTimeoutMs <= 0) return;
     loadingTimerRef.current = setTimeout(() => {
-      if (!hasExtractedDataRef.current) {
-        log(`timeout after ${timeoutMs}ms - no stream found`);
-        onLoading?.(false);
-        onError?.('Timed out while finding a stream.');
+      if (hasExtractedDataRef.current) return;
+      log(`timeout after ${attemptTimeoutMs}ms - no stream found`);
+      // If the page saw candidates, it flushed its best one — reloading the
+      // same embed will not produce anything better.
+      if (
+        retryOnTimeout &&
+        attemptRef.current === 0 &&
+        !sawCandidatesRef.current &&
+        scheduleRetry('timeout')
+      ) {
+        onLoading?.(true);
+        return;
       }
-    }, timeoutMs);
-  }, [timeoutMs, onLoading, onError]);
+      onLoading?.(false);
+      onError?.('Timed out while finding a stream.');
+    }, attemptTimeoutMs);
+  }, [attemptTimeoutMs, clearLoadingTimer, onError, onLoading, retryOnTimeout, scheduleRetry]);
 
   const handleError = useCallback(
     (event: WebViewErrorEvent) => {
       const { nativeEvent } = event;
       log('WebView error:', nativeEvent.code, nativeEvent.description);
-      if (loadingTimerRef.current) {
-        clearTimeout(loadingTimerRef.current);
-        loadingTimerRef.current = null;
-      }
+      clearLoadingTimer();
       onLoading?.(false);
+      if (scheduleRetry('load error')) {
+        onLoading?.(true);
+        return;
+      }
       onError?.('WebView load error');
     },
-    [onLoading, onError],
+    [clearLoadingTimer, onError, onLoading, scheduleRetry],
+  );
+
+  // A 403 is usually an unsolved Cloudflare challenge and a 429/5xx is
+  // transient — both are worth one reload; other statuses are not. Android
+  // reports HTTP errors for subresources too, so only an error on the embed
+  // document itself (same origin, not a static asset, nothing found yet) is
+  // treated as a failed scrape.
+  const handleHttpError = useCallback(
+    (event: WebViewHttpErrorEvent) => {
+      const { statusCode, url } = event.nativeEvent;
+      log('HTTP error:', statusCode, url);
+      const isServerError =
+        statusCode === 403 || statusCode === 429 || statusCode >= 500;
+      if (!isServerError) return;
+      if (hasExtractedDataRef.current || sawCandidatesRef.current) return;
+      if (STATIC_ASSET_RE.test(url)) return;
+      if (!sameOrigin(url, embedUrl)) {
+        log('ignoring subresource HTTP error outside the embed origin');
+        return;
+      }
+      scheduleRetry(`HTTP ${statusCode}`);
+    },
+    [embedUrl, scheduleRetry],
   );
 
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, []);
 
@@ -1027,11 +1549,18 @@ export const WebViewScraper = ({
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
+        onHttpError={handleHttpError}
         onShouldStartLoadWithRequest={(req) => {
           log('navigation:', req.url);
           // Native media loads (esp. iOS HLS) sometimes show up here
           // instead of going through the page's fetch/XHR hooks.
           extractFromUrl(req.url);
+          // Popunders and app-store/intent deep links would otherwise replace
+          // the embed (and the player) with an ad.
+          if (isBlockedTopLevelNavigation(req.url)) {
+            log('blocked navigation:', req.url);
+            return false;
+          }
           return true;
         }}
         javaScriptEnabled

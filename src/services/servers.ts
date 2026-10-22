@@ -94,8 +94,27 @@ export const PLAYBACK_SERVERS: PlaybackServer[] = [
   },
 ];
 
-/** Many hosts 403 unless the request looks like it came from their page. */
-export const playbackHeadersFor = (server: PlaybackServer) => ({
-  Referer: `${server.url}/`,
-  Origin: originOf(server.url),
-});
+/**
+ * Many hosts 403 unless the request looks like it came from their page.
+ *
+ * When the scraper tells us which document actually produced the stream
+ * (`pageUrl` — the embed page, or the nested player frame it was promoted
+ * to), that document is the correct `Referer`/`Origin`; the server's
+ * homepage is only a fallback. `cookies` come from the same page and are
+ * only forwarded when the stream lives on the page's own registrable
+ * domain.
+ */
+export const playbackHeadersFor = (
+  server: PlaybackServer,
+  pageUrl?: string | null,
+  cookies?: string | null,
+): Record<string, string> => {
+  const referer =
+    pageUrl && /^https?:\/\//i.test(pageUrl) ? pageUrl : `${server.url}/`;
+  const headers: Record<string, string> = {
+    Referer: referer,
+    Origin: originOf(referer),
+  };
+  if (cookies) headers.Cookie = cookies;
+  return headers;
+};

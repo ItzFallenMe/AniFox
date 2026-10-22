@@ -121,10 +121,16 @@ normally but opens on the TMDB setup screen.
 2. The scraper builds an embed URL from the TMDB id (plus season/episode) and
    loads it in a hidden, full-size WebView.
 3. Injected scripts hook `fetch`, XHR, `<video>.src`, video.js and performance
-   entries, auto-tap play overlays, and post the resolved `m3u8`/`mp4`/`mpd`
-   URL back to React Native.
-4. The stream plays in `react-native-video` with the server's `Referer`/`Origin`
-   headers. If it errors, the app moves to the next untried server.
+   entries, and auto-tap play overlays (including inside nested same-origin
+   frames). Every video-looking URL becomes a *candidate*; the script scores
+   them (master HLS > MPD > MP4, media-element evidence > JSON > resource
+   timing, minus ad/proxy/thumbnail penalties) and posts the best one instead
+   of whatever loaded first. On timeout it still reports the best candidate it
+   saw, and the component reloads once before failing.
+4. The stream plays in `react-native-video` with `Referer`/`Origin` (and
+   same-site cookies) taken from the document that actually produced it, and
+   falls back to the server's homepage. If it errors, the app moves to the
+   next untried server.
 
 Servers live in `src/services/servers.ts` with per-server URL templates and
 timeouts. Add, remove or reorder them there.
@@ -138,7 +144,8 @@ npm test
 ```
 
 Unit tests cover the embed URL builder (default patterns, custom templates,
-type aliases, placeholders and slugs).
+type aliases, placeholders and slugs), playback headers, and the scraper's
+candidate ranking (executed in a small DOM harness).
 
 ## Disclaimer
 
