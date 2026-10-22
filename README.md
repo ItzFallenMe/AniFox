@@ -15,7 +15,7 @@ Created and maintained by **ItzFallenMe** · [github.com/ItzFallenMe](https://gi
 | **Search** | Debounced multi-search across anime, movies and series with quick suggestions. |
 | **Details** | Backdrop hero, ratings, genres, synopsis, cast, similar titles, and a full season/episode picker for series. |
 | **Player** | Resolves a direct stream from twenty embed providers with Flickv4's scraper, custom playback controls (playback speed, buffered scrub bar, double-tap seek), Flickv4's subtitle system (Vidrock/Wyzie track search, cue rendering, sync offset), server switching and automatic failover. |
-| **You** | Project, creator credit, server list, data sources and disclaimer. |
+| **You** | Project, creator credit, server list, data sources, disclaimer, and the entry point to **Settings** — liquid-glass tab bar, playback defaults (server, speed, autoplay) and subtitle styling, all persisted on device. |
 
 The catalog is metadata for anime, movies and series from **TMDB**; playback is resolved from third-party embed providers, exactly like Flickv4.
 
@@ -25,6 +25,7 @@ The catalog is metadata for anime, movies and series from **TMDB**; playback is 
 - **TypeScript 6**
 - React Navigation 7 (bottom tabs + native stack)
 - `react-native-video` for playback, `react-native-webview` for stream resolution
+- `@react-native-async-storage/async-storage` for persisted settings
 - `lucide-react-native` icons, `react-native-linear-gradient`
 - `@sbaiahmed1/react-native-blur` for the real backdrop-blur glass tab bar
 - Outfit + Inter, bundled as Android assets
@@ -103,9 +104,10 @@ normally but opens on the TMDB setup screen.
 │   │   └── ui/                   dashboard-style primitives
 │   ├── config/env.ts             TMDB key, region, subtitle keys, app info
 │   ├── config/homeFeed.ts        spec-driven home feed (Flickv4 port)
-│   ├── hooks/                    home, anime, search and detail data
+│   ├── config/settings.ts        preference types, defaults, glass presets
+│   ├── hooks/                    home, anime, search, detail, settings and subtitles
 │   ├── navigation/               root stack, tabs, floating tab bar
-│   ├── screens/                  Splash, Home, Anime, Search, Detail, Player, You
+│   ├── screens/                  Splash, Home, Anime, Search, Detail, Player, You, Settings
 │   ├── services/
 │   │   ├── tmdb.ts               TMDB client
 │   │   ├── categories.ts         feed category queries

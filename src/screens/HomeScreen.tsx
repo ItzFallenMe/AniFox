@@ -8,6 +8,7 @@ import { useHomeFeed } from '../hooks/useHomeFeed';
 import { colors, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
+import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { ContentRow } from '../components/ContentRow';
@@ -25,9 +26,11 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen = () => {
   const navigation = useNavigation<Nav>();
-  const { hero, rows, loading, refreshing, error, refresh, retry } = useHomeFeed();
+  const { hero, rows, loading, refreshing, error, refresh, retry } =
+    useHomeFeed();
 
-  const openDetail = (item: MediaItem) => navigation.navigate('Detail', { item });
+  const openDetail = (item: MediaItem) =>
+    navigation.navigate('Detail', { item });
   const play = (item: MediaItem) => navigation.navigate('Player', { item });
 
   const header = (
@@ -63,7 +66,8 @@ export const HomeScreen = () => {
           colors={[colors.primary]}
           progressBackgroundColor={colors.surface}
         />
-      }>
+      }
+    >
       {header}
 
       {loading ? (
@@ -77,33 +81,37 @@ export const HomeScreen = () => {
         />
       ) : (
         <>
-          <HeroCarousel items={hero} onPlay={play} onInfo={openDetail} />
+          <FadeInView duration={520} offset={8}>
+            <HeroCarousel items={hero} onPlay={play} onInfo={openDetail} />
+          </FadeInView>
 
           <View style={styles.rows}>
-            {rows.map(row =>
-              row.variant === 'topTen' ? (
-                <TopTenRow
-                  key={row.key}
-                  kicker={row.kicker}
-                  title={row.title}
-                  items={row.items}
-                  onPress={openDetail}
-                />
-              ) : (
-                <ContentRow
-                  key={row.key}
-                  kicker={row.kicker}
-                  title={row.title}
-                  items={row.items}
-                  onPress={openDetail}
-                />
-              ),
-            )}
+            {rows.map((row, index) => (
+              <FadeInView key={row.key} delay={Math.min(index, 6) * 70}>
+                {row.variant === 'topTen' ? (
+                  <TopTenRow
+                    kicker={row.kicker}
+                    title={row.title}
+                    items={row.items}
+                    onPress={openDetail}
+                  />
+                ) : (
+                  <ContentRow
+                    kicker={row.kicker}
+                    title={row.title}
+                    items={row.items}
+                    onPress={openDetail}
+                  />
+                )}
+              </FadeInView>
+            ))}
           </View>
 
           <View style={styles.footer}>
             <View style={styles.footerLine} />
-            <Kicker>{APP_INFO.name} · curated by {APP_INFO.creator}</Kicker>
+            <Kicker>
+              {APP_INFO.name} · curated by {APP_INFO.creator}
+            </Kicker>
           </View>
         </>
       )}

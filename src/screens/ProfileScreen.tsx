@@ -1,7 +1,24 @@
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowUpRight, Database, Server, ShieldCheck } from 'lucide-react-native';
+import {
+  Image,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  ArrowUpRight,
+  ChevronRight,
+  Database,
+  Server,
+  Settings2,
+  ShieldCheck,
+} from 'lucide-react-native';
 
 import { APP_INFO, TMDB_CONFIG, isTmdbConfigured } from '../config/env';
+import type { RootStackParamList } from '../navigation/types';
 import { PLAYBACK_SERVERS } from '../services/servers';
 import { colors, fonts, radius, spacing } from '../theme';
 import { AppHeader } from '../components/AppHeader';
@@ -29,7 +46,10 @@ export const ProfileScreen = () => (
       <GlassCard style={styles.brandCard}>
         <View style={styles.brandRow}>
           <View style={styles.logoTile}>
-            <Image source={require('../../assets/anifox.png')} style={styles.logo} />
+            <Image
+              source={require('../../assets/anifox.png')}
+              style={styles.logo}
+            />
           </View>
           <View style={styles.brandText}>
             <Text style={styles.brandName}>{APP_INFO.name}</Text>
@@ -43,13 +63,19 @@ export const ProfileScreen = () => (
       </GlassCard>
     </View>
 
+    <SectionHeader kicker="Preferences" title="App settings" />
+    <View style={styles.section}>
+      <SettingsEntry />
+    </View>
+
     <SectionHeader kicker="The creator" title="Behind AniFox" />
     <View style={styles.section}>
       <Pressable
         accessibilityRole="link"
         accessibilityLabel="Open ItzFallenMe on GitHub"
         onPress={() => Linking.openURL(APP_INFO.creatorUrl)}
-        style={({ pressed }) => pressed && styles.pressed}>
+        style={({ pressed }) => pressed && styles.pressed}
+      >
         <GlassCard style={styles.creatorCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>IF</Text>
@@ -75,12 +101,18 @@ export const ProfileScreen = () => (
         {PLAYBACK_SERVERS.map((server, index) => (
           <View
             key={server.id}
-            style={[styles.serverRow, index < PLAYBACK_SERVERS.length - 1 && styles.rowDivider]}>
+            style={[
+              styles.serverRow,
+              index < PLAYBACK_SERVERS.length - 1 && styles.rowDivider,
+            ]}
+          >
             <View style={styles.serverIcon}>
               <Server color={colors.textMuted} size={14} strokeWidth={2} />
             </View>
             <Text style={styles.serverName}>{server.name}</Text>
-            <Text style={styles.serverIndex}>{String(index + 1).padStart(2, '0')}</Text>
+            <Text style={styles.serverIndex}>
+              {String(index + 1).padStart(2, '0')}
+            </Text>
           </View>
         ))}
       </GlassCard>
@@ -107,7 +139,11 @@ export const ProfileScreen = () => (
         <Pressable
           accessibilityRole="link"
           onPress={() => Linking.openURL('https://www.themoviedb.org')}
-          style={({ pressed }) => [styles.sourceLink, pressed && styles.pressed]}>
+          style={({ pressed }) => [
+            styles.sourceLink,
+            pressed && styles.pressed,
+          ]}
+        >
           <Text style={styles.sourceLinkText}>themoviedb.org</Text>
           <ArrowUpRight color={colors.textMuted} size={14} strokeWidth={2} />
         </Pressable>
@@ -129,8 +165,8 @@ export const ProfileScreen = () => (
         <Text style={styles.legal}>
           {APP_INFO.name} does not host, upload or distribute any video content.
           All titles, artwork and trademarks belong to their respective owners.
-          This app is a personal project and is not affiliated with any streaming
-          service or with TMDB.
+          This app is a personal project and is not affiliated with any
+          streaming service or with TMDB.
         </Text>
       </GlassCard>
     </View>
@@ -140,14 +176,49 @@ export const ProfileScreen = () => (
         © 2026 {APP_INFO.creator}. All rights reserved.
       </Text>
       <Text style={styles.buildNote}>
-        {TMDB_CONFIG.API_KEY && isTmdbConfigured ? 'TMDB connected' : 'TMDB not configured'}
+        {TMDB_CONFIG.API_KEY && isTmdbConfigured
+          ? 'TMDB connected'
+          : 'TMDB not configured'}
       </Text>
     </View>
   </Screen>
 );
 
+const SettingsEntry = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open settings"
+      onPress={() => navigation.navigate('Settings')}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
+      <GlassCard style={styles.settingsCard}>
+        <View style={styles.sourceIcon}>
+          <Settings2 color={colors.text} size={16} strokeWidth={2} />
+        </View>
+        <View style={styles.sourceText}>
+          <Text style={styles.sourceName}>Settings</Text>
+          <Text style={styles.sourceBody}>
+            Liquid glass bar, playback defaults and subtitle styling.
+          </Text>
+        </View>
+        <ChevronRight color={colors.textMuted} size={16} strokeWidth={2} />
+      </GlassCard>
+    </Pressable>
+  );
+};
+
 const styles = StyleSheet.create({
   content: { paddingBottom: 140 },
+  settingsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
   pageHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.xxl },
   title: {
     fontFamily: fonts.displayBlack,

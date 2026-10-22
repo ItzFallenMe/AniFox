@@ -52,7 +52,8 @@ export const useSubtitles = ({
       .then(results => {
         if (cancelled) return;
         setTracks(results);
-        if (results.length === 0) setError('No subtitles found for this title.');
+        if (results.length === 0)
+          setError('No subtitles found for this title.');
       })
       .catch(caught => {
         if (cancelled) return;

@@ -13,6 +13,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Detail: { item: MediaItem };
+  Settings: undefined;
   Player: {
     item: MediaItem;
     season?: number;

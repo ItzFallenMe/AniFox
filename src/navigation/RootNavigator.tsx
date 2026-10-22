@@ -12,6 +12,7 @@ import { SearchScreen } from '../screens/SearchScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { DetailScreen } from '../screens/DetailScreen';
 import { PlayerScreen } from '../screens/PlayerScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import { TabBar } from './TabBar';
 import type { MainTabParamList, RootStackParamList } from './types';
 import { colors } from '../theme';
@@ -71,6 +72,7 @@ export const RootNavigator = () => (
         component={PlayerScreen}
         options={{ animation: 'fade' }}
       />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   </NavigationContainer>
 );

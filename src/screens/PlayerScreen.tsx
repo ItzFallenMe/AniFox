@@ -7,6 +7,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -53,11 +54,24 @@ import { getTitle, type MediaItem } from '../types';
 import { formatClock } from '../utils/format';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
-import { WebViewScraper, type ExtractedStream } from '../components/WebViewScraper';
+import {
+  WebViewScraper,
+  type ExtractedStream,
+} from '../components/WebViewScraper';
 import { SubtitleOverlay } from '../components/player/SubtitleOverlay';
 import { useSubtitles } from '../hooks/useSubtitles';
 import { useSubtitleSettings } from '../hooks/useSubtitleSettings';
-import { GhostButton, Kicker, PrimaryButton } from '../components/ui/Primitives';
+import { useSettings } from '../hooks/useSettings';
+import {
+  getPreferredServerId,
+  mediaKeyFor,
+  rememberWorkingServer,
+} from '../services/serverPreference';
+import {
+  GhostButton,
+  Kicker,
+  PrimaryButton,
+} from '../components/ui/Primitives';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = {
@@ -100,7 +114,23 @@ export const PlayerScreen = () => {
   const mediaType: 'movie' | 'tv' = item.media_type === 'tv' ? 'tv' : 'movie';
   const title = getTitle(item);
 
-  const [serverIndex, setServerIndex] = useState(0);
+  const { settings } = useSettings();
+
+  // One key per movie / episode: the server that worked for S1E1 of a show may
+  // not carry S1E2, so preferences are never shared across episodes.
+  const preferenceKey = mediaKeyFor(item.id, mediaType, season, episode);
+  const [lastWorkingId, setLastWorkingId] = useState<string | null>(() =>
+    getPreferredServerId(preferenceKey),
+  );
+
+  const [serverIndex, setServerIndex] = useState(() => {
+    const targetId =
+      getPreferredServerId(preferenceKey) ?? settings.defaultServerId;
+    const preferred = PLAYBACK_SERVERS.findIndex(
+      candidate => candidate.id === targetId,
+    );
+    return preferred >= 0 ? preferred : 0;
+  });
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<Status>('scraping');
   const [source, setSource] = useState<PlayableSource | null>(null);
@@ -110,7 +140,7 @@ export const PlayerScreen = () => {
   const [settingsSheet, setSettingsSheet] = useState(false);
   const [subtitleSheet, setSubtitleSheet] = useState(false);
 
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(settings.autoPlay);
   const [buffering, setBuffering] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -118,7 +148,9 @@ export const PlayerScreen = () => {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [barWidth, setBarWidth] = useState(1);
   const [ended, setEnded] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [playbackRate, setPlaybackRate] = useState<number>(
+    settings.defaultPlaybackRate,
+  );
   const [seekFlash, setSeekFlash] = useState<'back' | 'forward' | null>(null);
 
   const videoRef = useRef<VideoRef>(null);
@@ -126,6 +158,7 @@ export const PlayerScreen = () => {
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sheetOpenRef = useRef(false);
   const lastTapRef = useRef(0);
+  const controlsAnim = useRef(new Animated.Value(1)).current;
 
   const server = PLAYBACK_SERVERS[serverIndex];
 
@@ -186,6 +219,15 @@ export const PlayerScreen = () => {
     scheduleHide();
   }, [scheduleHide]);
 
+  // Fade (and lift) the control HUD instead of snapping it in and out.
+  useEffect(() => {
+    Animated.timing(controlsAnim, {
+      toValue: controlsVisible ? 1 : 0,
+      duration: controlsVisible ? 180 : 240,
+      useNativeDriver: true,
+    }).start();
+  }, [controlsVisible, controlsAnim]);
+
   const startServer = useCallback((index: number) => {
     setServerIndex(index);
     setSource(null);
@@ -206,6 +248,8 @@ export const PlayerScreen = () => {
 
   const handleExtracted = useCallback(
     (data: ExtractedStream) => {
+      rememberWorkingServer(preferenceKey, server.id);
+      setLastWorkingId(server.id);
       setSource({
         uri: data.videoUrl,
         type: sourceType(data.videoUrl),
@@ -213,10 +257,10 @@ export const PlayerScreen = () => {
       });
       setStatus('ready');
       setBuffering(true);
-      setPlaying(true);
+      setPlaying(settings.autoPlay);
       scheduleHide();
     },
-    [scheduleHide, server],
+    [preferenceKey, scheduleHide, server, settings.autoPlay],
   );
 
   const handleScrapeError = useCallback(
@@ -351,7 +395,11 @@ export const PlayerScreen = () => {
       {status === 'ready' && source ? (
         <Video
           ref={videoRef}
-          source={{ uri: source.uri, headers: source.headers, type: source.type }}
+          source={{
+            uri: source.uri,
+            headers: source.headers,
+            type: source.type,
+          }}
           style={StyleSheet.absoluteFill}
           resizeMode="contain"
           paused={!playing}
@@ -396,7 +444,8 @@ export const PlayerScreen = () => {
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={handleOverlayTap}
-          onLongPress={poke}>
+          onLongPress={poke}
+        >
           <SubtitleOverlay
             text={activeCue?.text ?? null}
             controlsVisible={controlsVisible}
@@ -408,138 +457,195 @@ export const PlayerScreen = () => {
               pointerEvents="none"
               style={[
                 styles.seekFlash,
-                seekFlash === 'back' ? styles.seekFlashLeft : styles.seekFlashRight,
-              ]}>
+                seekFlash === 'back'
+                  ? styles.seekFlashLeft
+                  : styles.seekFlashRight,
+              ]}
+            >
               <Text style={styles.seekFlashText}>
                 {seekFlash === 'back' ? '−10s' : '+10s'}
               </Text>
             </View>
           ) : null}
 
-          {controlsVisible ? (
-            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-              <LinearGradient
-                colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0)']}
-                pointerEvents="none"
-                style={[styles.topGradient, { paddingTop: insets.top + 8 }]}
-              />
+          <Animated.View
+            pointerEvents={controlsVisible ? 'box-none' : 'none'}
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: controlsAnim,
+                transform: [
+                  {
+                    translateY: controlsAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(0,0,0,0.82)', 'rgba(0,0,0,0)']}
+              pointerEvents="none"
+              style={[styles.topGradient, { paddingTop: insets.top + 8 }]}
+            />
 
-              <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+            <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close player"
+                onPress={navigation.goBack}
+                style={styles.circleButton}
+              >
+                <ArrowLeft color={colors.text} size={18} strokeWidth={2.2} />
+              </Pressable>
+              <View style={styles.topTitleWrap}>
+                <Text numberOfLines={1} style={styles.topTitle}>
+                  {title}
+                </Text>
+                <Text style={styles.topSubtitle}>{subtitle}</Text>
+              </View>
+              <View style={styles.livePill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>{server.name.toUpperCase()}</Text>
+              </View>
+            </View>
+
+            <View style={styles.centerControls} pointerEvents="box-none">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back 10 seconds"
+                onPress={() => seekTo(currentTime - SEEK_STEP_SECONDS)}
+                style={styles.skipButton}
+              >
+                <RotateCcw color={colors.text} size={24} strokeWidth={2} />
+                <Text style={styles.skipLabel}>10</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={playing ? 'Pause' : 'Play'}
+                onPress={togglePlay}
+                style={styles.playCircle}
+              >
+                {playing ? (
+                  <Pause
+                    color={colors.onPrimary}
+                    size={26}
+                    strokeWidth={2.4}
+                    fill={colors.onPrimary}
+                  />
+                ) : (
+                  <Play
+                    color={colors.onPrimary}
+                    size={26}
+                    strokeWidth={2.4}
+                    fill={colors.onPrimary}
+                  />
+                )}
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Forward 10 seconds"
+                onPress={() => seekTo(currentTime + SEEK_STEP_SECONDS)}
+                style={styles.skipButton}
+              >
+                <SkipForward color={colors.text} size={24} strokeWidth={2} />
+                <Text style={styles.skipLabel}>10</Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={[
+                styles.bottomBar,
+                { paddingBottom: insets.bottom + spacing.lg },
+              ]}
+              pointerEvents="box-none"
+            >
+              <View style={styles.timeRow}>
+                <Text style={styles.time}>{formatClock(currentTime)}</Text>
+                <Text style={styles.time}>{formatClock(duration)}</Text>
+              </View>
+
+              <Pressable
+                onLayout={onBarLayout}
+                onPress={event => onBarPress(event.nativeEvent.locationX)}
+                style={styles.progressTouch}
+              >
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressBuffered,
+                      { width: `${buffered * 100}%` },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${progress * 100}%` },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressThumb,
+                      { left: `${progress * 100}%` },
+                    ]}
+                  />
+                </View>
+              </Pressable>
+
+              <View style={styles.bottomActions}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Close player"
-                  onPress={navigation.goBack}
-                  style={styles.circleButton}>
-                  <ArrowLeft color={colors.text} size={18} strokeWidth={2.2} />
-                </Pressable>
-                <View style={styles.topTitleWrap}>
-                  <Text numberOfLines={1} style={styles.topTitle}>
-                    {title}
-                  </Text>
-                  <Text style={styles.topSubtitle}>{subtitle}</Text>
-                </View>
-                <View style={styles.livePill}>
+                  onPress={() => setServerSheet(true)}
+                  style={styles.serverButton}
+                >
                   <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>{server.name.toUpperCase()}</Text>
-                </View>
-              </View>
-
-              <View style={styles.centerControls} pointerEvents="box-none">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Back 10 seconds"
-                  onPress={() => seekTo(currentTime - SEEK_STEP_SECONDS)}
-                  style={styles.skipButton}>
-                  <RotateCcw color={colors.text} size={24} strokeWidth={2} />
-                  <Text style={styles.skipLabel}>10</Text>
+                  <Text style={styles.serverButtonText}>{server.name}</Text>
+                  <Text style={styles.serverButtonHint}>CHANGE</Text>
                 </Pressable>
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={playing ? 'Pause' : 'Play'}
-                  onPress={togglePlay}
-                  style={styles.playCircle}>
-                  {playing ? (
-                    <Pause color={colors.onPrimary} size={26} strokeWidth={2.4} fill={colors.onPrimary} />
-                  ) : (
-                    <Play color={colors.onPrimary} size={26} strokeWidth={2.4} fill={colors.onPrimary} />
-                  )}
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Forward 10 seconds"
-                  onPress={() => seekTo(currentTime + SEEK_STEP_SECONDS)}
-                  style={styles.skipButton}>
-                  <SkipForward color={colors.text} size={24} strokeWidth={2} />
-                  <Text style={styles.skipLabel}>10</Text>
-                </Pressable>
-              </View>
-
-              <View
-                style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.lg }]}
-                pointerEvents="box-none">
-                <View style={styles.timeRow}>
-                  <Text style={styles.time}>{formatClock(currentTime)}</Text>
-                  <Text style={styles.time}>{formatClock(duration)}</Text>
-                </View>
-
-                <Pressable
-                  onLayout={onBarLayout}
-                  onPress={event => onBarPress(event.nativeEvent.locationX)}
-                  style={styles.progressTouch}>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[styles.progressBuffered, { width: `${buffered * 100}%` }]}
-                    />
-                    <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                    <View style={[styles.progressThumb, { left: `${progress * 100}%` }]} />
-                  </View>
-                </Pressable>
-
-                <View style={styles.bottomActions}>
+                <View style={styles.actionGroup}>
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => setServerSheet(true)}
-                    style={styles.serverButton}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.serverButtonText}>{server.name}</Text>
-                    <Text style={styles.serverButtonHint}>CHANGE</Text>
+                    accessibilityLabel="Subtitles"
+                    onPress={() => setSubtitleSheet(true)}
+                    style={[
+                      styles.circleButton,
+                      subtitleId != null && styles.circleButtonActive,
+                    ]}
+                  >
+                    <Captions color={colors.text} size={16} strokeWidth={2.2} />
                   </Pressable>
-
-                  <View style={styles.actionGroup}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Subtitles"
-                      onPress={() => setSubtitleSheet(true)}
-                      style={[
-                        styles.circleButton,
-                        subtitleId != null && styles.circleButtonActive,
-                      ]}>
-                      <Captions color={colors.text} size={16} strokeWidth={2.2} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Playback settings"
-                      onPress={() => setSettingsSheet(true)}
-                      style={[
-                        styles.circleButton,
-                        playbackRate !== 1 && styles.circleButtonActive,
-                      ]}>
-                      <Settings2 color={colors.text} size={16} strokeWidth={2.2} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Restart"
-                      onPress={() => seekTo(0)}
-                      style={styles.circleButton}>
-                      <SkipBack color={colors.text} size={16} strokeWidth={2.2} />
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Playback settings"
+                    onPress={() => setSettingsSheet(true)}
+                    style={[
+                      styles.circleButton,
+                      playbackRate !== 1 && styles.circleButtonActive,
+                    ]}
+                  >
+                    <Settings2
+                      color={colors.text}
+                      size={16}
+                      strokeWidth={2.2}
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Restart"
+                    onPress={() => seekTo(0)}
+                    style={styles.circleButton}
+                  >
+                    <SkipBack color={colors.text} size={16} strokeWidth={2.2} />
+                  </Pressable>
                 </View>
               </View>
             </View>
-          ) : null}
+          </Animated.View>
         </Pressable>
       ) : null}
 
@@ -553,7 +659,11 @@ export const PlayerScreen = () => {
         <View style={styles.endedOverlay}>
           <Text style={styles.endedTitle}>Finished</Text>
           <Text style={styles.endedMessage}>{title}</Text>
-          <PrimaryButton label="Watch again" icon={RotateCcw} onPress={() => seekTo(0)} />
+          <PrimaryButton
+            label="Watch again"
+            icon={RotateCcw}
+            onPress={() => seekTo(0)}
+          />
           <GhostButton label="Back to details" onPress={navigation.goBack} />
         </View>
       ) : null}
@@ -562,6 +672,7 @@ export const PlayerScreen = () => {
         visible={serverSheet}
         servers={PLAYBACK_SERVERS}
         activeId={server.id}
+        lastWorkingId={lastWorkingId}
         failed={failedServers}
         onClose={closeSheets}
         onSelect={index => {
@@ -603,21 +714,24 @@ export const PlayerScreen = () => {
           poke();
         }}
         onOffsetChange={delta =>
-          setSubtitleOffset(current =>
-            Math.round((current + delta) * 10) / 10,
-          )
+          setSubtitleOffset(current => Math.round((current + delta) * 10) / 10)
         }
         onFontSizeChange={delta =>
           setSubtitleSettings({
-            fontSize: Math.min(28, Math.max(10, subtitleSettings.fontSize + delta)),
+            fontSize: Math.min(
+              28,
+              Math.max(10, subtitleSettings.fontSize + delta),
+            ),
           })
         }
         onBackgroundOpacityChange={delta =>
           setSubtitleSettings({
             backgroundOpacity:
               Math.round(
-                Math.min(1, Math.max(0, subtitleSettings.backgroundOpacity + delta)) *
-                  100,
+                Math.min(
+                  1,
+                  Math.max(0, subtitleSettings.backgroundOpacity + delta),
+                ) * 100,
               ) / 100,
           })
         }
@@ -651,7 +765,8 @@ const ScrapingState = ({
           accessibilityRole="button"
           accessibilityLabel="Cancel"
           onPress={onCancel}
-          style={styles.circleButton}>
+          style={styles.circleButton}
+        >
           <X color={colors.text} size={18} strokeWidth={2.2} />
         </Pressable>
         <Kicker>Resolving stream</Kicker>
@@ -666,7 +781,11 @@ const ScrapingState = ({
         <Text style={styles.scrapeBody}>
           {server.name} is warming up. This can take a few seconds.
         </Text>
-        <GhostButton label="Change server" onPress={onChangeServer} style={styles.scrapeAction} />
+        <GhostButton
+          label="Change server"
+          onPress={onChangeServer}
+          style={styles.scrapeAction}
+        />
       </View>
     </View>
   );
@@ -692,7 +811,8 @@ const ErrorOverlay = ({
           accessibilityRole="button"
           accessibilityLabel="Back"
           onPress={onBack}
-          style={styles.circleButton}>
+          style={styles.circleButton}
+        >
           <ArrowLeft color={colors.text} size={18} strokeWidth={2.2} />
         </Pressable>
       </View>
@@ -730,11 +850,17 @@ const SheetShell = ({
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.sheetBackdrop} onPress={onClose}>
         <Pressable
           style={[styles.sheet, { paddingBottom: insets.bottom + spacing.xl }]}
-          onPress={() => {}}>
+          onPress={() => {}}
+        >
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
             <View>
@@ -745,12 +871,16 @@ const SheetShell = ({
               accessibilityRole="button"
               accessibilityLabel="Close sheet"
               onPress={onClose}
-              style={styles.circleButton}>
+              style={styles.circleButton}
+            >
               <X color={colors.text} size={16} strokeWidth={2.2} />
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetList}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.sheetList}
+          >
             {children}
           </ScrollView>
 
@@ -765,6 +895,7 @@ const ServerSheet = ({
   visible,
   servers,
   activeId,
+  lastWorkingId,
   failed,
   onSelect,
   onClose,
@@ -772,6 +903,7 @@ const ServerSheet = ({
   visible: boolean;
   servers: PlaybackServer[];
   activeId: string;
+  lastWorkingId: string | null;
   failed: string[];
   onSelect: (index: number) => void;
   onClose: () => void;
@@ -781,7 +913,8 @@ const ServerSheet = ({
     onClose={onClose}
     kicker="Playback source"
     title="Choose a server"
-    note="Streams come from third-party providers. If one fails, try another.">
+    note="Streams come from third-party providers. If one fails, try another."
+  >
     {servers.map((server, index) => {
       const active = server.id === activeId;
       const hasFailed = failed.includes(server.id);
@@ -793,11 +926,13 @@ const ServerSheet = ({
             styles.serverRow,
             active && styles.serverRowActive,
             pressed && styles.serverRowPressed,
-          ]}>
+          ]}
+        >
           <View style={styles.serverRowText}>
             <Text style={styles.serverRowName}>{server.name}</Text>
             <Text style={styles.serverRowMeta}>
               {hasFailed ? 'Did not resolve · ' : ''}
+              {server.id === lastWorkingId ? 'Worked last time · ' : ''}
               {server.scraperTimeoutSeconds ?? 60}s timeout
             </Text>
           </View>
@@ -833,16 +968,22 @@ const SettingsSheet = ({
     visible={visible}
     onClose={onClose}
     kicker="Playback"
-    title="Player settings">
+    title="Player settings"
+  >
     <Text style={styles.groupLabel}>Speed</Text>
     <View style={styles.chipRow}>
       {PLAYBACK_SPEEDS.map(rate => (
         <Pressable
           key={rate}
           onPress={() => onSelectRate(rate)}
-          style={[styles.chip, rate === playbackRate && styles.chipActive]}>
+          style={[styles.chip, rate === playbackRate && styles.chipActive]}
+        >
           <Text
-            style={[styles.chipText, rate === playbackRate && styles.chipTextActive]}>
+            style={[
+              styles.chipText,
+              rate === playbackRate && styles.chipTextActive,
+            ]}
+          >
             {rate === 1 ? 'Normal' : `${rate}×`}
           </Text>
         </Pressable>
@@ -898,10 +1039,15 @@ const SubtitleSheet = ({
     onClose={onClose}
     kicker="Accessibility"
     title="Subtitles"
-    note="Tracks are searched across Vidrock and Wyzie.">
+    note="Tracks are searched across Vidrock and Wyzie."
+  >
     <Pressable
       onPress={() => onSelect(null)}
-      style={({ pressed }) => [styles.serverRow, pressed && styles.serverRowPressed]}>
+      style={({ pressed }) => [
+        styles.serverRow,
+        pressed && styles.serverRowPressed,
+      ]}
+    >
       <View style={styles.serverRowText}>
         <Text style={styles.serverRowName}>Off</Text>
         <Text style={styles.serverRowMeta}>No captions</Text>
@@ -918,9 +1064,7 @@ const SubtitleSheet = ({
       </View>
     ) : null}
 
-    {!loading && error ? (
-      <Text style={styles.sheetNote}>{error}</Text>
-    ) : null}
+    {!loading && error ? <Text style={styles.sheetNote}>{error}</Text> : null}
 
     {tracks.map(track => {
       const active = track.id === selectedId;
@@ -932,7 +1076,8 @@ const SubtitleSheet = ({
             styles.serverRow,
             active && styles.serverRowActive,
             pressed && styles.serverRowPressed,
-          ]}>
+          ]}
+        >
           <View style={styles.serverRowText}>
             <Text style={styles.serverRowName}>
               {track.display}
@@ -950,32 +1095,38 @@ const SubtitleSheet = ({
       );
     })}
 
-    {loadingCues ? (
-      <Text style={styles.sheetNote}>Loading cues…</Text>
-    ) : null}
+    {loadingCues ? <Text style={styles.sheetNote}>Loading cues…</Text> : null}
 
     <Text style={styles.groupLabel}>Sync offset</Text>
     <View style={styles.stepperRow}>
       <Pressable
         onPress={() => onOffsetChange(-SUBTITLE_OFFSET_STEP)}
-        style={styles.stepperButton}>
+        style={styles.stepperButton}
+      >
         <Minus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
       <Text style={styles.stepperValue}>{formatOffset(offset)}</Text>
       <Pressable
         onPress={() => onOffsetChange(SUBTITLE_OFFSET_STEP)}
-        style={styles.stepperButton}>
+        style={styles.stepperButton}
+      >
         <Plus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
     </View>
 
     <Text style={styles.groupLabel}>Text size</Text>
     <View style={styles.stepperRow}>
-      <Pressable onPress={() => onFontSizeChange(-1)} style={styles.stepperButton}>
+      <Pressable
+        onPress={() => onFontSizeChange(-1)}
+        style={styles.stepperButton}
+      >
         <Minus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
       <Text style={styles.stepperValue}>{Math.round(fontSize)}</Text>
-      <Pressable onPress={() => onFontSizeChange(1)} style={styles.stepperButton}>
+      <Pressable
+        onPress={() => onFontSizeChange(1)}
+        style={styles.stepperButton}
+      >
         <Plus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
     </View>
@@ -984,7 +1135,8 @@ const SubtitleSheet = ({
     <View style={styles.stepperRow}>
       <Pressable
         onPress={() => onBackgroundOpacityChange(-0.1)}
-        style={styles.stepperButton}>
+        style={styles.stepperButton}
+      >
         <Minus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
       <Text style={styles.stepperValue}>
@@ -992,7 +1144,8 @@ const SubtitleSheet = ({
       </Text>
       <Pressable
         onPress={() => onBackgroundOpacityChange(0.1)}
-        style={styles.stepperButton}>
+        style={styles.stepperButton}
+      >
         <Plus color={colors.text} size={16} strokeWidth={2.4} />
       </Pressable>
     </View>
@@ -1284,7 +1437,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
+  errorActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+  },
 
   sheetBackdrop: {
     flex: 1,

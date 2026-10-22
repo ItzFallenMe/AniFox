@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Film, Star } from 'lucide-react-native';
+
+import { PressableScale } from './animations';
 
 import { colors, fonts, radius, spacing } from '../theme';
 import { TMDBService } from '../services/tmdb';
@@ -29,11 +31,12 @@ export const PosterCard = ({
   const year = getYear(item);
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={getTitle(item)}
       onPress={() => onPress(item)}
-      style={({ pressed }) => [{ width }, pressed && styles.pressed]}>
+      style={[styles.card, { width }]}
+    >
       <View style={[styles.frame, { height: width * 1.48 }]}>
         {uri && !failed ? (
           <Image
@@ -49,12 +52,21 @@ export const PosterCard = ({
         )}
 
         <View style={styles.rating}>
-          <Star color={colors.text} size={9} strokeWidth={2.6} fill={colors.text} />
-          <Text style={styles.ratingText}>{formatRating(item.vote_average)}</Text>
+          <Star
+            color={colors.text}
+            size={9}
+            strokeWidth={2.6}
+            fill={colors.text}
+          />
+          <Text style={styles.ratingText}>
+            {formatRating(item.vote_average)}
+          </Text>
         </View>
 
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{item.media_type === 'tv' ? 'TV' : 'FILM'}</Text>
+          <Text style={styles.badgeText}>
+            {item.media_type === 'tv' ? 'TV' : 'FILM'}
+          </Text>
         </View>
 
         {rank != null ? (
@@ -64,16 +76,19 @@ export const PosterCard = ({
         ) : null}
       </View>
 
-      <Text numberOfLines={1} style={[styles.title, compact && styles.titleCompact]}>
+      <Text
+        numberOfLines={1}
+        style={[styles.title, compact && styles.titleCompact]}
+      >
         {getTitle(item)}
       </Text>
       {!compact ? <Text style={styles.year}>{year || '—'}</Text> : null}
-    </Pressable>
+    </PressableScale>
   );
 };
 
 const styles = StyleSheet.create({
-  pressed: { opacity: 0.78, transform: [{ scale: 0.97 }] },
+  card: { paddingBottom: 2 },
   frame: {
     borderRadius: radius.md,
     overflow: 'hidden',
