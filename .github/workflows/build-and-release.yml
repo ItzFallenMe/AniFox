@@ -69,12 +69,20 @@ jobs:
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
           VERSION_CODE=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          TARGET_TAG="${{ steps.get-tag.outputs.tag }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$TARGET_TAG" ]; then
+            TAG_V="${TARGET_TAG#v}"
+            if [ "$TAG_V" != "$VERSION" ]; then
+              echo "::warning::Tag $TARGET_TAG does not match pubspec version $VERSION. Using tag version for workflow_dispatch."
+              VERSION="$TAG_V"
+            fi
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION+$VERSION_CODE"
 
       - name: Check tag matches pubspec
-        if: ${{ steps.get-tag.outputs.tag != '' }}
+        if: ${{ github.event_name == 'push' && steps.get-tag.outputs.tag != '' }}
         run: |
           TAG_V="${{ steps.get-tag.outputs.tag }}"
           TAG_V="${TAG_V#v}"
