@@ -4,10 +4,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { hydrateSettings } from './src/hooks/useSettings';
+import { hydrateLibrary } from './src/hooks/useLibrary';
 
 function App() {
   useEffect(() => {
     hydrateSettings();
+    hydrateLibrary();
   }, []);
 
   return (

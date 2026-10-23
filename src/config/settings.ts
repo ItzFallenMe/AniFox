@@ -16,6 +16,8 @@ export interface AppSettings {
   defaultServerId: string | null;
   /** Start playback as soon as the embed provider is ready. */
   autoPlay: boolean;
+  /** Publish "watching …" to Discord while the player is open. */
+  discordPresence: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   frostedBlur: true,
   defaultServerId: null,
   autoPlay: true,
+  discordPresence: false,
 };
 
 /** Blur radius + tint opacity for a given glass intensity. */

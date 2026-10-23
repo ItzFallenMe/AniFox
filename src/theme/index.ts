@@ -2,8 +2,8 @@
  * AniFox design tokens.
  *
  * Premium black-glass language: deep black canvas, floating glass surfaces,
- * low-opacity white hairlines, silver type and a single restrained rose accent
- * used sparingly for spotlights, live states and the play affordance.
+ * low-opacity white hairlines, silver type and the brand orange from the app
+ * mark, used sparingly for spotlights and the play affordance.
  */
 
 export const colors = {
@@ -19,10 +19,10 @@ export const colors = {
   primarySoft: 'rgba(255, 255, 255, 0.06)',
   primaryBorder: 'rgba(255, 255, 255, 0.14)',
   onPrimary: '#0A0A0B',
-  /** Restrained rose, reserved for spotlights and live cues. */
-  rose: '#F43F5E',
-  roseSoft: 'rgba(244, 63, 94, 0.10)',
-  roseBorder: 'rgba(244, 63, 94, 0.24)',
+  /** Brand orange (from the app mark), reserved for spotlights and play. */
+  orange: '#FF7A1A',
+  orangeSoft: 'rgba(255, 122, 26, 0.10)',
+  orangeBorder: 'rgba(255, 122, 26, 0.26)',
   /** Silver score colour used by rating pills. */
   accent: '#D4D4D8',
   /** Emerald "live / ongoing" accent, used for airing badges. */

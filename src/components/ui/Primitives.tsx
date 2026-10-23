@@ -207,12 +207,15 @@ export const IconButton = ({
   onPress,
   size = 40,
   accessibilityLabel,
+  color = colors.text,
   style,
 }: {
   icon: IconType;
   onPress?: () => void;
   size?: number;
   accessibilityLabel?: string;
+  /** Glyph colour; the glass tile stays the same. */
+  color?: string;
   style?: StyleProp<ViewStyle>;
 }) => (
   <Pressable
@@ -226,7 +229,7 @@ export const IconButton = ({
       pressed && styles.pressed,
       style,
     ]}>
-    <Icon color={colors.text} size={18} strokeWidth={2.2} />
+    <Icon color={color} size={18} strokeWidth={2.2} />
   </Pressable>
 );
 

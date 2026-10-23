@@ -17,6 +17,8 @@ export type RootStackParamList = {
   Detail: { item: MediaItem };
   Catalog: { key: CatalogKey };
   Settings: undefined;
+  Watchlist: undefined;
+  Alerts: undefined;
   Player: {
     item: MediaItem;
     season?: number;

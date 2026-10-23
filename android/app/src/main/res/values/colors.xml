@@ -1,3 +1,5 @@
 <resources>
-    <color name="anifox_black">#000000</color>
+    <!-- Matches the JS canvas (colors.background) so native chrome and the
+         React surface read as one continuous black. -->
+    <color name="anifox_black">#050506</color>
 </resources>

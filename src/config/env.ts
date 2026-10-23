@@ -35,6 +35,22 @@ export const CATALOG_REGION = 'US';
 export const CATALOG_LANGUAGE = 'en-US';
 export const FALLBACK_LANGUAGE = 'en-US';
 
+/**
+ * Discord Rich Presence.
+ *
+ * Paste the application id from https://discord.com/developers/applications
+ * here, enable the Social SDK for that application, and link the native SDK
+ * adapter (see `android/app/src/main/java/com/itzfallenme/anifox/discord/`).
+ * Presence stays off until all three are in place.
+ */
+const DISCORD_CLIENT_ID = '';
+
+export const DISCORD_CONFIG = {
+  CLIENT_ID: DISCORD_CLIENT_ID.trim(),
+} as const;
+
+export const isDiscordConfigured = DISCORD_CONFIG.CLIENT_ID.length > 5;
+
 export const APP_INFO = {
   name: 'AniFox',
   tagline: 'Anime & movies, beautifully unified.',

@@ -39,7 +39,11 @@ export const SplashScreen = () => {
       <Animated.View
         style={[styles.content, { opacity: fade, transform: [{ translateY: rise }] }]}>
         <View style={styles.logoTile}>
-          <Image source={require('../../assets/anifox.png')} style={styles.logo} />
+          <Image
+            source={require('../../assets/anifox-logo.png')}
+            style={styles.logo}
+            resizeMode="cover"
+          />
         </View>
 
         <Text style={styles.title}>{APP_INFO.name}</Text>
@@ -63,20 +67,22 @@ const styles = StyleSheet.create({
   },
   content: { alignItems: 'center' },
   logoTile: {
-    width: 104,
-    height: 104,
+    width: 112,
+    height: 112,
     borderRadius: radius.xl,
-    // The mark ships on an opaque white square, so the tile stays white.
-    backgroundColor: '#ffffff',
+    // The mark is an orange fox on black, so it blends with the dark tile.
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: '#ffffff',
-    shadowOpacity: 0.25,
-    shadowRadius: 34,
+    shadowColor: colors.orange,
+    shadowOpacity: 0.28,
+    shadowRadius: 38,
     elevation: 12,
   },
-  logo: { width: 88, height: 88 },
+  logo: { width: 112, height: 112 },
   title: {
     fontFamily: fonts.displayBlack,
     fontSize: 44,

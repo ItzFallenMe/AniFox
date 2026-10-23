@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -29,6 +29,9 @@ import {
   type StreamContext,
 } from '../config/embedServers';
 import { useSettings } from '../hooks/useSettings';
+import { useWatchHistory } from '../hooks/useLibrary';
+import { connectDiscord, setDiscordActivity } from '../services/discordPresence';
+import { TMDBService } from '../services/tmdb';
 import { getTitle, isMovie, type MediaItem } from '../types';
 import { AD_BLOCK_SCRIPT, isBlockedScheme, shouldBlockNavigation } from '../utils/adBlock';
 import { colors, fonts, radius, spacing } from '../theme';
@@ -61,6 +64,7 @@ export const PlayerScreen = () => {
   const route = useRoute() as Route;
   const { item, season, episode, episodeName } = route.params;
   const { settings } = useSettings();
+  const { record } = useWatchHistory();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -123,6 +127,37 @@ export const PlayerScreen = () => {
     : [`Season ${context.season}`, `Episode ${context.episode}`, episodeName]
         .filter(Boolean)
         .join(' · ');
+
+  // Resume history: one entry per title, updated whenever a stream opens.
+  useEffect(() => {
+    record(item, movie ? undefined : {
+      season: season ?? 1,
+      episode: episode ?? 1,
+      episodeName,
+    });
+  }, [episode, episodeName, item, movie, record, season]);
+
+  // Discord Rich Presence, only while the player is open.
+  useEffect(() => {
+    if (!settings.discordPresence) return;
+    let cancelled = false;
+
+    connectDiscord().then(status => {
+      if (cancelled || !status.connected) return;
+      setDiscordActivity({
+        details: title,
+        state: movie ? 'Watching a film' : subtitle,
+        startTimestamp: Date.now(),
+        largeImage: TMDBService.posterUrl(item.poster_path, 'w500'),
+        largeText: title,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      setDiscordActivity(null);
+    };
+  }, [item.poster_path, movie, settings.discordPresence, subtitle, title]);
 
   return (
     <View style={styles.root}>

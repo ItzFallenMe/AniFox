@@ -74,10 +74,22 @@ export interface MovieDetails extends Movie {
   status?: string;
 }
 
+export interface NextEpisodeToAir {
+  id?: number;
+  name?: string;
+  overview?: string;
+  air_date?: string | null;
+  episode_number?: number;
+  season_number?: number;
+  still_path?: string | null;
+}
+
 export interface TVShowDetails extends TVShow {
   genres?: Genre[];
   tagline?: string;
   status?: string;
+  next_episode_to_air?: NextEpisodeToAir | null;
+  last_episode_to_air?: NextEpisodeToAir | null;
   number_of_seasons?: number;
   number_of_episodes?: number;
   seasons?: Season[];
@@ -107,3 +119,7 @@ export const getReleaseDate = (item: MediaItem): string =>
 
 export const getYear = (item: MediaItem): string =>
   getReleaseDate(item).slice(0, 4);
+
+/** Stable storage key for a title, e.g. `movie-550` / `tv-1399`. */
+export const getMediaKey = (item: MediaItem): string =>
+  `${isMovie(item) ? 'movie' : 'tv'}-${item.id}`;

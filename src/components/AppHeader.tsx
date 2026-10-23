@@ -14,7 +14,11 @@ export const AppHeader = ({
   <View style={styles.header}>
     <View style={styles.identity}>
       <View style={styles.logoTile}>
-        <Image source={require('../../assets/anifox.png')} style={styles.logo} />
+        <Image
+          source={require('../../assets/anifox-logo.png')}
+          style={styles.logo}
+          resizeMode="cover"
+        />
       </View>
       <View>
         <Text style={styles.wordmark}>{APP_INFO.name}</Text>
@@ -42,13 +46,15 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: radius.sm,
-    // The mark ships on an opaque white square, so the tile stays white.
-    backgroundColor: '#ffffff',
+    // The mark is an orange fox on black, so it blends with the dark tile.
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  logo: { width: 34, height: 34 },
+  logo: { width: 38, height: 38 },
   wordmark: {
     fontFamily: fonts.displayBlack,
     fontSize: 21,

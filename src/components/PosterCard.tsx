@@ -14,10 +14,13 @@ interface PosterCardProps {
   item: MediaItem;
   width?: number;
   onPress: (item: MediaItem) => void;
+  onLongPress?: (item: MediaItem) => void;
   /** Tighter typography for grid layouts. */
   compact?: boolean;
   /** 1-based position, drawn as a rank numeral (Top 10 rows). */
   rank?: number;
+  /** Small caption under the title, e.g. "S2 · E4" for resume cards. */
+  caption?: string;
 }
 
 /** Poster aspect ratio, matching sarui-movies' `aspect-[2/3]` cards. */
@@ -27,8 +30,10 @@ export const PosterCard = ({
   item,
   width = 118,
   onPress,
+  onLongPress,
   compact = false,
   rank,
+  caption,
 }: PosterCardProps) => {
   const [failed, setFailed] = useState(false);
   const [pressed, setPressed] = useState(false);
@@ -42,6 +47,7 @@ export const PosterCard = ({
       accessibilityRole="button"
       accessibilityLabel={getTitle(item)}
       onPress={() => onPress(item)}
+      onLongPress={onLongPress ? () => onLongPress(item) : undefined}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       style={[styles.card, { width }]}>
@@ -80,12 +86,7 @@ export const PosterCard = ({
             style={[StyleSheet.absoluteFill, styles.pressOverlay]}
             pointerEvents="none">
             <View style={styles.playCircle}>
-              <Play
-                color={colors.onPrimary}
-                size={16}
-                strokeWidth={0}
-                fill={colors.onPrimary}
-              />
+              <Play color={colors.text} size={16} strokeWidth={0} fill={colors.text} />
             </View>
           </LinearGradient>
         ) : null}
@@ -103,7 +104,9 @@ export const PosterCard = ({
 
       {!compact ? (
         <View style={styles.metaRow}>
-          <Text style={styles.year}>{year || (isShow ? 'Series' : 'Film')}</Text>
+          <Text numberOfLines={1} style={styles.year}>
+            {caption ?? (year || (isShow ? 'Series' : 'Film'))}
+          </Text>
           <View style={styles.typeChip}>
             <Text style={styles.typeText}>{isShow ? 'SERIES' : 'MOVIE'}</Text>
           </View>
@@ -179,11 +182,11 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.orange,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.45,
+    shadowColor: colors.orange,
+    shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,

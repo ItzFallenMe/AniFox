@@ -8,6 +8,7 @@ import type { MediaItem } from '../types';
 interface PosterGridProps {
   items: MediaItem[];
   onPress: (item: MediaItem) => void;
+  onLongPress?: (item: MediaItem) => void;
   /** Skeleton cards shown while the first page loads. */
   loading?: boolean;
   skeletonCount?: number;
@@ -21,6 +22,7 @@ interface PosterGridProps {
 export const PosterGrid = ({
   items,
   onPress,
+  onLongPress,
   loading = false,
   skeletonCount = 9,
   columns = 3,
@@ -51,6 +53,7 @@ export const PosterGrid = ({
           item={item}
           width={cardWidth}
           onPress={onPress}
+          onLongPress={onLongPress}
           compact
         />
       ))}

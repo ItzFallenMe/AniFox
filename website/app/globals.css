@@ -1,0 +1,399 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #050506;
+  --foreground: #f5f5f7;
+  --brand: #ff7a1a;
+  --glass-border: rgba(255, 255, 255, 0.06);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(255, 122, 26, 0.35);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #050506;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 10px;
+  border: 2px solid #050506;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a #050506;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .glass {
+    @apply border border-white/[0.06] bg-white/[0.025] backdrop-blur-xl;
+  }
+  .liquid-glass {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.055) 0%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+  .hairline {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.18),
+      transparent
+    );
+  }
+  .mask-fade-x {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 12%,
+      black 88%,
+      transparent
+    );
+  }
+}
+
+/* ── Scroll reveal ─────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.9s ease,
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Ambient background ────────────────────────────────── */
+@keyframes aurora-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6%, -8%) scale(1.18);
+  }
+}
+@keyframes aurora-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.1);
+  }
+  50% {
+    transform: translate(-7%, 6%) scale(0.94);
+  }
+}
+.aurora-a {
+  animation: aurora-a 18s ease-in-out infinite;
+}
+.aurora-b {
+  animation: aurora-b 24s ease-in-out infinite;
+}
+
+.silk-layer {
+  background: repeating-linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.02) 0 2px,
+      transparent 2px 110px
+    ),
+    linear-gradient(
+      115deg,
+      transparent 15%,
+      rgba(255, 255, 255, 0.04) 36%,
+      transparent 54%,
+      rgba(255, 122, 26, 0.035) 74%,
+      transparent 92%
+    );
+}
+
+@keyframes grid-pan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 80px 80px;
+  }
+}
+.bg-grid-animated {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 80px 80px;
+  animation: grid-pan 16s linear infinite;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 78%);
+}
+
+/* ── Type effects ──────────────────────────────────────── */
+@keyframes shimmer-slide {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+.text-shimmer {
+  background-size: 200% auto;
+  animation: shimmer-slide 8s linear infinite;
+}
+
+.text-brand-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    #ff7a1a 0%,
+    #ffd0a8 18%,
+    #ffffff 38%,
+    #ff7a1a 62%,
+    #ffd0a8 82%,
+    #ff7a1a 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-slide 9s linear infinite;
+}
+
+/* ── Marquee ───────────────────────────────────────────── */
+@keyframes marquee-x {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee-x 38s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Floating pieces ───────────────────────────────────── */
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+.float-y {
+  animation: float-y 6s ease-in-out infinite;
+}
+.float-y-slow {
+  animation: float-y 8s ease-in-out infinite;
+}
+
+@keyframes ping-ring {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+.ping-ring {
+  animation: ping-ring 3.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes dot-ping {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(255, 122, 26, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 26, 0);
+  }
+}
+.dot-live {
+  animation: dot-ping 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Buttons & cards ───────────────────────────────────── */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+.btn-shine:hover::after {
+  left: 130%;
+}
+
+.spotlight {
+  position: relative;
+}
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    520px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 122, 26, 0.1),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.spotlight:hover::before {
+  opacity: 1;
+}
+
+/* Phone chrome */
+.phone-shell {
+  background: linear-gradient(180deg, #1a1a20 0%, #0a0a0d 55%, #050506 100%);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* ── FAQ ───────────────────────────────────────────────── */
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq-open .faq-answer {
+  grid-template-rows: 1fr;
+}
+.faq-answer > div {
+  overflow: hidden;
+}
+.faq-icon {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.faq-open .faq-icon {
+  transform: rotate(45deg);
+}
+
+/* ── Conic border for the final CTA ────────────────────── */
+@property --b-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes angle-spin {
+  to {
+    --b-angle: 360deg;
+  }
+}
+.conic-border {
+  position: relative;
+}
+.conic-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--b-angle, 0deg),
+    rgba(255, 122, 26, 0.75),
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 122, 26, 0.05),
+    rgba(255, 122, 26, 0.75)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: angle-spin 8s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Poster card hover ─────────────────────────────────── */
+.poster {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s ease, opacity 0.45s ease;
+}
+.poster:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-a,
+  .aurora-b,
+  .marquee-track,
+  .float-y,
+  .float-y-slow,
+  .ping-ring,
+  .text-shimmer,
+  .text-brand-shimmer,
+  .btn-shine::after,
+  .conic-border,
+  .dot-live,
+  .bg-grid-animated {
+    animation: none !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .poster:hover {
+    transform: none;
+  }
+}

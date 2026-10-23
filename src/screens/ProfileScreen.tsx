@@ -10,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowUpRight,
+  Bell,
+  Bookmark,
   ChevronRight,
   Database,
   Server,
@@ -23,6 +25,7 @@ import { PLAYABLE_SERVERS } from '../config/embedServers';
 import { colors, fonts, radius, spacing } from '../theme';
 import { AppHeader } from '../components/AppHeader';
 import { TmdbSetup } from '../components/TmdbSetup';
+import { useEpisodeAlerts, useWatchlist } from '../hooks/useLibrary';
 import {
   GlassCard,
   Kicker,
@@ -30,7 +33,13 @@ import {
   SectionHeader,
 } from '../components/ui/Primitives';
 
-export const ProfileScreen = () => (
+export const ProfileScreen = () => {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { items: savedTitles } = useWatchlist();
+  const { alerts } = useEpisodeAlerts();
+
+  return (
   <Screen scroll contentStyle={styles.content}>
     <AppHeader subtitle="Profile" />
 
@@ -47,8 +56,9 @@ export const ProfileScreen = () => (
         <View style={styles.brandRow}>
           <View style={styles.logoTile}>
             <Image
-              source={require('../../assets/anifox.png')}
+              source={require('../../assets/anifox-logo.png')}
               style={styles.logo}
+              resizeMode="cover"
             />
           </View>
           <View style={styles.brandText}>
@@ -61,6 +71,35 @@ export const ProfileScreen = () => (
           <Text style={styles.brandVersion}>ANDROID</Text>
         </View>
       </GlassCard>
+    </View>
+
+    <SectionHeader kicker="Your library" title="Saved on this device" />
+    <View style={styles.section}>
+      <LibraryEntry
+        icon={Bookmark}
+        title="Watchlist"
+        subtitle={
+          savedTitles.length === 0
+            ? 'Bookmark a title to keep it here'
+            : `${savedTitles.length} ${
+                savedTitles.length === 1 ? 'title' : 'titles'
+              } saved`
+        }
+        onPress={() => navigation.navigate('Watchlist')}
+      />
+      <View style={styles.entryGap} />
+      <LibraryEntry
+        icon={Bell}
+        title="Episode alerts"
+        subtitle={
+          alerts.length === 0
+            ? 'Get notified when a series airs'
+            : `${alerts.length} scheduled ${
+                alerts.length === 1 ? 'alert' : 'alerts'
+              }`
+        }
+        onPress={() => navigation.navigate('Alerts')}
+      />
     </View>
 
     <SectionHeader kicker="Preferences" title="App settings" />
@@ -182,6 +221,36 @@ export const ProfileScreen = () => (
       </Text>
     </View>
   </Screen>
+  );
+};
+
+const LibraryEntry = ({
+  icon: Icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: typeof Bookmark;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) => (
+  <Pressable
+    accessibilityRole="button"
+    accessibilityLabel={`Open ${title}`}
+    onPress={onPress}
+    style={({ pressed }) => pressed && styles.pressed}>
+    <GlassCard style={styles.settingsCard}>
+      <View style={styles.sourceIcon}>
+        <Icon color={colors.text} size={16} strokeWidth={2} />
+      </View>
+      <View style={styles.sourceText}>
+        <Text style={styles.sourceName}>{title}</Text>
+        <Text style={styles.sourceBody}>{subtitle}</Text>
+      </View>
+      <ChevronRight color={colors.textMuted} size={16} strokeWidth={2} />
+    </GlassCard>
+  </Pressable>
 );
 
 const SettingsEntry = () => {
@@ -202,7 +271,7 @@ const SettingsEntry = () => {
         <View style={styles.sourceText}>
           <Text style={styles.sourceName}>Settings</Text>
           <Text style={styles.sourceBody}>
-            Liquid glass bar, default embed server and autoplay.
+            Liquid glass bar, default embed server, autoplay and Discord presence.
           </Text>
         </View>
         <ChevronRight color={colors.textMuted} size={16} strokeWidth={2} />
@@ -236,6 +305,7 @@ const styles = StyleSheet.create({
     maxWidth: 330,
   },
   section: { paddingHorizontal: spacing.xl, marginBottom: spacing.xxl },
+  entryGap: { height: spacing.sm },
   setupWrap: { marginBottom: spacing.xxl },
   pressed: { opacity: 0.75 },
 
@@ -245,13 +315,15 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: radius.md,
-    // The mark ships on an opaque white square, so the tile stays white.
-    backgroundColor: '#ffffff',
+    // The mark is an orange fox on black, so it blends with the dark tile.
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  logo: { width: 52, height: 52 },
+  logo: { width: 58, height: 58 },
   brandText: { flex: 1 },
   brandName: {
     fontFamily: fonts.displayBlack,

@@ -13,8 +13,10 @@ import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import { Billboard } from '../components/Billboard';
 import { Pagination } from '../components/Pagination';
+import { ContinueWatchingRow } from '../components/ContinueWatchingRow';
 import { PosterGrid } from '../components/PosterGrid';
 import { TmdbSetup } from '../components/TmdbSetup';
+import { useWatchHistory } from '../hooks/useLibrary';
 import {
   EmptyState,
   ErrorState,
@@ -31,6 +33,7 @@ export const HomeScreen = () => {
   const navigation = useNavigation<Nav>();
   const { items, page, totalPages, loading, error, goTo, retry } =
     usePagedCatalog('trendingMovies');
+  const { entries: recent, remove: removeRecent } = useWatchHistory();
 
   const [refreshing, setRefreshing] = useState(false);
   useEffect(() => {
@@ -104,6 +107,19 @@ export const HomeScreen = () => {
               onInfo={openDetail}
             />
           </FadeInView>
+
+          <ContinueWatchingRow
+            entries={recent}
+            onResume={entry =>
+              navigation.navigate('Player', {
+                item: entry.item,
+                season: entry.season,
+                episode: entry.episode,
+                episodeName: entry.episodeName,
+              })
+            }
+            onRemove={removeRecent}
+          />
 
           <SectionHeader
             icon={TrendingUp}

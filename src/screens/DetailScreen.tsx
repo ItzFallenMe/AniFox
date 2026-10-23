@@ -11,7 +11,17 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Clock, Film, Play, Star } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Bell,
+  BellRing,
+  Bookmark,
+  BookmarkCheck,
+  Clock,
+  Film,
+  Play,
+  Star,
+} from 'lucide-react-native';
 
 import { getOverviewText } from '../services/tmdbPolicy';
 import { PosterGrid } from '../components/PosterGrid';
@@ -32,7 +42,12 @@ import {
   type Season,
   type TVShowDetails,
 } from '../types';
-import { formatRating, formatRuntime } from '../utils/format';
+import { formatAirDate, formatRating, formatRuntime } from '../utils/format';
+import { useEpisodeAlerts, useWatchHistory, useWatchlist } from '../hooks/useLibrary';
+import {
+  disableEpisodeAlert,
+  enableEpisodeAlert,
+} from '../services/episodeAlerts';
 import type { RootStackParamList } from '../navigation/types';
 import {
   Chip,
@@ -62,6 +77,18 @@ export const DetailScreen = () => {
     useDetails(item);
   const [selectedSeason, setSelectedSeason] = useState<number | undefined>();
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertNote, setAlertNote] = useState<string | null>(null);
+
+  const { saved, toggle: toggleSaved } = useWatchlist();
+  const { resumeFor } = useWatchHistory();
+  const { alertFor } = useEpisodeAlerts();
+  const isSaved = saved(item);
+  const resume = resumeFor(item);
+  const alert = alertFor(item.id);
+  const nextEpisode = movie
+    ? null
+    : (details as TVShowDetails | null)?.next_episode_to_air ?? null;
 
   const seasons: Season[] = useMemo(
     () => (!movie && details ? ((details as TVShowDetails).seasons ?? []) : []),
@@ -94,6 +121,39 @@ export const DetailScreen = () => {
       episode: movie ? undefined : episode?.episode_number ?? 1,
       episodeName: episode?.name,
     });
+
+  /** Resume from history when possible, otherwise play the first episode. */
+  const playPrimary = () => {
+    if (!movie && resume?.season != null && resume.episode != null) {
+      navigation.navigate('Player', {
+        item,
+        season: resume.season,
+        episode: resume.episode,
+        episodeName: resume.episodeName,
+      });
+      return;
+    }
+    openPlayer(movie ? undefined : episodes[0]);
+  };
+
+  const toggleAlert = async () => {
+    if (!nextEpisode || alertBusy) return;
+    setAlertBusy(true);
+    if (alert) {
+      await disableEpisodeAlert(item.id);
+      setAlertNote('Episode alert removed.');
+    } else {
+      const result = await enableEpisodeAlert(item, nextEpisode);
+      setAlertNote(
+        result === 'scheduled'
+          ? `Alert set for ${formatAirDate(nextEpisode.air_date ?? undefined)}, 19:00.`
+          : result === 'denied'
+            ? 'Notifications are blocked. Allow them in system settings.'
+            : 'Notifications are unavailable in this build.',
+      );
+    }
+    setAlertBusy(false);
+  };
 
   const openDetail = (next: MediaItem) =>
     navigation.replace('Detail', { item: next });
@@ -174,19 +234,61 @@ export const DetailScreen = () => {
 
           <View style={styles.actionRow}>
             <PrimaryButton
-              label={movie ? 'Watch now' : 'Watch episode'}
+              label={
+                !movie && resume?.season != null && resume.episode != null
+                  ? `Continue S${resume.season} · E${resume.episode}`
+                  : movie
+                    ? 'Watch now'
+                    : 'Watch episode'
+              }
               icon={Play}
-              onPress={() => openPlayer(movie ? undefined : episodes[0])}
+              onPress={playPrimary}
               style={styles.playButton}
             />
-            {trailerKey ? (
-              <GhostButton
-                label="Trailer"
-                icon={Film}
-                onPress={() => setTrailerOpen(true)}
-              />
-            ) : null}
+            <IconButton
+              icon={isSaved ? BookmarkCheck : Bookmark}
+              color={isSaved ? colors.orange : colors.text}
+              onPress={() => toggleSaved(item)}
+              accessibilityLabel={
+                isSaved ? 'Remove from watchlist' : 'Add to watchlist'
+              }
+              style={styles.saveButton}
+            />
           </View>
+
+          {trailerKey || nextEpisode ? (
+            <View style={styles.secondaryRow}>
+              {trailerKey ? (
+                <GhostButton
+                  label="Trailer"
+                  icon={Film}
+                  onPress={() => setTrailerOpen(true)}
+                  style={styles.secondaryButton}
+                />
+              ) : null}
+              {nextEpisode ? (
+                <GhostButton
+                  label={alert ? 'Alert on' : 'Alert me'}
+                  icon={alert ? BellRing : Bell}
+                  onPress={toggleAlert}
+                  style={styles.secondaryButton}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
+          {nextEpisode ? (
+            <View style={styles.nextRow}>
+              <Bell color={colors.orange} size={11} strokeWidth={2.2} />
+              <Text style={styles.nextText} numberOfLines={1}>
+                Next · S{nextEpisode.season_number ?? '?'} E
+                {nextEpisode.episode_number ?? '?'} ·{' '}
+                {formatAirDate(nextEpisode.air_date ?? undefined)}
+              </Text>
+            </View>
+          ) : null}
+
+          {alertNote ? <Text style={styles.alertNote}>{alertNote}</Text> : null}
 
           <View style={styles.hintRow}>
             <Film color={colors.textFaint} size={12} strokeWidth={2} />
@@ -469,6 +571,39 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   playButton: { flex: 1 },
+  saveButton: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.pill,
+    backgroundColor: colors.glass,
+    borderColor: colors.border,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  secondaryButton: { flex: 1 },
+  nextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: spacing.md,
+  },
+  nextText: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10.5,
+    color: colors.textMuted,
+  },
+  alertNote: {
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    lineHeight: 16,
+    color: colors.orange,
+    marginTop: spacing.sm,
+  },
   hintRow: {
     flexDirection: 'row',
     alignItems: 'center',

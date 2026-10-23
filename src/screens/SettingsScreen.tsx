@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowLeft,
   Check,
+  Gamepad2,
   RotateCcw,
   Server,
   Sparkles,
@@ -22,6 +23,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { resetSettings, useSettings, type GlassIntensity } from '../hooks/useSettings';
 import { EMBED_SERVERS, embedServerById } from '../config/embedServers';
+import {
+  connectDiscord,
+  disconnectDiscord,
+  discordConfigured,
+  discordPresenceSupported,
+  getDiscordStatus,
+  type DiscordStatus,
+} from '../services/discordPresence';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import {
@@ -44,8 +53,35 @@ export const SettingsScreen = () => {
   const navigation = useNavigation<Nav>();
   const { settings, setSettings } = useSettings();
   const [serverSheet, setServerSheet] = useState(false);
+  const [discordStatus, setDiscordStatus] = useState<DiscordStatus | null>(null);
 
   const defaultServerName = embedServerById(settings.defaultServerId).label;
+  const discordReady =
+    discordConfigured &&
+    discordPresenceSupported &&
+    Boolean(discordStatus?.sdkInstalled);
+
+  useEffect(() => {
+    getDiscordStatus().then(setDiscordStatus);
+  }, []);
+
+  const toggleDiscord = async (value: boolean) => {
+    setSettings({ discordPresence: value });
+    if (value) {
+      setDiscordStatus(await connectDiscord());
+    } else {
+      await disconnectDiscord();
+      setDiscordStatus(await getDiscordStatus());
+    }
+  };
+
+  const discordSubtitle = !discordConfigured
+    ? 'Add a Discord client ID in src/config/env.ts'
+    : !discordPresenceSupported || !discordStatus?.sdkInstalled
+      ? 'Discord SDK is not linked in this build'
+      : discordStatus?.connected
+        ? 'Live — your status shows what you are watching'
+        : 'Show what you are watching on Discord';
 
   return (
     <Screen scroll contentStyle={styles.content}>
@@ -138,6 +174,25 @@ export const SettingsScreen = () => {
             onChange={value => setSettings({ autoPlay: value })}
           />
         </GlassCard>
+      </View>
+
+      <SectionHeader kicker="Integrations" title="Discord" />
+      <View style={styles.section}>
+        <GlassCard style={styles.card}>
+          <ToggleRow
+            icon={Gamepad2}
+            title="Rich Presence"
+            subtitle={discordSubtitle}
+            value={settings.discordPresence}
+            disabled={!discordReady}
+            onChange={toggleDiscord}
+          />
+        </GlassCard>
+        <Text style={styles.finePrint}>
+          Presence only publishes while the player is open. It needs a Discord
+          application with the Social SDK enabled and the native SDK adapter
+          linked into the Android build.
+        </Text>
       </View>
 
       <View style={styles.section}>

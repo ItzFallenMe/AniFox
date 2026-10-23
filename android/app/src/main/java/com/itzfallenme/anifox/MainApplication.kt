@@ -6,6 +6,8 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.itzfallenme.anifox.discord.DiscordPresencePackage
+import com.itzfallenme.anifox.notifications.LocalNotificationsPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -14,8 +16,9 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // Manually registered (no autolinking for in-repo native modules).
+          add(DiscordPresencePackage())
+          add(LocalNotificationsPackage())
         },
     )
   }

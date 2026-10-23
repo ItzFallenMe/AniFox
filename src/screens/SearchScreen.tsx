@@ -6,6 +6,7 @@ import { Search, X } from 'lucide-react-native';
 
 import { isTmdbConfigured } from '../config/env';
 import { useSearch } from '../hooks/useSearch';
+import { useSearchHistory } from '../hooks/useLibrary';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
@@ -49,8 +50,12 @@ export const SearchScreen = () => {
     goTo,
     retry,
   } = useSearch(query);
+  const { terms: recentSearches, record, clear } = useSearchHistory();
 
-  const openDetail = (item: MediaItem) => navigation.navigate('Detail', { item });
+  const openDetail = (item: MediaItem) => {
+    record(activeQuery || query);
+    navigation.navigate('Detail', { item });
+  };
 
   if (!isTmdbConfigured) {
     return (
@@ -90,6 +95,7 @@ export const SearchScreen = () => {
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
+          onSubmitEditing={() => record(query)}
           selectionColor={colors.primary}
         />
         {query.length > 0 ? (
@@ -104,18 +110,40 @@ export const SearchScreen = () => {
       </View>
 
       {!activeQuery ? (
-        <View style={styles.suggestions}>
-          <Kicker style={styles.suggestionKicker}>Try searching</Kicker>
-          <View style={styles.chipWrap}>
-            {SUGGESTIONS.map(suggestion => (
-              <Chip
-                key={suggestion}
-                label={suggestion}
-                onPress={() => setQuery(suggestion)}
-              />
-            ))}
+        <>
+          {recentSearches.length > 0 ? (
+            <View style={styles.suggestions}>
+              <View style={styles.recentHeader}>
+                <Kicker>Recent searches</Kicker>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear recent searches"
+                  onPress={clear}
+                  hitSlop={8}>
+                  <Text style={styles.clearText}>CLEAR</Text>
+                </Pressable>
+              </View>
+              <View style={styles.chipWrap}>
+                {recentSearches.map(term => (
+                  <Chip key={term} label={term} onPress={() => setQuery(term)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.suggestions}>
+            <Kicker style={styles.suggestionKicker}>Try searching</Kicker>
+            <View style={styles.chipWrap}>
+              {SUGGESTIONS.map(suggestion => (
+                <Chip
+                  key={suggestion}
+                  label={suggestion}
+                  onPress={() => setQuery(suggestion)}
+                />
+              ))}
+            </View>
           </View>
-        </View>
+        </>
       ) : (
         <>
           <SectionHeader
@@ -206,5 +234,17 @@ const styles = StyleSheet.create({
   },
   suggestions: { paddingHorizontal: spacing.xl },
   suggestionKicker: { marginBottom: spacing.md },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  clearText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 8.5,
+    letterSpacing: 1.3,
+    color: colors.textFaint,
+  },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

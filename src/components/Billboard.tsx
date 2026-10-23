@@ -37,7 +37,7 @@ interface BillboardProps {
 }
 
 /**
- * Full-bleed cinematic billboard: backdrop, dual vignette, the rose spotlight
+ * Full-bleed cinematic billboard: backdrop, dual vignette, the orange spotlight
  * pill, amber score, synopsis and the two CTAs — sarui-movies' spotlight hero.
  */
 export const Billboard = ({
@@ -87,7 +87,7 @@ export const Billboard = ({
       <View style={styles.content}>
         <View style={styles.badges}>
           <View style={styles.spotlight}>
-            <KickerIcon color={colors.rose} size={11} strokeWidth={2.2} />
+            <KickerIcon color={colors.orange} size={11} strokeWidth={2.2} />
             <Text style={styles.spotlightText}>{kicker}</Text>
           </View>
 
@@ -156,16 +156,16 @@ const styles = StyleSheet.create({
     height: 24,
     paddingHorizontal: 8,
     borderRadius: 7,
-    backgroundColor: colors.roseSoft,
+    backgroundColor: colors.orangeSoft,
     borderWidth: 1,
-    borderColor: colors.roseBorder,
+    borderColor: colors.orangeBorder,
   },
   spotlightText: {
     fontFamily: fonts.bodyBold,
     fontSize: 9,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.rose,
+    color: colors.orange,
   },
   live: {
     flexDirection: 'row',
