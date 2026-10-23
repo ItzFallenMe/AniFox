@@ -9,6 +9,7 @@ import { usePagedCatalog } from '../hooks/usePagedCatalog';
 import { colors, fonts, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
+import { FadeInView } from '../components/animations';
 import { Pagination } from '../components/Pagination';
 import { PosterGrid } from '../components/PosterGrid';
 import {
@@ -75,12 +76,14 @@ export const CatalogScreen = () => {
         />
       ) : (
         <>
-          <PosterGrid
-            items={items}
-            onPress={openDetail}
-            loading={loading}
-            skeletonCount={12}
-          />
+          <FadeInView key={`catalog-page-${page}-${items.length === 0 ? 'empty' : 'full'}`} duration={320} offset={8}>
+            <PosterGrid
+              items={items}
+              onPress={openDetail}
+              loading={loading}
+              skeletonCount={12}
+            />
+          </FadeInView>
 
           {!loading && items.length === 0 ? (
             <EmptyState

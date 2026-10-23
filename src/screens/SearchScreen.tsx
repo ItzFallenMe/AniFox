@@ -9,6 +9,7 @@ import { useSearch } from '../hooks/useSearch';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
+import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import { Pagination } from '../components/Pagination';
 import { PosterGrid } from '../components/PosterGrid';
@@ -36,6 +37,7 @@ const SUGGESTIONS = [
 export const SearchScreen = () => {
   const navigation = useNavigation<Nav>();
   const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const {
     results,
     page,
@@ -71,11 +73,17 @@ export const SearchScreen = () => {
         </Text>
       </View>
 
-      <View style={styles.searchBox}>
-        <Search color={colors.textMuted} size={17} strokeWidth={2.2} />
+      <View style={[styles.searchBox, focused && styles.searchBoxFocused]}>
+        <Search
+          color={focused ? colors.text : colors.textMuted}
+          size={17}
+          strokeWidth={2.2}
+        />
         <TextInput
           value={query}
           onChangeText={setQuery}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder="Anime, movies, series…"
           placeholderTextColor={colors.textFaint}
           style={styles.input}
@@ -141,7 +149,9 @@ export const SearchScreen = () => {
               />
             )
           ) : (
-            <PosterGrid items={results} onPress={openDetail} />
+            <FadeInView key={`search-${activeQuery}-${page}`} duration={280} offset={6}>
+              <PosterGrid items={results} onPress={openDetail} />
+            </FadeInView>
           )}
 
           {!loading && !error && results.length > 0 ? (
@@ -182,6 +192,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  searchBoxFocused: {
+    borderColor: colors.primaryBorder,
+    backgroundColor: 'rgba(25, 25, 31, 0.92)',
   },
   input: {
     flex: 1,

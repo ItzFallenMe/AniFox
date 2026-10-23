@@ -127,9 +127,9 @@ const styles = StyleSheet.create({
   pageActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    shadowColor: '#ffffff',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },

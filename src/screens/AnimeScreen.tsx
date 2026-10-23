@@ -8,6 +8,7 @@ import { useAnimeSections } from '../hooks/useAnimeSections';
 import { colors, fonts, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
+import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import { Billboard } from '../components/Billboard';
 import { PosterGrid } from '../components/PosterGrid';
@@ -87,7 +88,9 @@ export const AnimeScreen = () => {
               </View>
             }
           />
-          <PosterGrid items={sections.ongoing.slice(0, 18)} onPress={openDetail} />
+          <FadeInView delay={40}>
+            <PosterGrid items={sections.ongoing.slice(0, 18)} onPress={openDetail} />
+          </FadeInView>
 
           <View style={styles.rail}>
             <SectionHeader
@@ -96,7 +99,9 @@ export const AnimeScreen = () => {
               title="Most popular anime"
               description="Series with the biggest viewership and community following."
             />
-            <PosterGrid items={sections.popular.slice(0, 18)} onPress={openDetail} />
+            <FadeInView delay={120}>
+              <PosterGrid items={sections.popular.slice(0, 18)} onPress={openDetail} />
+            </FadeInView>
           </View>
 
           <View style={styles.rail}>
@@ -107,18 +112,22 @@ export const AnimeScreen = () => {
               title="Top rated anime"
               description="Highest-scoring animation, filtered for enough votes."
             />
-            <PosterGrid items={sections.topRated.slice(0, 18)} onPress={openDetail} />
+            <FadeInView delay={200}>
+              <PosterGrid items={sections.topRated.slice(0, 18)} onPress={openDetail} />
+            </FadeInView>
           </View>
 
           <View style={styles.rail}>
             <SectionHeader
               icon={Film}
-              tone="#38bdf8"
+              tone={colors.textSecondary}
               kicker="Feature films"
               title="Anime movies"
               description="Theatrical animation from acclaimed studios and creators."
             />
-            <PosterGrid items={sections.movies.slice(0, 18)} onPress={openDetail} />
+            <FadeInView delay={280}>
+              <PosterGrid items={sections.movies.slice(0, 18)} onPress={openDetail} />
+            </FadeInView>
           </View>
 
           <View style={styles.footer}>

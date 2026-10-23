@@ -22,6 +22,7 @@ import {
 } from '../config/catalogs';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
+import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import {
   GlassCard,
@@ -66,43 +67,47 @@ export const BrowseScreen = () => {
         </Text>
       </View>
 
-      <SectionHeader
-        icon={Clapperboard}
-        kicker="At the cinema"
-        title="Movies"
-        description="Five ways into the film catalog."
-      />
-      <View style={styles.section}>
-        <GlassCard style={styles.listCard}>
-          {MOVIE_CATALOGS.map((catalog, index) => (
-            <CatalogRow
-              key={catalog.key}
-              catalog={catalog}
-              last={index === MOVIE_CATALOGS.length - 1}
-              onPress={() => navigation.navigate('Catalog', { key: catalog.key })}
-            />
-          ))}
-        </GlassCard>
-      </View>
+      <FadeInView delay={40}>
+        <SectionHeader
+          icon={Clapperboard}
+          kicker="At the cinema"
+          title="Movies"
+          description="Five ways into the film catalog."
+        />
+        <View style={styles.section}>
+          <GlassCard style={styles.listCard}>
+            {MOVIE_CATALOGS.map((catalog, index) => (
+              <CatalogRow
+                key={catalog.key}
+                catalog={catalog}
+                last={index === MOVIE_CATALOGS.length - 1}
+                onPress={() => navigation.navigate('Catalog', { key: catalog.key })}
+              />
+            ))}
+          </GlassCard>
+        </View>
+      </FadeInView>
 
-      <SectionHeader
-        icon={Tv}
-        kicker="On the small screen"
-        title="Series"
-        description="Five ways into the television catalog."
-      />
-      <View style={styles.section}>
-        <GlassCard style={styles.listCard}>
-          {TV_CATALOGS.map((catalog, index) => (
-            <CatalogRow
-              key={catalog.key}
-              catalog={catalog}
-              last={index === TV_CATALOGS.length - 1}
-              onPress={() => navigation.navigate('Catalog', { key: catalog.key })}
-            />
-          ))}
-        </GlassCard>
-      </View>
+      <FadeInView delay={140}>
+        <SectionHeader
+          icon={Tv}
+          kicker="On the small screen"
+          title="Series"
+          description="Five ways into the television catalog."
+        />
+        <View style={styles.section}>
+          <GlassCard style={styles.listCard}>
+            {TV_CATALOGS.map((catalog, index) => (
+              <CatalogRow
+                key={catalog.key}
+                catalog={catalog}
+                last={index === TV_CATALOGS.length - 1}
+                onPress={() => navigation.navigate('Catalog', { key: catalog.key })}
+              />
+            ))}
+          </GlassCard>
+        </View>
+      </FadeInView>
     </Screen>
   );
 };

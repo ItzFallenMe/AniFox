@@ -220,9 +220,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.sm,
     shadowColor: '#000000',
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.55,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 14 },
     elevation: 16,
   },
   barLiquid: {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   barSolid: {
     // Sits underneath the blur so the bar stays legible if native blur is
     // unavailable, and gives the glass its dark smoke tint.
-    backgroundColor: 'rgba(10,10,10,0.45)',
+    backgroundColor: 'rgba(5,5,6,0.55)',
   },
   blur: { borderRadius: radius.lg - 1 },
   sheen: {

@@ -33,6 +33,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    marginBottom: spacing.xs,
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   logoTile: {
