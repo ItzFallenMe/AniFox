@@ -44,11 +44,15 @@ jobs:
           SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f | sort | tail -1)
           echo "Using $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
+          # Gradle fetches anything missing after the licences are accepted, so
+          # a failed pre-install must not fail the build.
+          set +e
           "$SDKMANAGER" --install \
-            "platforms;android-37.0" \
+            "platforms;android-37" \
             "build-tools;37.0.0" \
             "ndk;27.1.12297006" \
             "cmake;3.22.1"
+          echo "sdkmanager exited $?"
 
       - name: Install JavaScript dependencies
         run: npm ci
