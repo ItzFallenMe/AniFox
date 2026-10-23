@@ -26,7 +26,7 @@ const outfit = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://anifox.app'),
+  metadataBase: new URL('https://anifox.runs-on.dev'),
   title: 'AniFox — Anime & movies, beautifully unified',
   description:
     'AniFox is a free Android client for anime, movies and series. Ad-free player, seven streaming providers, watchlist, resume history, episode alerts and Discord Rich Presence.',
@@ -45,12 +45,21 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'AniFox',
     type: 'website',
+    images: [
+      {
+        url: '/anifox-banner.png',
+        width: 1983,
+        height: 793,
+        alt: 'AniFox — anime and movies, beautifully unified',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'AniFox — Anime & movies, beautifully unified',
     description:
       'One black-glass Android client for anime, films and series. Ad-free playback, seven providers, and a library that remembers.',
+    images: ['/anifox-banner.png'],
   },
   icons: { icon: '/anifox-logo.png' },
 };
