@@ -1,6 +1,6 @@
 {
   "name": "anifox",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "AniFox — a bare React Native Android client for anime, movies and series.",
   "author": "ItzFallenMe",

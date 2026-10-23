@@ -175,7 +175,7 @@ signs with the debug keystore — generate your own key before publishing.
 
 `version` in `package.json`, `versionCode` / `versionName` in
 `android/app/build.gradle` and `APP_INFO.version` in `src/config/env.ts` must
-agree. v2.0.0 uses `versionCode 2`.
+agree. v2.1.0 uses `versionCode 3`.
 
 ## Website (`website/`)
 
@@ -217,10 +217,10 @@ Both pipelines publish the same set, named from `package.json`'s version:
 
 | Asset | ABI | Use it for |
 |-------|-----|------------|
-| `anifox-2.0.0-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
-| `anifox-2.0.0-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
-| `anifox-2.0.0-x86_64.apk` | x86_64 | Emulators and x86 tablets |
-| `anifox-2.0.0-universal.apk` | all | Any device, larger download |
+| `anifox-2.1.0-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
+| `anifox-2.1.0-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
+| `anifox-2.1.0-x86_64.apk` | x86_64 | Emulators and x86 tablets |
+| `anifox-2.1.0-universal.apk` | all | Any device, larger download |
 | `app-release.apk` | all | Plain alias of the universal build for direct links |
 
 To publish: bump `package.json`, `android/app/build.gradle` and
