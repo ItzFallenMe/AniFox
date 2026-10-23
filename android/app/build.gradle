@@ -82,8 +82,8 @@ android {
         applicationId "com.itzfallenme.anifox"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "2.1.0"
+        versionCode 4
+        versionName "2.1.1"
     }
     // Release publishes per-ABI APKs plus a universal fallback; the website
     // lists whatever the release workflow uploads.

@@ -293,7 +293,7 @@ export const DetailScreen = () => {
           <View style={styles.hintRow}>
             <Film color={colors.textFaint} size={12} strokeWidth={2} />
             <Text style={styles.hint}>
-              Streams from seven embed providers — switch servers in the player.
+              Streams from eight embed providers — switch servers in the player.
             </Text>
           </View>
         </GlassCard>

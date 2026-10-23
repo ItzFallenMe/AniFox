@@ -43,12 +43,14 @@ export const POSTERS = [
 ];
 
 export const PROVIDERS = [
-  { name: 'AniFox Provider', note: 'Ad-free default' },
-  { name: 'EmbedWave', note: 'Fast mirrors' },
-  { name: 'Embed API', note: 'Wide catalogue' },
-  { name: 'VidLink', note: 'Clean player' },
-  { name: 'MultiEmbed', note: 'Fallback' },
-  { name: 'VidSrc', note: 'Backup stream' },
+  { name: 'EmbedWave', note: 'Ad-free default' },
+  { name: 'VidLink', note: 'Next-episode button' },
+  { name: 'VidSrc.pm', note: 'Vidflix player' },
+  { name: '2Embed.skin', note: 'Wide catalogue' },
+  { name: '2Embed', note: 'Fallback catalogue' },
+  { name: 'Videasy', note: 'Multi-quality' },
+  { name: '111Movies', note: 'Backup stream' },
+  { name: 'Vidsrc.su', note: 'Last resort' },
 ];
 
 export const FAQS = [

@@ -51,7 +51,7 @@ const FEATURES = [
   },
   {
     icon: Server,
-    title: 'Seven providers',
+    title: 'Eight providers',
     body: 'If a stream stalls, switch servers inside the player without losing your place. Each provider resolves titles differently.',
     tone: 'neutral',
   },
@@ -137,7 +137,7 @@ export default function HomePage() {
                 <p className="mx-auto mt-7 max-w-xl text-base font-medium leading-relaxed text-muted sm:text-lg lg:mx-0">
                   AniFox is a black-glass Android client for anime, films and
                   series. A player that hides the ads, a library that remembers
-                  your episode, and seven providers when one lets you down.
+                  your episode, and eight providers when one lets you down.
                 </p>
               </Reveal>
 
@@ -317,7 +317,7 @@ export default function HomePage() {
                 <span className="text-muted">Skip the noise.</span>
               </h2>
               <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-                Playback is embedded from seven providers, so there is nothing to
+                Playback is embedded from eight providers, so there is nothing to
                 download and nothing to configure. The ad guard blocks redirects
                 and popunders before they open, and switching servers reloads the
                 same episode in place.
@@ -442,7 +442,7 @@ export default function HomePage() {
                 — Providers
               </p>
               <h2 className="font-display text-4xl font-black uppercase leading-[0.9] tracking-tighter text-white sm:text-5xl">
-                Seven ways
+                Eight ways
                 <br />
                 <span className="text-muted">to the same story.</span>
               </h2>

@@ -187,26 +187,26 @@ export const SettingsScreen = () => {
         </GlassCard>
       </View>
 
-      {discordReady ? (
-        <>
-          <SectionHeader kicker="Integrations" title="Discord" />
-          <View style={styles.section}>
-            <GlassCard style={styles.card}>
-              <ToggleRow
-                icon={Gamepad2}
-                title="Rich Presence"
-                subtitle={discordSubtitle}
-                value={settings.discordPresence}
-                onChange={toggleDiscord}
-              />
-            </GlassCard>
-            <Text style={styles.finePrint}>
-              Presence publishes only while the player is open. Turn it off and
-              your Discord status clears immediately.
-            </Text>
-          </View>
-        </>
-      ) : null}
+      {/* Always visible: the row explains its own state instead of vanishing,
+          so users can see that presence exists and what it needs. */}
+      <SectionHeader kicker="Integrations" title="Discord" />
+      <View style={styles.section}>
+        <GlassCard style={styles.card}>
+          <ToggleRow
+            icon={Gamepad2}
+            title="Rich Presence"
+            subtitle={discordSubtitle}
+            value={discordReady && settings.discordPresence}
+            disabled={!discordReady}
+            onChange={toggleDiscord}
+          />
+        </GlassCard>
+        <Text style={styles.finePrint}>
+          {discordReady
+            ? 'Presence publishes only while the player is open. Turn it off and your Discord status clears immediately.'
+            : `${discordStatus?.reason ?? 'Discord presence needs the Discord Social SDK.'} Presence stays unavailable until that SDK is linked to the Android build.`}
+        </Text>
+      </View>
 
       <View style={styles.section}>
         <GhostButton

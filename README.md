@@ -46,7 +46,7 @@ Created and maintained by **[ItzFallenMe](https://github.com/ItzFallenMe)**.
 | **Anime** | Anime spotlight plus ongoing, most popular, top rated and anime-film rails. |
 | **Search** | Debounced multi-search across movies, series and anime, with page-by-page results and the last eight searches kept locally. |
 | **Detail** | Backdrop hero, score, synopsis, cast, similar titles, season/episode picker, trailer sheet, bookmark toggle, **Continue Sx · Ex** and next-episode alert. |
-| **Player** | Seven embed providers, in-player server switching, reload and recovery, autoplay, an ad-free navigation guard, **landscape fullscreen** that rotates in and back out automatically, and **Download** once the stream is detected. |
+| **Player** | Eight embed providers (EmbedWave first), in-player server switching, reload and recovery, autoplay, an ad-free navigation guard, **landscape fullscreen** that rotates in and back out automatically, and **Download** — available in the fullscreen bar too. |
 | **Library** | Watchlist, resume history, recent searches, episode alerts and offline downloads — all stored on-device. |
 | **You** | Library counts, streaming-server list, data sources, disclaimer, settings and creator credit. |
 | **Settings** | Glass tab bar intensity, default server, autoplay, landscape player, Discord presence (only in builds that support it), reset. |
@@ -175,7 +175,7 @@ signs with the debug keystore — generate your own key before publishing.
 
 `version` in `package.json`, `versionCode` / `versionName` in
 `android/app/build.gradle` and `APP_INFO.version` in `src/config/env.ts` must
-agree. v2.1.0 uses `versionCode 3`.
+agree. v2.1.1 uses `versionCode 4`.
 
 ## Website (`website/`)
 
@@ -217,10 +217,10 @@ Both pipelines publish the same set, named from `package.json`'s version:
 
 | Asset | ABI | Use it for |
 |-------|-----|------------|
-| `anifox-2.1.0-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
-| `anifox-2.1.0-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
-| `anifox-2.1.0-x86_64.apk` | x86_64 | Emulators and x86 tablets |
-| `anifox-2.1.0-universal.apk` | all | Any device, larger download |
+| `anifox-2.1.1-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
+| `anifox-2.1.1-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
+| `anifox-2.1.1-x86_64.apk` | x86_64 | Emulators and x86 tablets |
+| `anifox-2.1.1-universal.apk` | all | Any device, larger download |
 | `app-release.apk` | all | Plain alias of the universal build for direct links |
 
 To publish: bump `package.json`, `android/app/build.gradle` and
@@ -260,8 +260,9 @@ released builds ship with a working catalog.
 
 ## How playback works
 
-1. A server is chosen from `src/config/embedServers.ts`; the default is the
-   ad-free provider, with six alternatives.
+1. A server is chosen from `src/config/embedServers.ts`; the default is
+   EmbedWave, with seven alternatives (VidLink, VidSrc.pm, 2Embed.skin, 2Embed,
+   Videasy, 111Movies, Vidsrc.su).
 2. Its URL builder takes the TMDB id plus season/episode and returns the embed
    URL; autoplay follows the saved setting.
 3. The provider streams inside a WebView with fullscreen video enabled.
@@ -276,9 +277,15 @@ released builds ship with a working catalog.
 
 Embed pages draw their own controls, so the app keeps a large fullscreen button
 in its **own** header (42 pt tile, 8 pt hit slop) instead of relying on the
-provider's cramped one. In fullscreen the panel is hidden and the video takes
-every pixel after the compact header, with the notch insets respected on both
-sides. Rotation goes through `NativeModules.AnifoxOrientation`
+provider's cramped one. In fullscreen the panel is replaced by a slim bottom bar
+with **Download**, the provider chips and an exit button, so neither download
+nor server switching is ever out of reach.
+
+The WebView is framed at the provider's native **16:9** inside a black stage
+rather than stretched to the phone's 20:9 screen — that aspect mismatch is what
+made the provider's fullscreen and server-name controls sit on top of each
+other. The frame is measured with `onLayout` and centred, with notch insets
+respected on both sides. Rotation goes through `NativeModules.AnifoxOrientation`
 (`android/.../orientation/OrientationModule.kt`), which sets sensor landscape or
 sensor portrait on the current activity; because `MainActivity` handles
 `configChanges`, rotating never recreates the React instance, so playback and
@@ -308,7 +315,7 @@ npx react-native bundle --platform android --dev false \
   --entry-file index.js --bundle-output /tmp/index.android.bundle --assets-dest /tmp/assets
 ```
 
-59 tests cover the catalog policy, TMDB endpoints, embed URL builders, the
+58 tests cover the catalog policy, TMDB endpoints, embed URL builders, the
 ad guard, preference defaults, the library stores (watchlist, resume ordering,
 search dedupe, alert timing, date formatting), stream detection and download
 identity.

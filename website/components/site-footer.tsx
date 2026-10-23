@@ -112,7 +112,7 @@ export function SiteFooter() {
           </p>
           <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.24em] text-white">
             <span className="dot-live h-2 w-2 rounded-full bg-brand" />
-            Seven servers online
+            Eight servers online
           </div>
         </div>
       </div>

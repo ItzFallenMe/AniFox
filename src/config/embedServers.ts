@@ -1,9 +1,13 @@
 /**
- * Embed playback servers, ported from sarui-movies' player (`ui/Modal.tsx`).
+ * Embed playback providers.
  *
- * Each server is just an iframe/WebView URL builder: the provider does the
+ * Each entry is just an iframe/WebView URL builder: the provider does the
  * streaming, so the app never touches a media file, hosts nothing and needs no
- * scraping. Server 1 is sarui's own ad-free provider and is the default.
+ * scraping. Order is the order shown in the player — fastest, healthiest
+ * providers first.
+ *
+ * EmbedWave leads the list; the old sarui provider that used to be Server 1 is
+ * gone (its deployment no longer resolves).
  */
 
 export interface StreamContext {
@@ -26,27 +30,6 @@ export interface EmbedServer {
 
 const trimSlash = (value: string) => value.replace(/\/+$/, '');
 
-/** sarui-movies' own provider — no ads, no popunders. */
-export const PROVIDER_BASE_URL = 'https://sarui-mov-provider.vercel.app';
-
-const EMBED_BASES = {
-  server3: 'https://embedwave.cc',
-  server4: 'https://watch.embed-api.stream',
-  server5: 'https://vidlink.pro',
-  server6: 'https://multiembed.mov',
-  server7: 'https://vidsrc.sh/embed',
-} as const;
-
-/** `movie/x` for films, `tv/x/s/e` for episodes — sarui's `seriesPath`. */
-const seriesPath = (
-  context: StreamContext,
-  moviePath: string,
-  tvPath: string,
-): string =>
-  context.isSeries && context.season && context.episode != null
-    ? tvPath
-    : moviePath;
-
 const query = (params: Record<string, string | number | undefined>): string => {
   const parts = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== '')
@@ -54,40 +37,36 @@ const query = (params: Record<string, string | number | undefined>): string => {
   return parts.length ? `?${parts.join('&')}` : '';
 };
 
+const isEpisode = (context: StreamContext) =>
+  context.isSeries && Boolean(context.season) && context.episode != null;
+
+/** `movie/{id}` for films, `tv/{id}/{season}/{episode}` for episodes. */
+export const seriesPath = (
+  context: StreamContext,
+  moviePath: string,
+  tvPath: string,
+): string => (isEpisode(context) && context.episode != null ? tvPath : moviePath);
+
+/**
+ * Provider whose film and episode URLs share `/{kind}/{id}` with an optional
+ * season/episode tail (EmbedWave, VidLink, VidSrc, Videasy, Vidsrc.su).
+ */
+const pathProvider = (base: string) => (context: StreamContext) => {
+  const root = trimSlash(base);
+  return seriesPath(
+    context,
+    `${root}/movie/${context.tmdbId}`,
+    `${root}/tv/${context.tmdbId}/${context.season}/${context.episode}`,
+  );
+};
+
 export const EMBED_SERVERS: EmbedServer[] = [
   {
-    id: 'server1',
-    label: 'Server 1',
-    note: 'Ad-free provider',
+    id: 'embedwave',
+    label: 'EmbedWave',
+    note: 'Ad-free friendly · fastest',
     getUrl: context => {
-      const base = trimSlash(PROVIDER_BASE_URL);
-      const path =
-        context.isSeries && context.season && context.episode != null
-          ? `/embed/tv/${encodeURIComponent(context.tmdbId)}/${encodeURIComponent(
-              context.season,
-            )}/${context.episode}`
-          : `/embed/movie/${encodeURIComponent(context.tmdbId)}`;
-      return `${base}${path}${query({ autoplay: 1, title: context.title })}`;
-    },
-  },
-  {
-    id: 'server2',
-    label: 'Server 2',
-    disabled: true,
-    getUrl: context => {
-      const base = trimSlash('https://media-streaming-ecru.vercel.app');
-      return seriesPath(
-        context,
-        `${base}/media/tmdb-movie-${context.tmdbId}-${formatEmbedTitle(context.title)}`,
-        `${base}/media/tmdb-tv-${context.tmdbId}-${formatEmbedTitle(context.title)}`,
-      );
-    },
-  },
-  {
-    id: 'server3',
-    label: 'Server 3',
-    getUrl: context => {
-      const base = trimSlash(EMBED_BASES.server3);
+      const base = trimSlash('https://embedwave.cc');
       return seriesPath(
         context,
         `${base}/embed/movie/${context.tmdbId}`,
@@ -96,10 +75,21 @@ export const EMBED_SERVERS: EmbedServer[] = [
     },
   },
   {
-    id: 'server4',
-    label: 'Server 4',
+    id: 'vidlink',
+    label: 'VidLink',
+    note: 'Next-episode button',
     getUrl: context => {
-      const base = trimSlash(EMBED_BASES.server4);
+      const base = trimSlash('https://vidlink.pro');
+      const path = pathProvider(base)(context);
+      return context.isSeries ? `${path}${query({ nextbutton: 'true' })}` : path;
+    },
+  },
+  {
+    id: 'vidsrc-pm',
+    label: 'VidSrc.pm',
+    note: 'Vidflix player',
+    getUrl: context => {
+      const base = trimSlash('https://vidsrc.pm');
       return seriesPath(
         context,
         `${base}/embed/movie/${context.tmdbId}`,
@@ -108,49 +98,59 @@ export const EMBED_SERVERS: EmbedServer[] = [
     },
   },
   {
-    id: 'server5',
-    label: 'Server 5',
-    note: 'Episode next button',
+    id: '2embed-skin',
+    label: '2Embed.skin',
+    note: 'Film and episode player',
     getUrl: context => {
-      const base = trimSlash(EMBED_BASES.server5);
-      const path = seriesPath(
-        context,
-        `${base}/movie/${context.tmdbId}`,
-        `${base}/tv/${context.tmdbId}/${context.season}/${context.episode}`,
-      );
-      return context.isSeries
-        ? `${path}${query({ nextbutton: 'true' })}`
-        : path;
-    },
-  },
-  {
-    id: 'server6',
-    label: 'Server 6',
-    getUrl: context => {
-      const base = trimSlash(EMBED_BASES.server6);
-      return `${base}/${query({
-        video_id: context.tmdbId,
-        tmdb: 1,
-        s: context.isSeries ? context.season : undefined,
-        e: context.isSeries ? context.episode : undefined,
-      })}`;
-    },
-  },
-  {
-    id: 'server7',
-    label: 'Server 7',
-    getUrl: context => {
-      const base = trimSlash(EMBED_BASES.server7);
+      const base = trimSlash('https://www.2embed.skin');
       return seriesPath(
         context,
-        `${base}/movie/${context.tmdbId}`,
-        `${base}/tv/${context.tmdbId}/${context.season}/${context.episode}`,
+        `${base}/embed/movie/${context.tmdbId}`,
+        `${base}/embedtv/${context.tmdbId}&s=${context.season}&e=${context.episode}`,
+      );
+    },
+  },
+  {
+    id: '2embed',
+    label: '2Embed',
+    note: 'Fallback catalog',
+    getUrl: context => {
+      const base = trimSlash('https://www.2embed.cc');
+      return seriesPath(
+        context,
+        `${base}/embed/${context.tmdbId}`,
+        `${base}/embedtv/${context.tmdbId}&s=${context.season}&e=${context.episode}`,
+      );
+    },
+  },
+  {
+    id: 'videasy',
+    label: 'Videasy',
+    note: 'Multi-quality player',
+    getUrl: pathProvider('https://player.videasy.net'),
+  },
+  {
+    id: '111movies',
+    label: '111Movies',
+    note: 'Fallback catalog',
+    getUrl: pathProvider('https://111movies.com'),
+  },
+  {
+    id: 'vidsrc-su',
+    label: 'Vidsrc.su',
+    note: 'Fallback catalog',
+    getUrl: context => {
+      const base = trimSlash('https://vidsrc.su');
+      return seriesPath(
+        context,
+        `${base}/embed/movie/${context.tmdbId}`,
+        `${base}/embed/tv/${context.tmdbId}/${context.season}/${context.episode}`,
       );
     },
   },
 ];
 
-/** URL-safe title slug, as sarui uses for its second provider. */
+/** URL-safe title slug (kept for provider notes and deep links). */
 export const formatEmbedTitle = (title: string): string =>
   title
     .toLowerCase()
@@ -163,7 +163,7 @@ export const PLAYABLE_SERVERS = EMBED_SERVERS.filter(server => !server.disabled)
 export const embedServerById = (id: string | null | undefined): EmbedServer =>
   PLAYABLE_SERVERS.find(server => server.id === id) ?? PLAYABLE_SERVERS[0];
 
-/** YouTube trailer URL for a video key (sarui's trailer mode). */
+/** YouTube trailer URL for a video key. */
 export const trailerUrl = (key: string): string =>
   `https://www.youtube.com/embed/${encodeURIComponent(
     key,

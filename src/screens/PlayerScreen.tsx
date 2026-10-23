@@ -73,7 +73,7 @@ export const PlayerScreen = () => {
   const { settings } = useSettings();
   const { record } = useWatchHistory();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const movie = isMovie(item);
   const title = getTitle(item);
@@ -101,6 +101,8 @@ export const PlayerScreen = () => {
   const [downloadNote, setDownloadNote] = useState<string | null>(null);
   /** Fullscreen playback: video owns the screen, panel and header hidden. */
   const [fullscreen, setFullscreen] = useState(false);
+  /** Measured stage box, used to keep the player at the provider's 16:9. */
+  const [stageBox, setStageBox] = useState({ width: 0, height: 0 });
 
   const server = embedServerById(serverId);
   const url = useMemo(
@@ -162,6 +164,14 @@ export const PlayerScreen = () => {
     : [`Season ${context.season}`, `Episode ${context.episode}`, episodeName]
         .filter(Boolean)
         .join(' · ');
+
+  // Providers lay their controls out for a 16:9 frame. Stretching the WebView
+  // to a 20:9 phone screen is what makes their fullscreen and server controls
+  // collide, so the video is centred at 16:9 and letterboxed instead.
+  const videoWidth =
+    stageBox.height > 0
+      ? Math.min(stageBox.width, Math.round((stageBox.height * 16) / 9))
+      : undefined;
 
   const toggleFullscreen = () => {
     const next = !fullscreen;
@@ -281,12 +291,30 @@ export const PlayerScreen = () => {
         </View>
 
         <View
+          onLayout={event => {
+            const { width: boxWidth, height: boxHeight } = event.nativeEvent.layout;
+            setStageBox(current =>
+              current.width === boxWidth && current.height === boxHeight
+                ? current
+                : { width: boxWidth, height: boxHeight },
+            );
+          }}
           style={[
             styles.stage,
             fullscreen
               ? styles.stageFullscreen
-              : { height: Math.round((width * 9) / 16) },
+              : {
+                  height: Math.min(
+                    Math.round((width * 9) / 16),
+                    Math.max(180, height - 220),
+                  ),
+                },
           ]}>
+          <View
+            style={[
+              styles.videoBox,
+              videoWidth ? { width: videoWidth } : styles.videoFill,
+            ]}>
           <WebView
             key={`${server.id}-${reloadKey}-${adFree ? 'guard' : 'plain'}`}
             source={{ uri: url }}
@@ -322,6 +350,7 @@ export const PlayerScreen = () => {
               setFailed(true);
             }}
           />
+          </View>
 
           {loading && !failed ? (
             <View pointerEvents="none" style={styles.overlay}>
@@ -470,6 +499,87 @@ export const PlayerScreen = () => {
             </Pressable>
           </View>
         </ScrollView>
+
+        {/* Fullscreen keeps the panel hidden, so downloads and provider
+            switching live in this bar instead. */}
+        {fullscreen ? (
+          <View
+            style={[
+              styles.fullscreenBar,
+              {
+                paddingLeft: spacing.md + insets.left,
+                paddingRight: spacing.md + insets.right,
+                paddingBottom: Math.max(insets.bottom, spacing.sm),
+              },
+            ]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={movie ? 'Download film' : 'Download episode'}
+              disabled={!streamUrl || downloadBusy}
+              onPress={downloadCurrent}
+              style={({ pressed }) => [
+                styles.barDownload,
+                (!streamUrl || downloadBusy) && styles.downloadDisabled,
+                pressed && styles.pressed,
+              ]}>
+              {downloadBusy ? (
+                <ActivityIndicator color={colors.onPrimary} size="small" />
+              ) : (
+                <DownloadCloud
+                  color={colors.onPrimary}
+                  size={16}
+                  strokeWidth={2.2}
+                />
+              )}
+              <Text style={styles.barDownloadText}>
+                {streamUrl ? 'Download' : 'Finding stream…'}
+              </Text>
+            </Pressable>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.barServersScroll}
+              contentContainerStyle={styles.barServers}>
+              {EMBED_SERVERS.map(entry => {
+                const active = entry.id === server.id;
+                return (
+                  <Pressable
+                    key={entry.id}
+                    disabled={entry.disabled}
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      selected: active,
+                      disabled: entry.disabled,
+                    }}
+                    accessibilityLabel={entry.label}
+                    onPress={() => selectServer(entry.id)}
+                    style={[
+                      styles.serverChip,
+                      styles.serverChipCompact,
+                      active && styles.serverChipActive,
+                      entry.disabled && styles.serverChipDisabled,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.serverText,
+                        active && styles.serverTextActive,
+                      ]}>
+                      {entry.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <IconButton
+              icon={Minimize2}
+              size={36}
+              accessibilityLabel="Exit fullscreen"
+              onPress={toggleFullscreen}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -615,6 +725,34 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   serverChipDisabled: { opacity: 0.3 },
+  serverChipCompact: { height: 30, paddingHorizontal: 10 },
+  videoBox: { height: '100%', alignSelf: 'center', backgroundColor: '#000000' },
+  videoFill: { width: '100%' },
+  fullscreenBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    backgroundColor: colors.background,
+  },
+  barDownload: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.orange,
+  },
+  barDownloadText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10.5,
+    color: colors.onPrimary,
+  },
+  barServersScroll: { flex: 1 },
+  barServers: { gap: 6, alignItems: 'center', paddingRight: spacing.sm },
   serverText: {
     fontFamily: fonts.bodyMedium,
     fontSize: 11.5,
