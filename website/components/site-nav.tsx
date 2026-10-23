@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Download } from 'lucide-react';
 
-import { NAV_LINKS, RELEASES_URL } from '@/lib/links';
+import { DOWNLOAD_PAGE, NAV_LINKS } from '@/lib/links';
 
 export function SiteNav() {
   return (
@@ -42,9 +42,7 @@ export function SiteNav() {
         </div>
 
         <a
-          href={RELEASES_URL}
-          target="_blank"
-          rel="noreferrer"
+          href={DOWNLOAD_PAGE}
           className="btn-shine inline-flex h-10 items-center gap-2 rounded-full border border-brand/40 bg-gradient-to-r from-brand to-brand-deep px-5 text-[10px] font-black uppercase tracking-[0.18em] text-black shadow-[0_10px_28px_rgba(255,122,26,0.3)] transition-transform hover:scale-[1.03] active:scale-95"
         >
           <Download className="h-3.5 w-3.5" />

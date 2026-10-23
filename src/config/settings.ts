@@ -16,6 +16,8 @@ export interface AppSettings {
   defaultServerId: string | null;
   /** Start playback as soon as the embed provider is ready. */
   autoPlay: boolean;
+  /** Rotate the player to landscape fullscreen when a stream opens. */
+  autoRotate: boolean;
   /** Publish "watching …" to Discord while the player is open. */
   discordPresence: boolean;
 }
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   frostedBlur: true,
   defaultServerId: null,
   autoPlay: true,
+  autoRotate: true,
   discordPresence: false,
 };
 

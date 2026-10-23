@@ -22,7 +22,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { FaqSection } from '@/components/faq';
 import { HeroPhone, LibraryPhone, PlayerPhone } from '@/components/phones';
 import { Counter, Reveal, Spotlight } from '@/components/motion';
-import { GITHUB_URL, PROVIDERS, RELEASES_URL, TMDB_URL } from '@/lib/links';
+import { DOWNLOAD_PAGE, GITHUB_URL, PROVIDERS, TMDB_URL } from '@/lib/links';
 
 const FEATURES = [
   {
@@ -144,9 +144,7 @@ export default function HomePage() {
               <Reveal delay={300}>
                 <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
                   <a
-                    href={RELEASES_URL}
-                    target="_blank"
-                    rel="noreferrer"
+                    href={DOWNLOAD_PAGE}
                     className="btn-shine inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-brand px-9 text-sm font-black uppercase tracking-[0.08em] text-black shadow-[0_18px_50px_rgba(255,122,26,0.28)] transition-transform hover:scale-[1.02] active:scale-95 sm:w-auto"
                   >
                     <Download className="h-5 w-5" />
@@ -548,9 +546,7 @@ export default function HomePage() {
                 </p>
                 <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
                   <a
-                    href={RELEASES_URL}
-                    target="_blank"
-                    rel="noreferrer"
+                    href={DOWNLOAD_PAGE}
                     className="btn-shine inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-white px-10 text-sm font-black uppercase tracking-[0.08em] text-black shadow-[0_20px_50px_rgba(0,0,0,0.4)] transition-transform hover:scale-[1.03] active:scale-95 sm:w-auto"
                   >
                     <Download className="h-5 w-5" />

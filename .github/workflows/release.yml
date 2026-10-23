@@ -1,0 +1,124 @@
+name: Release APKs
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v2.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Install Android SDK packages
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f | sort | tail -1)
+          echo "Using $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install \
+            "platforms;android-37.0" \
+            "build-tools;37.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Inject configuration secrets
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          if [ -n "$TMDB_API_KEY" ]; then
+            sed -i "s|const TMDB_API_KEY = '.*';|const TMDB_API_KEY = '${TMDB_API_KEY}';|" src/config/env.ts
+          fi
+
+      - name: Verify project
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test -- --ci
+          npx react-native bundle --platform android --dev false \
+            --entry-file index.js \
+            --bundle-output /tmp/index.android.bundle \
+            --assets-dest /tmp/assets
+
+      - name: Build split + universal release APKs
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      # One APK per ABI plus the universal fallback. Files are named
+      # `anifox-<version>-<abi>.apk` (arm64-v8a, armeabi-v7a, x86_64,
+      # universal) and every build is also published as `app-release.apk` for
+      # plain links. `SHA256SUMS.txt` covers all of them.
+      - name: Collect and checksum APKs
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          rm -rf artifacts
+          mkdir -p artifacts
+          for file in android/app/build/outputs/apk/release/*.apk; do
+            base=$(basename "$file" .apk)     # app-arm64-v8a-release
+            variant=${base#app-}               # arm64-v8a-release
+            variant=${variant%-release}        # arm64-v8a
+            cp "$file" "artifacts/anifox-${VERSION}-${variant}.apk"
+          done
+          universal="artifacts/anifox-${VERSION}-universal.apk"
+          if [ -f "$universal" ]; then
+            cp "$universal" artifacts/app-release.apk
+          else
+            echo "::warning::No universal APK produced; app-release.apk was skipped."
+          fi
+          cd artifacts
+          sha256sum *.apk > SHA256SUMS.txt
+          ls -lh
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          name: AniFox ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/*.apk
+            artifacts/SHA256SUMS.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AniFox-APKs
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30

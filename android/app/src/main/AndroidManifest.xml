@@ -2,6 +2,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
       android:name=".MainApplication"
@@ -28,5 +32,20 @@
       <receiver
         android:name=".notifications.NotificationReceiver"
         android:exported="false" />
+
+      <activity
+        android:name=".offline.OfflinePlayerActivity"
+        android:exported="false"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:theme="@style/AppTheme" />
+
+      <service
+        android:name=".offline.AnifoxDownloadService"
+        android:exported="false"
+        android:foregroundServiceType="dataSync">
+        <intent-filter>
+          <action android:name="androidx.media3.exoplayer.downloadService.action.INIT" />
+        </intent-filter>
+      </service>
     </application>
 </manifest>

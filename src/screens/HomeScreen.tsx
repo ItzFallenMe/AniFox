@@ -12,6 +12,7 @@ import type { MediaItem } from '../types';
 import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
 import { Billboard } from '../components/Billboard';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { Pagination } from '../components/Pagination';
 import { ContinueWatchingRow } from '../components/ContinueWatchingRow';
 import { PosterGrid } from '../components/PosterGrid';
@@ -81,6 +82,7 @@ export const HomeScreen = () => {
         />
       }>
       {header}
+      <UpdateBanner />
 
       {loading ? (
         <HomeSkeleton />

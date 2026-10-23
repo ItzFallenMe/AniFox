@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowUpRight } from 'lucide-react';
 
-import { CREATOR_URL, GITHUB_URL, RELEASES_URL, TMDB_URL } from '@/lib/links';
+import { CREATOR_URL, DOWNLOAD_PAGE, GITHUB_URL, TMDB_URL } from '@/lib/links';
 
 export function SiteFooter() {
   return (
@@ -51,11 +51,9 @@ export function SiteFooter() {
               </li>
               <li>
                 <a
-                  href={RELEASES_URL}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={DOWNLOAD_PAGE}
                   className="transition-colors hover:text-white">
-                  Download
+                  Download APKs
                 </a>
               </li>
               <li>

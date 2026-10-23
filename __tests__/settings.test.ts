@@ -8,6 +8,7 @@ describe('app settings defaults', () => {
       frostedBlur: true,
       defaultServerId: null,
       autoPlay: true,
+      autoRotate: true,
       discordPresence: false,
     });
   });

@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
 
 permissions:
   contents: read
@@ -76,11 +74,23 @@ jobs:
           cd android
           ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Collect APK
+      # Same layout as the release workflow: one file per ABI, a universal
+      # fallback and `app-release.apk`.
+      - name: Collect APKs
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          rm -rf artifacts
           mkdir -p artifacts
-          cp android/app/build/outputs/apk/release/app-release.apk "artifacts/AniFox-${VERSION}.apk"
+          for file in android/app/build/outputs/apk/release/*.apk; do
+            base=$(basename "$file" .apk)     # app-arm64-v8a-release
+            variant=${base#app-}               # arm64-v8a-release
+            variant=${variant%-release}        # arm64-v8a
+            cp "$file" "artifacts/anifox-${VERSION}-${variant}.apk"
+          done
+          universal="artifacts/anifox-${VERSION}-universal.apk"
+          if [ -f "$universal" ]; then
+            cp "$universal" artifacts/app-release.apk
+          fi
           ls -lh artifacts
 
       - name: Upload APK

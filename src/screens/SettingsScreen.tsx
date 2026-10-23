@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Check,
   Gamepad2,
+  Maximize2,
   RotateCcw,
   Server,
   Sparkles,
@@ -56,6 +57,8 @@ export const SettingsScreen = () => {
   const [discordStatus, setDiscordStatus] = useState<DiscordStatus | null>(null);
 
   const defaultServerName = embedServerById(settings.defaultServerId).label;
+  // The toggle only exists in builds that can actually publish presence. End
+  // users should never see setup instructions they cannot act on.
   const discordReady =
     discordConfigured &&
     discordPresenceSupported &&
@@ -173,27 +176,37 @@ export const SettingsScreen = () => {
             value={settings.autoPlay}
             onChange={value => setSettings({ autoPlay: value })}
           />
+          <Divider />
+          <ToggleRow
+            icon={Maximize2}
+            title="Landscape player"
+            subtitle="Open a stream fullscreen in landscape, rotate back on exit"
+            value={settings.autoRotate}
+            onChange={value => setSettings({ autoRotate: value })}
+          />
         </GlassCard>
       </View>
 
-      <SectionHeader kicker="Integrations" title="Discord" />
-      <View style={styles.section}>
-        <GlassCard style={styles.card}>
-          <ToggleRow
-            icon={Gamepad2}
-            title="Rich Presence"
-            subtitle={discordSubtitle}
-            value={settings.discordPresence}
-            disabled={!discordReady}
-            onChange={toggleDiscord}
-          />
-        </GlassCard>
-        <Text style={styles.finePrint}>
-          Presence only publishes while the player is open. It needs a Discord
-          application with the Social SDK enabled and the native SDK adapter
-          linked into the Android build.
-        </Text>
-      </View>
+      {discordReady ? (
+        <>
+          <SectionHeader kicker="Integrations" title="Discord" />
+          <View style={styles.section}>
+            <GlassCard style={styles.card}>
+              <ToggleRow
+                icon={Gamepad2}
+                title="Rich Presence"
+                subtitle={discordSubtitle}
+                value={settings.discordPresence}
+                onChange={toggleDiscord}
+              />
+            </GlassCard>
+            <Text style={styles.finePrint}>
+              Presence publishes only while the player is open. Turn it off and
+              your Discord status clears immediately.
+            </Text>
+          </View>
+        </>
+      ) : null}
 
       <View style={styles.section}>
         <GhostButton

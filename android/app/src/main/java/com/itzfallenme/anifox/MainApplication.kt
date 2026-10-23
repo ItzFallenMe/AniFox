@@ -8,6 +8,8 @@ import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.itzfallenme.anifox.discord.DiscordPresencePackage
 import com.itzfallenme.anifox.notifications.LocalNotificationsPackage
+import com.itzfallenme.anifox.offline.DownloadsPackage
+import com.itzfallenme.anifox.orientation.OrientationPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -19,6 +21,8 @@ class MainApplication : Application(), ReactApplication {
           // Manually registered (no autolinking for in-repo native modules).
           add(DiscordPresencePackage())
           add(LocalNotificationsPackage())
+          add(DownloadsPackage())
+          add(OrientationPackage())
         },
     )
   }

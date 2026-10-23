@@ -237,7 +237,7 @@ export function LibraryPhone() {
             <p className="text-[6.5px] text-faint">Anime &amp; movies, unified</p>
           </div>
           <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[6px] font-bold uppercase tracking-[0.14em] text-muted">
-            v1.0
+            v2.0.0
           </span>
         </div>
 

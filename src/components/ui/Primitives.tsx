@@ -33,13 +33,120 @@ type IconType = ComponentType<{
 
 /* ── Screen shell ────────────────────────────────────────────────────────── */
 
+/** Slow orange/white light drift, matching the marketing site's aurora. */
+const DriftingAurora = () => {
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, {
+          toValue: 1,
+          duration: 16000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(drift, {
+          toValue: 0,
+          duration: 16000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [drift]);
+
+  return (
+    <>
+      <Animated.View
+        style={[
+          styles.driftA,
+          {
+            transform: [
+              {
+                translateX: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-22, 22],
+                }),
+              },
+              {
+                translateY: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -26],
+                }),
+              },
+              {
+                scale: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 1.14],
+                }),
+              },
+            ],
+          },
+        ]}>
+        <LinearGradient
+          colors={[
+            'rgba(255,122,26,0)',
+            'rgba(255,122,26,0.13)',
+            'rgba(255,122,26,0)',
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.driftFill}
+        />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.driftB,
+          {
+            transform: [
+              {
+                translateY: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 24],
+                }),
+              },
+              {
+                translateX: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -16],
+                }),
+              },
+              {
+                scale: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1.08, 0.98],
+                }),
+              },
+            ],
+          },
+        ]}>
+        <LinearGradient
+          colors={[
+            'rgba(255,255,255,0)',
+            'rgba(255,255,255,0.05)',
+            'rgba(255,255,255,0)',
+          ]}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.driftFill}
+        />
+      </Animated.View>
+    </>
+  );
+};
+
 /**
- * Deep-black canvas: diagonal hairline texture, two soft ambient lights and a
+ * Deep-black canvas: diagonal hairline texture, drifting aurora lights and a
  * single specular hairline along the top edge.
  */
 export const ScreenBackground = () => (
   <View pointerEvents="none" style={StyleSheet.absoluteFill}>
     <DiagonalPattern />
+    <DriftingAurora />
     <LinearGradient
       colors={['rgba(255,255,255,0.055)', 'rgba(255,255,255,0)']}
       start={{ x: 0.1, y: 0 }}
@@ -401,6 +508,25 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.background },
   safeArea: { flex: 1 },
+  driftA: {
+    position: 'absolute',
+    top: -150,
+    right: -110,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    overflow: 'hidden',
+  },
+  driftB: {
+    position: 'absolute',
+    bottom: -90,
+    left: -140,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    overflow: 'hidden',
+  },
+  driftFill: { flex: 1 },
   auroraTop: {
     position: 'absolute',
     top: -190,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   Pressable,
   ScrollView,
   StatusBar,
@@ -16,6 +17,9 @@ import { WebView } from 'react-native-webview';
 import type { ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
 import {
   ArrowLeft,
+  DownloadCloud,
+  Maximize2,
+  Minimize2,
   RefreshCw,
   ShieldCheck,
   ShieldOff,
@@ -29,6 +33,9 @@ import {
   type StreamContext,
 } from '../config/embedServers';
 import { useSettings } from '../hooks/useSettings';
+import { mimeForStream, downloadsSupported, startDownload } from '../services/downloads';
+import { parseProbeMessage, STREAM_PROBE_SCRIPT } from '../utils/streamProbe';
+import { lockLandscape, lockPortrait, unlockOrientation } from '../services/orientation';
 import { useWatchHistory } from '../hooks/useLibrary';
 import { connectDiscord, setDiscordActivity } from '../services/discordPresence';
 import { TMDBService } from '../services/tmdb';
@@ -89,6 +96,11 @@ export const PlayerScreen = () => {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [adFree, setAdFree] = useState(true);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadNote, setDownloadNote] = useState<string | null>(null);
+  /** Fullscreen playback: video owns the screen, panel and header hidden. */
+  const [fullscreen, setFullscreen] = useState(false);
 
   const server = embedServerById(serverId);
   const url = useMemo(
@@ -104,6 +116,8 @@ export const PlayerScreen = () => {
 
   const selectServer = (id: string) => {
     setServerId(id);
+    setStreamUrl(null);
+    setDownloadNote(null);
     reload();
   };
 
@@ -111,6 +125,27 @@ export const PlayerScreen = () => {
     const index = PLAYABLE_SERVERS.findIndex(entry => entry.id === server.id);
     const next = PLAYABLE_SERVERS[(index + 1) % PLAYABLE_SERVERS.length];
     selectServer(next.id);
+  };
+
+  const downloadCurrent = async () => {
+    if (!streamUrl || downloadBusy) return;
+    setDownloadBusy(true);
+    try {
+      await startDownload(
+        item,
+        { url: streamUrl, mimeType: mimeForStream(streamUrl), referer: url },
+        movie
+          ? undefined
+          : { season: season ?? 1, episode: episode ?? 1, episodeName },
+      );
+      setDownloadNote('Saved for offline — see You → Downloads.');
+    } catch (caught) {
+      setDownloadNote(
+        caught instanceof Error ? caught.message : 'Could not start the download.',
+      );
+    } finally {
+      setDownloadBusy(false);
+    }
   };
 
   const onShouldStartLoadWithRequest = (request: ShouldStartLoadRequest) => {
@@ -127,6 +162,38 @@ export const PlayerScreen = () => {
     : [`Season ${context.season}`, `Episode ${context.episode}`, episodeName]
         .filter(Boolean)
         .join(' · ');
+
+  const toggleFullscreen = () => {
+    const next = !fullscreen;
+    setFullscreen(next);
+    // Landscape gives the provider's control bar room, so its fullscreen and
+    // server controls stop sitting on top of each other.
+    if (next) lockLandscape();
+    else lockPortrait();
+  };
+
+  // Open streams in landscape when the preference is on, and always hand the
+  // device back to the system when the player closes.
+  useEffect(() => {
+    if (settings.autoRotate) {
+      setFullscreen(true);
+      lockLandscape();
+    }
+    return () => {
+      unlockOrientation();
+    };
+  }, [settings.autoRotate]);
+
+  // Back leaves fullscreen first; a second press closes the player.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setFullscreen(false);
+      lockPortrait();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [fullscreen]);
 
   // Resume history: one entry per title, updated whenever a stream opens.
   useEffect(() => {
@@ -161,9 +228,23 @@ export const PlayerScreen = () => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <View style={[styles.safe, { paddingTop: insets.top + spacing.sm }]}>
-        <View style={styles.header}>
+      <StatusBar barStyle="light-content" hidden={fullscreen} />
+      <View
+        style={[
+          styles.safe,
+          fullscreen
+            ? { paddingLeft: insets.left, paddingRight: insets.right }
+            : { paddingTop: insets.top + spacing.sm },
+        ]}>
+        <View
+          style={[
+            styles.header,
+            fullscreen && styles.headerFullscreen,
+            {
+              paddingLeft: spacing.xl + (fullscreen ? 0 : insets.left),
+              paddingRight: spacing.xl + (fullscreen ? 0 : insets.right),
+            },
+          ]}>
           <IconButton
             icon={ArrowLeft}
             accessibilityLabel="Back"
@@ -177,6 +258,12 @@ export const PlayerScreen = () => {
               {subtitle}
             </Text>
           </View>
+          <IconButton
+            icon={fullscreen ? Minimize2 : Maximize2}
+            size={42}
+            accessibilityLabel={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            onPress={toggleFullscreen}
+          />
           <View style={[styles.guard, adFree ? styles.guardOn : styles.guardOff]}>
             {adFree ? (
               <ShieldCheck color={colors.live} size={12} strokeWidth={2.2} />
@@ -193,7 +280,13 @@ export const PlayerScreen = () => {
           </View>
         </View>
 
-        <View style={[styles.stage, { height: Math.round((width * 9) / 16) }]}>
+        <View
+          style={[
+            styles.stage,
+            fullscreen
+              ? styles.stageFullscreen
+              : { height: Math.round((width * 9) / 16) },
+          ]}>
           <WebView
             key={`${server.id}-${reloadKey}-${adFree ? 'guard' : 'plain'}`}
             source={{ uri: url }}
@@ -207,7 +300,13 @@ export const PlayerScreen = () => {
             mixedContentMode="always"
             setSupportMultipleWindows={false}
             originWhitelist={['*']}
-            injectedJavaScriptBeforeContentLoaded={adFree ? AD_BLOCK_SCRIPT : undefined}
+            injectedJavaScriptBeforeContentLoaded={
+              adFree ? `${AD_BLOCK_SCRIPT}\n${STREAM_PROBE_SCRIPT}` : STREAM_PROBE_SCRIPT
+            }
+            onMessage={event => {
+              const detected = parseProbeMessage(event.nativeEvent.data);
+              if (detected) setStreamUrl(detected);
+            }}
             onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
             onLoadStart={() => {
               setLoading(true);
@@ -246,6 +345,7 @@ export const PlayerScreen = () => {
         </View>
 
         <ScrollView
+          style={fullscreen ? styles.hidden : undefined}
           contentContainerStyle={[
             styles.footer,
             { paddingBottom: Math.max(insets.bottom, spacing.lg) },
@@ -313,6 +413,41 @@ export const PlayerScreen = () => {
                 );
               })}
             </ScrollView>
+
+            {downloadsSupported ? (
+              <View style={styles.downloadBlock}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={movie ? 'Download film' : 'Download episode'}
+                  disabled={!streamUrl || downloadBusy}
+                  onPress={downloadCurrent}
+                  style={({ pressed }) => [
+                    styles.downloadButton,
+                    (!streamUrl || downloadBusy) && styles.downloadDisabled,
+                    pressed && styles.pressed,
+                  ]}>
+                  {downloadBusy ? (
+                    <ActivityIndicator color={colors.onPrimary} size="small" />
+                  ) : (
+                    <DownloadCloud
+                      color={colors.onPrimary}
+                      size={15}
+                      strokeWidth={2.2}
+                    />
+                  )}
+                  <Text style={styles.downloadText}>
+                    {streamUrl
+                      ? movie
+                        ? 'Download film'
+                        : 'Download episode'
+                      : 'Finding stream…'}
+                  </Text>
+                </Pressable>
+                {downloadNote ? (
+                  <Text style={styles.downloadNote}>{downloadNote}</Text>
+                ) : null}
+              </View>
+            ) : null}
 
             <Text style={styles.note}>
               {server.note ??
@@ -382,12 +517,16 @@ const styles = StyleSheet.create({
   guardTextOn: { color: colors.live },
   guardTextOff: { color: colors.textMuted },
 
+  headerFullscreen: { paddingBottom: spacing.sm },
   stage: {
     backgroundColor: '#000000',
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: colors.borderSubtle,
   },
+  /** Fullscreen stage: every pixel left after the compact header. */
+  stageFullscreen: { flex: 1, borderTopWidth: 0, borderBottomWidth: 0 },
+  hidden: { display: 'none' },
   web: { flex: 1, backgroundColor: '#000000' },
   overlay: {
     position: 'absolute',
@@ -487,6 +626,32 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     lineHeight: 16,
     color: colors.textFaint,
+  },
+  downloadBlock: {
+    gap: 6,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.orange,
+  },
+  downloadDisabled: { opacity: 0.45 },
+  downloadText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11.5,
+    color: colors.onPrimary,
+  },
+  downloadNote: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textMuted,
   },
   actions: {
     flexDirection: 'row',

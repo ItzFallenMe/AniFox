@@ -56,5 +56,6 @@ export const APP_INFO = {
   tagline: 'Anime & movies, beautifully unified.',
   creator: 'ItzFallenMe',
   creatorUrl: 'https://github.com/ItzFallenMe',
-  version: '1.0.0',
+  version: '2.0.0',
+  repository: 'https://github.com/ItzFallenMe/AniFox',
 } as const;

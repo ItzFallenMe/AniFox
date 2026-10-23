@@ -1,5 +1,9 @@
 export const GITHUB_URL = 'https://github.com/ItzFallenMe/AniFox';
 export const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
+/** Server route that redirects to the newest APK on GitHub releases. */
+export const DOWNLOAD_URL = '/api/release';
+/** Page listing every APK across recent releases. */
+export const DOWNLOAD_PAGE = '/download';
 export const TMDB_URL = 'https://www.themoviedb.org';
 export const CREATOR_URL = 'https://github.com/ItzFallenMe';
 

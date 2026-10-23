@@ -17,6 +17,7 @@ import { PlayerScreen } from '../screens/PlayerScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { WatchlistScreen } from '../screens/WatchlistScreen';
 import { AlertsScreen } from '../screens/AlertsScreen';
+import { DownloadsScreen } from '../screens/DownloadsScreen';
 import { TabBar } from './TabBar';
 import type { MainTabParamList, RootStackParamList } from './types';
 import { colors } from '../theme';
@@ -81,6 +82,7 @@ export const RootNavigator = () => (
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Watchlist" component={WatchlistScreen} />
       <Stack.Screen name="Alerts" component={AlertsScreen} />
+      <Stack.Screen name="Downloads" component={DownloadsScreen} />
     </Stack.Navigator>
   </NavigationContainer>
 );

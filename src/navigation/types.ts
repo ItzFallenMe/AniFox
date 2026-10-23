@@ -19,6 +19,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Watchlist: undefined;
   Alerts: undefined;
+  Downloads: undefined;
   Player: {
     item: MediaItem;
     season?: number;

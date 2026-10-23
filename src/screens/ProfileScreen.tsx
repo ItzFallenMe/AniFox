@@ -14,6 +14,7 @@ import {
   Bookmark,
   ChevronRight,
   Database,
+  DownloadCloud,
   Server,
   Settings2,
   ShieldCheck,
@@ -26,6 +27,7 @@ import { colors, fonts, radius, spacing } from '../theme';
 import { AppHeader } from '../components/AppHeader';
 import { TmdbSetup } from '../components/TmdbSetup';
 import { useEpisodeAlerts, useWatchlist } from '../hooks/useLibrary';
+import { useDownloads } from '../hooks/useDownloads';
 import {
   GlassCard,
   Kicker,
@@ -38,6 +40,7 @@ export const ProfileScreen = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { items: savedTitles } = useWatchlist();
   const { alerts } = useEpisodeAlerts();
+  const { entries: downloads } = useDownloads();
 
   return (
   <Screen scroll contentStyle={styles.content}>
@@ -99,6 +102,19 @@ export const ProfileScreen = () => {
               }`
         }
         onPress={() => navigation.navigate('Alerts')}
+      />
+      <View style={styles.entryGap} />
+      <LibraryEntry
+        icon={DownloadCloud}
+        title="Downloads"
+        subtitle={
+          downloads.length === 0
+            ? 'Play a title, then download it from the player'
+            : `${downloads.length} ${
+                downloads.length === 1 ? 'title' : 'titles'
+              } available offline`
+        }
+        onPress={() => navigation.navigate('Downloads')}
       />
     </View>
 
