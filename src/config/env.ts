@@ -43,7 +43,7 @@ export const FALLBACK_LANGUAGE = 'en-US';
  * adapter (see `android/app/src/main/java/com/itzfallenme/anifox/discord/`).
  * Presence stays off until all three are in place.
  */
-const DISCORD_CLIENT_ID = '';
+const DISCORD_CLIENT_ID = '1563081601254953002';
 
 export const DISCORD_CONFIG = {
   CLIENT_ID: DISCORD_CLIENT_ID.trim(),
