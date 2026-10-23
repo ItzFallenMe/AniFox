@@ -49,7 +49,7 @@ Created and maintained by **[ItzFallenMe](https://github.com/ItzFallenMe)**.
 | **Player** | Eight embed providers (EmbedWave first), in-player server switching, reload and recovery, autoplay, an ad-free navigation guard, **landscape fullscreen** that rotates in and back out automatically, and **Download** — available in the fullscreen bar too. |
 | **Library** | Watchlist, resume history, recent searches, episode alerts and offline downloads — all stored on-device. |
 | **You** | Library counts, streaming-server list, data sources, disclaimer, settings and creator credit. |
-| **Settings** | Glass tab bar intensity, default server, autoplay, landscape player, Discord presence (only in builds that support it), reset. |
+| **Settings** | Glass tab bar intensity, default server, autoplay, landscape player, Discord Rich Presence, reset. |
 
 The catalog is TMDB metadata. Playback is embedded from third-party providers,
 exactly like the original sarui-movies player this project grew out of.
@@ -106,21 +106,29 @@ No background polling, no account, no telemetry.
 
 ## Discord Rich Presence
 
-Presence is optional and **off by default**. The Settings toggle is only shown
-in builds where it can actually publish — users never see setup instructions.
+Presence is optional and **off by default**; switch it on under
+**Settings → Integrations → Discord → Rich Presence**. It publishes only while
+the player is open (title, season/episode, poster and an elapsed timer) and
+clears when you leave.
 
-Real Rich Presence on Android requires Discord's Social SDK, which is a
-downloadable native artifact with no Maven or React Native distribution.
-`android/app/src/main/java/com/itzfallenme/anifox/discord/` contains the bridge
-and a reflective `DiscordSdkAdapter` seam: add the SDK to `android/app/libs/`,
-paste a client id into `DISCORD_CLIENT_ID` in `src/config/env.ts`, and implement
-`DiscordSdkAdapterImpl`. Presence is published only while the player is open and
-cleared on exit. See the README inside that folder for the exact steps.
+It uses Discord's **Social SDK**, bundled at
+`android/app/libs/discord_partner_sdk.aar`. On Android the SDK publishes presence
+over RPC to the installed Discord app, so there is **no login, no OAuth and no
+token** — the Discord app just has to be installed and signed in. The chain is:
 
-> A "log in with Discord" button cannot enable presence on its own: Discord does
-> not accept third-party presence updates over OAuth. Account linking only makes
-> sense together with a backend that syncs the library, which this project does
-> not ship (yet).
+1. `src/services/discordPresence.ts` — JS API and status.
+2. `discord/DiscordPresenceModule.kt` — React Native module.
+3. `discord/sdk/DiscordSdkAdapterImpl.kt` — SDK adapter (loads the native libs).
+4. `src/main/cpp/discord_presence.cpp` — JNI bridge over `discordpp.h`; it owns
+   one worker thread that pumps `RunCallbacks()` and calls
+   `SetApplicationId` / `UpdateRichPresence`.
+
+The application id lives in `DISCORD_CLIENT_ID` in `src/config/env.ts` and must
+have the Social SDK enabled in the Discord Developer Portal.
+
+> A "log in with Discord" button cannot enable presence on its own, and pasting
+> a user token (as some music apps do) turns the app into an automated user
+> account, which Discord's Terms prohibit. Neither is used here.
 
 ## Stack
 
@@ -175,7 +183,7 @@ signs with the debug keystore — generate your own key before publishing.
 
 `version` in `package.json`, `versionCode` / `versionName` in
 `android/app/build.gradle` and `APP_INFO.version` in `src/config/env.ts` must
-agree. v2.1.1 uses `versionCode 4`.
+agree. v2.1.2 uses `versionCode 5`.
 
 ## Website (`website/`)
 
@@ -217,10 +225,10 @@ Both pipelines publish the same set, named from `package.json`'s version:
 
 | Asset | ABI | Use it for |
 |-------|-----|------------|
-| `anifox-2.1.1-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
-| `anifox-2.1.1-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
-| `anifox-2.1.1-x86_64.apk` | x86_64 | Emulators and x86 tablets |
-| `anifox-2.1.1-universal.apk` | all | Any device, larger download |
+| `anifox-2.1.2-arm64-v8a.apk` | arm64-v8a | Almost every phone from ~2017 on (recommended) |
+| `anifox-2.1.2-armeabi-v7a.apk` | armeabi-v7a | Older 32-bit devices |
+| `anifox-2.1.2-x86_64.apk` | x86_64 | Emulators and x86 tablets |
+| `anifox-2.1.2-universal.apk` | all | Any device, larger download |
 | `app-release.apk` | all | Plain alias of the universal build for direct links |
 
 To publish: bump `package.json`, `android/app/build.gradle` and
@@ -233,11 +241,15 @@ released builds ship with a working catalog.
 
 ```
 ├── android/                      native project (com.itzfallenme.anifox)
-│   └── app/src/main/java/com/itzfallenme/anifox/
-│       ├── discord/              presence bridge + SDK adapter seam
-│       ├── notifications/        episode-alert scheduling + receiver
-│       ├── offline/              Media3 downloads, service, offline player
-│       └── orientation/          landscape / portrait lock for the player
+│   └── app/
+│       ├── libs/                 bundled discord_partner_sdk.aar
+│       └── src/main/
+│           ├── cpp/              JNI bridge for the Discord Social SDK
+│           └── java/com/itzfallenme/anifox/
+│               ├── discord/      presence bridge + SDK adapter
+│               ├── notifications/ episode-alert scheduling + receiver
+│               ├── offline/      Media3 downloads, service, offline player
+│               └── orientation/  landscape / portrait lock for the player
 ├── assets/anifox-logo.png        app mark / launcher icon source
 ├── src/
 │   ├── components/               billboard, cards, rows, update banner, UI kit

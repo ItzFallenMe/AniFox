@@ -1,5 +1,6 @@
 package com.itzfallenme.anifox.discord
 
+import android.app.Activity
 import android.content.Context
 
 /**
@@ -19,6 +20,9 @@ import android.content.Context
  * settings toggle stays disabled. No JS changes are required afterwards.
  */
 interface DiscordSdkAdapter {
+    /** The SDK binds to the Discord app through the hosting activity. */
+    fun setEngineActivity(activity: Activity?)
+
     fun connect(clientId: String)
     fun disconnect()
     fun setActivity(activity: DiscordActivityPayload)

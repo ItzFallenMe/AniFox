@@ -82,8 +82,29 @@ android {
         applicationId "com.itzfallenme.anifox"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "2.1.1"
+        versionCode 5
+        versionName "2.1.2"
+
+        externalNativeBuild {
+            cmake {
+                // Keep the Discord bridge self-contained; the SDK itself ships
+                // without an STL dependency.
+                arguments "-DANDROID_STL=c++_static"
+                cppFlags "-std=c++17 -fexceptions"
+            }
+        }
+    }
+
+    buildFeatures {
+        // Reads the prefab metadata inside discord_partner_sdk.aar.
+        prefab true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
     }
     // Release publishes per-ABI APKs plus a universal fallback; the website
     // lists whatever the release workflow uploads.

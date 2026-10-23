@@ -46,6 +46,7 @@ class DiscordPresenceModule(
             return
         }
         try {
+            sdk.setEngineActivity(currentActivity)
             sdk.connect(clientId)
             promise.resolve(status())
         } catch (error: Throwable) {

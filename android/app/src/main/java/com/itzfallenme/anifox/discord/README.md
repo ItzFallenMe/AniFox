@@ -1,66 +1,39 @@
-# Discord Rich Presence — linking the SDK
+# Discord Rich Presence
 
-AniFox ships the whole bridge; only Discord's native SDK is missing, because
-Discord distributes it as a downloadable artifact rather than a Maven package,
-and it has no React Native binding.
+The Social SDK is bundled at `android/app/libs/discord_partner_sdk.aar`
+(Discord Social SDK 1.10.19337) and linked through `implementation
+fileTree(dir: "libs", ...)`. Its prefab module provides `discordpp.h` and the
+per-ABI `libdiscord_partner_sdk.so`, so no extra Gradle dependency is needed.
 
-On Android, Social SDK **1.10+** publishes presence over RPC to the installed
-Discord app — **no account linking, no token, no login**. That is the only
-supported route, and it is what this bridge uses.
+On Android the SDK publishes presence over RPC to the installed Discord app —
+**no account linking, no token, no login** — as long as the Discord app is
+signed in. That is the only route this app uses.
 
-> Do not connect with a user token. Copying a token out of the Discord client
-> (the "how to get your token" guides) is an automated user account, which
-> Discord's Terms prohibit and which gets accounts banned.
+> Do not connect with a user token. Copying a token out of the Discord client is
+> an automated user account, which Discord's Terms prohibit and which gets
+> accounts banned.
 
-## 1. Create the Discord application
+## How it fits together
 
-1. Open <https://discord.com/developers/applications> and create an application.
-2. Enable the **Social SDK** for it (Rich Presence on mobile requires it).
-3. Copy the **Application ID** into `DISCORD_CLIENT_ID` in
-   `src/config/env.ts`.
-4. Add the presence artwork (large image key) if you plan to use one.
+| File | Role |
+|------|------|
+| `src/main/cpp/discord_presence.cpp` | JNI bridge. One worker thread owns the SDK client, drains calls and pumps `discordpp::RunCallbacks()`. |
+| `src/main/cpp/CMakeLists.txt` | Links `discord_partner_sdk::discord_partner_sdk` via prefab. |
+| `discord/sdk/DiscordSdkAdapterImpl.kt` | Kotlin adapter behind the existing seam: loads the native libs, hands the SDK the hosting activity, translates presence payloads. |
+| `discord/DiscordSdkAdapter.kt` | Interface used by the React Native module (no direct SDK types). |
+| `discord/DiscordPresenceModule.kt` | `NativeModules.AnifoxDiscord`. |
+| `src/services/discordPresence.ts` | JS API, status and error handling. |
 
-## 2. Add the SDK to the Android build
+## Requirements
 
-1. Download the Android Social SDK artifact from the Developer Portal.
-2. Put it in `android/app/libs/` — Gradle already links every `.aar`/`.jar`
-   there (`implementation fileTree(dir: "libs", ...)`).
-3. Rebuild the app (`npm run android`).
+- The application id in `DISCORD_CLIENT_ID` (`src/config/env.ts`) must have the
+  **Social SDK enabled** in the Discord Developer Portal.
+- The Discord app must be installed on the device; presence is cleared when the
+  player closes.
 
-## 3. Implement the adapter
+## Build notes
 
-Create `android/app/src/main/java/com/itzfallenme/anifox/discord/sdk/DiscordSdkAdapterImpl.kt`
-implementing `com.itzfallenme.anifox.discord.DiscordSdkAdapter` with a single
-`(Context)` constructor. It is discovered by reflection, so no other file needs
-to change.
-
-```kotlin
-package com.itzfallenme.anifox.discord.sdk
-
-import android.content.Context
-import com.itzfallenme.anifox.discord.DiscordActivityPayload
-import com.itzfallenme.anifox.discord.DiscordSdkAdapter
-// import discord.socialsdk.*   ← whatever the SDK exposes
-
-class DiscordSdkAdapterImpl(context: Context) : DiscordSdkAdapter {
-    private var client: Any? = null
-
-    override fun connect(clientId: String) {
-        // Create the Discord client with clientId and connect it.
-    }
-
-    override fun disconnect() { /* close the client */ }
-
-    override fun setActivity(activity: DiscordActivityPayload) {
-        // Map the payload onto the SDK's activity builder, then update presence.
-    }
-
-    override fun clearActivity() { /* clear presence */ }
-
-    override fun isConnected(): Boolean = client != null
-}
-```
-
-Until this file exists the JS layer reports `sdkInstalled: false`, the Settings
-toggle stays disabled, and playback is unaffected. The same applies when the
-client ID is left blank.
+`android/app/build.gradle` enables `buildFeatures.prefab` and
+`externalNativeBuild` for `src/main/cpp`. The bridge is built with a static STL
+(`c++_static`) because the SDK itself has no STL dependency, which keeps the
+APK free of a second libc++ runtime.
