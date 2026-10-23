@@ -1,7 +1,31 @@
-# AniFox · v2.0.0
+<p align="center">
+  <img src="assets/anifox-logo.png" width="180" alt="AniFox Logo">
+</p>
+
+<h1 align="center">AniFox</h1>
+
+<p align="center">
+  <b>A modern anime streaming experience built with Flutter.</b><br>
+  Stream • Download • Track with AniList • Customize everything
+</p>
+
+<p align="center">
+  <a href="https://github.com/ItzFallenMe/AniFox/releases">
+    <img src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases">
+    <img src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/ItzFallenMe/AniFox?style=for-the-badge&color=F97316" />
+  </a>
+  <a href="https://discord.gg/9p2UP7X2hN">
+    <img src="https://img.shields.io/discord/1298715486436657202?style=for-the-badge&logo=discord&label=Discord" />
+  </a>
+</p>
 
 **Anime, movies and series in one black-glass Android client.** A bare React
-Native app — no Expo — with a Media3-backed offline library, episode alerts, a
+Native app with a Media3-backed offline library, episode alerts, a
 watchlist that follows you between sessions, optional Discord presence, and a
 Next.js site that serves the newest APK directly from GitHub Releases.
 
