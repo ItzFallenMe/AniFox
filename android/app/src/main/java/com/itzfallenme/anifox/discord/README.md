@@ -4,6 +4,14 @@ AniFox ships the whole bridge; only Discord's native SDK is missing, because
 Discord distributes it as a downloadable artifact rather than a Maven package,
 and it has no React Native binding.
 
+On Android, Social SDK **1.10+** publishes presence over RPC to the installed
+Discord app — **no account linking, no token, no login**. That is the only
+supported route, and it is what this bridge uses.
+
+> Do not connect with a user token. Copying a token out of the Discord client
+> (the "how to get your token" guides) is an automated user account, which
+> Discord's Terms prohibit and which gets accounts banned.
+
 ## 1. Create the Discord application
 
 1. Open <https://discord.com/developers/applications> and create an application.
@@ -14,14 +22,9 @@ and it has no React Native binding.
 
 ## 2. Add the SDK to the Android build
 
-1. Download the Android Social SDK artifact from Discord.
-2. Put it in `android/app/libs/` and reference it from
-   `android/app/build.gradle` (for an `.aar`):
-
-   ```gradle
-   implementation fileTree(dir: "libs", include: ["*.aar", "*.jar"])
-   ```
-
+1. Download the Android Social SDK artifact from the Developer Portal.
+2. Put it in `android/app/libs/` — Gradle already links every `.aar`/`.jar`
+   there (`implementation fileTree(dir: "libs", ...)`).
 3. Rebuild the app (`npm run android`).
 
 ## 3. Implement the adapter

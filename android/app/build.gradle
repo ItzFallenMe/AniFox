@@ -122,6 +122,10 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Discord's Social SDK is not on Maven: drop the Android artifact into
+    // app/libs and the presence bridge links it automatically.
+    implementation fileTree(dir: "libs", include: ["*.aar", "*.jar"])
+
     // Offline downloads + native playback (HLS and progressive).
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
