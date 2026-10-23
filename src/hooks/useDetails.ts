@@ -16,6 +16,7 @@ export const useDetails = (item: MediaItem) => {
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [similar, setSimilar] = useState<MediaItem[]>([]);
+  const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState(0);
@@ -37,9 +38,11 @@ export const useDetails = (item: MediaItem) => {
     const loadSimilar = movie
       ? TMDBService.getSimilarMovies(item.id)
       : TMDBService.getSimilarTVShows(item.id);
+    // Trailers are optional: a missing one must never block the detail page.
+    const loadTrailer = TMDBService.getTrailerKey(movie ? 'movie' : 'tv', item.id);
 
-    Promise.allSettled([loadDetails, loadCredits, loadSimilar])
-      .then(([detailsResult, creditsResult, similarResult]) => {
+    Promise.allSettled([loadDetails, loadCredits, loadSimilar, loadTrailer])
+      .then(([detailsResult, creditsResult, similarResult, trailerResult]) => {
         if (cancelled) return;
 
         if (detailsResult.status === 'rejected') {
@@ -50,6 +53,7 @@ export const useDetails = (item: MediaItem) => {
         setDetails(detailsResult.value);
         setCast(creditsResult.status === 'fulfilled' ? creditsResult.value.slice(0, 12) : []);
         setSimilar(similarResult.status === 'fulfilled' ? similarResult.value : []);
+        setTrailerKey(trailerResult.status === 'fulfilled' ? trailerResult.value : null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -60,7 +64,7 @@ export const useDetails = (item: MediaItem) => {
     };
   }, [item, token]);
 
-  return { details, cast, similar, loading, error, retry };
+  return { details, cast, similar, trailerKey, loading, error, retry };
 };
 
 export const useSeasonEpisodes = (tvId: number, seasonNumber?: number) => {

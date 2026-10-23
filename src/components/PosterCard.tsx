@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { Film, Star } from 'lucide-react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { Film, Play } from 'lucide-react-native';
 
 import { PressableScale } from './animations';
 
@@ -19,6 +20,9 @@ interface PosterCardProps {
   rank?: number;
 }
 
+/** Poster aspect ratio, matching sarui-movies' `aspect-[2/3]` cards. */
+export const POSTER_RATIO = 1.5;
+
 export const PosterCard = ({
   item,
   width = 118,
@@ -27,17 +31,21 @@ export const PosterCard = ({
   rank,
 }: PosterCardProps) => {
   const [failed, setFailed] = useState(false);
+  const [pressed, setPressed] = useState(false);
   const uri = TMDBService.posterUrl(item.poster_path, 'w500');
   const year = getYear(item);
+  const hasRating = Boolean(item.vote_average && item.vote_average > 0);
+  const isShow = item.media_type === 'tv';
 
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={getTitle(item)}
       onPress={() => onPress(item)}
-      style={[styles.card, { width }]}
-    >
-      <View style={[styles.frame, { height: width * 1.48 }]}>
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[styles.card, { width }]}>
+      <View style={[styles.frame, { height: width * POSTER_RATIO }]}>
         {uri && !failed ? (
           <Image
             source={{ uri }}
@@ -51,23 +59,36 @@ export const PosterCard = ({
           </View>
         )}
 
-        <View style={styles.rating}>
-          <Star
-            color={colors.text}
-            size={9}
-            strokeWidth={2.6}
-            fill={colors.text}
-          />
-          <Text style={styles.ratingText}>
-            {formatRating(item.vote_average)}
-          </Text>
+        <View style={styles.pills} pointerEvents="none">
+          {hasRating ? (
+            <View style={styles.ratingPill}>
+              <Text style={styles.ratingStar}>★</Text>
+              <Text style={styles.ratingText}>{formatRating(item.vote_average)}</Text>
+            </View>
+          ) : null}
+          {year ? (
+            <View style={[styles.yearPill, !hasRating && styles.yearPillLeft]}>
+              <Text style={styles.yearText}>{year}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {item.media_type === 'tv' ? 'TV' : 'FILM'}
-          </Text>
-        </View>
+        {pressed ? (
+          <LinearGradient
+            colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+            locations={[0, 0.45, 1]}
+            style={[StyleSheet.absoluteFill, styles.pressOverlay]}
+            pointerEvents="none">
+            <View style={styles.playCircle}>
+              <Play
+                color={colors.onPrimary}
+                size={16}
+                strokeWidth={0}
+                fill={colors.onPrimary}
+              />
+            </View>
+          </LinearGradient>
+        ) : null}
 
         {rank != null ? (
           <View style={styles.rank}>
@@ -76,13 +97,18 @@ export const PosterCard = ({
         ) : null}
       </View>
 
-      <Text
-        numberOfLines={1}
-        style={[styles.title, compact && styles.titleCompact]}
-      >
+      <Text numberOfLines={1} style={[styles.title, compact && styles.titleCompact]}>
         {getTitle(item)}
       </Text>
-      {!compact ? <Text style={styles.year}>{year || '—'}</Text> : null}
+
+      {!compact ? (
+        <View style={styles.metaRow}>
+          <Text style={styles.year}>{year || (isShow ? 'Series' : 'Film')}</Text>
+          <View style={styles.typeChip}>
+            <Text style={styles.typeText}>{isShow ? 'SERIES' : 'MOVIE'}</Text>
+          </View>
+        </View>
+      ) : null}
     </PressableScale>
   );
 };
@@ -90,7 +116,7 @@ export const PosterCard = ({
 const styles = StyleSheet.create({
   card: { paddingBottom: 2 },
   frame: {
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
@@ -102,47 +128,70 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surfaceRaised,
   },
-  rating: {
+  pills: {
     position: 'absolute',
-    top: 7,
-    right: 7,
+    top: spacing.sm,
+    left: spacing.sm,
+    right: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  ratingPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 6,
     height: 19,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.68)',
     borderWidth: 1,
     borderColor: colors.border,
   },
+  ratingStar: { fontSize: 8, color: colors.accent },
   ratingText: {
     fontFamily: fonts.bodyBold,
-    fontSize: 9,
-    color: colors.text,
+    fontSize: 9.5,
+    color: colors.accent,
   },
-  badge: {
-    position: 'absolute',
-    top: 7,
-    left: 7,
-    height: 17,
-    paddingHorizontal: 5,
-    borderRadius: 5,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+  yearPill: {
+    paddingHorizontal: 6,
+    height: 19,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     borderWidth: 1,
     borderColor: colors.border,
     justifyContent: 'center',
+    marginLeft: 'auto',
   },
-  badgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 7,
-    letterSpacing: 1,
+  yearPillLeft: { marginLeft: 0 },
+  yearText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 9.5,
     color: colors.textSecondary,
+  },
+  pressOverlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   rank: {
     position: 'absolute',
     left: 6,
-    bottom: 4,
+    bottom: 5,
     minWidth: 30,
     height: 30,
     paddingHorizontal: 4,
@@ -159,17 +208,37 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   title: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 12,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12.5,
     lineHeight: 16,
     color: colors.text,
     marginTop: spacing.sm,
   },
-  titleCompact: { fontSize: 11 },
+  titleCompact: { fontSize: 12 },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+    marginTop: 3,
+  },
   year: {
-    fontFamily: fonts.body,
+    fontFamily: fonts.bodyMedium,
     fontSize: 10,
-    color: colors.textFaint,
-    marginTop: 2,
+    color: colors.textMuted,
+  },
+  typeChip: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 5,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
+  typeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 7,
+    letterSpacing: 0.8,
+    color: colors.textMuted,
   },
 });

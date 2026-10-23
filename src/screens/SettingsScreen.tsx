@@ -13,28 +13,15 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   ArrowLeft,
   Check,
-  Minus,
-  Plus,
   RotateCcw,
   Server,
   Sparkles,
-  Type,
   X,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  PLAYBACK_RATES,
-  resetSettings,
-  useSettings,
-  type GlassIntensity,
-} from '../hooks/useSettings';
-import {
-  resetSubtitleSettings,
-  useSubtitleSettings,
-} from '../hooks/useSubtitleSettings';
-import { PLAYBACK_SERVERS } from '../services/servers';
-import { SUBTITLE_LANGUAGES } from '../constants/subtitleLanguages';
+import { resetSettings, useSettings, type GlassIntensity } from '../hooks/useSettings';
+import { EMBED_SERVERS, embedServerById } from '../config/embedServers';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import {
@@ -56,13 +43,9 @@ const GLASS_LEVELS: { value: GlassIntensity; label: string }[] = [
 export const SettingsScreen = () => {
   const navigation = useNavigation<Nav>();
   const { settings, setSettings } = useSettings();
-  const { settings: subtitle, setSettings: setSubtitle } =
-    useSubtitleSettings();
   const [serverSheet, setServerSheet] = useState(false);
 
-  const defaultServerName =
-    PLAYBACK_SERVERS.find(server => server.id === settings.defaultServerId)
-      ?.name ?? 'First available';
+  const defaultServerName = embedServerById(settings.defaultServerId).label;
 
   return (
     <Screen scroll contentStyle={styles.content}>
@@ -147,107 +130,12 @@ export const SettingsScreen = () => {
             <Text style={styles.rowAction}>CHANGE</Text>
           </Pressable>
           <Divider />
-          <View style={styles.block}>
-            <Text style={styles.blockLabel}>Starting speed</Text>
-            <View style={styles.chipRow}>
-              {PLAYBACK_RATES.map(rate => {
-                const active = settings.defaultPlaybackRate === rate;
-                return (
-                  <Pressable
-                    key={rate}
-                    onPress={() => setSettings({ defaultPlaybackRate: rate })}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {rate === 1 ? 'Normal' : `${rate}×`}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <Divider />
           <ToggleRow
             icon={Sparkles}
             title="Autoplay"
-            subtitle="Start playing as soon as a stream resolves"
+            subtitle="Start playing as soon as an embed provider is ready"
             value={settings.autoPlay}
             onChange={value => setSettings({ autoPlay: value })}
-          />
-        </GlassCard>
-      </View>
-
-      <SectionHeader kicker="Accessibility" title="Subtitles" />
-      <View style={styles.section}>
-        <GlassCard style={styles.card}>
-          <View style={styles.block}>
-            <Text style={styles.blockLabel}>Default language</Text>
-            <View style={styles.chipRow}>
-              {SUBTITLE_LANGUAGES.map(language => {
-                const active = subtitle.defaultLanguage === language.code;
-                return (
-                  <Pressable
-                    key={language.code || 'none'}
-                    onPress={() =>
-                      setSubtitle({ defaultLanguage: language.code })
-                    }
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {language.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <Divider />
-          <StepperRow
-            icon={Type}
-            title="Text size"
-            value={String(Math.round(subtitle.fontSize))}
-            onChange={delta =>
-              setSubtitle({
-                fontSize: Math.min(28, Math.max(10, subtitle.fontSize + delta)),
-              })
-            }
-          />
-          <Divider />
-          <StepperRow
-            icon={Type}
-            title="Background"
-            value={`${Math.round(subtitle.backgroundOpacity * 100)}%`}
-            onChange={delta =>
-              setSubtitle({
-                backgroundOpacity:
-                  Math.round(
-                    Math.min(
-                      1,
-                      Math.max(0, subtitle.backgroundOpacity + delta * 0.1),
-                    ) * 100,
-                  ) / 100,
-              })
-            }
-          />
-          <Divider />
-          <ToggleRow
-            icon={Type}
-            title="Bold captions"
-            subtitle="Heavier weight for readability"
-            value={subtitle.bold}
-            onChange={value => setSubtitle({ bold: value })}
-          />
-          <Divider />
-          <ToggleRow
-            icon={Type}
-            title="Text shadow"
-            subtitle="Keeps cues legible on bright scenes"
-            value={subtitle.textShadow}
-            onChange={value => setSubtitle({ textShadow: value })}
           />
         </GlassCard>
       </View>
@@ -258,7 +146,6 @@ export const SettingsScreen = () => {
           icon={RotateCcw}
           onPress={() => {
             resetSettings();
-            resetSubtitleSettings();
           }}
         />
         <Text style={styles.finePrint}>
@@ -312,44 +199,6 @@ const ToggleRow = ({
       thumbColor={value ? colors.onPrimary : colors.textMuted}
       ios_backgroundColor={colors.surfaceRaised}
     />
-  </View>
-);
-
-const StepperRow = ({
-  icon: Icon,
-  title,
-  value,
-  onChange,
-}: {
-  icon: typeof Sparkles;
-  title: string;
-  value: string;
-  onChange: (delta: number) => void;
-}) => (
-  <View style={styles.row}>
-    <View style={styles.rowIcon}>
-      <Icon color={colors.textMuted} size={15} strokeWidth={2} />
-    </View>
-    <Text style={[styles.rowTitle, styles.rowText]}>{title}</Text>
-    <View style={styles.stepper}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Decrease ${title}`}
-        onPress={() => onChange(-1)}
-        style={styles.stepperButton}
-      >
-        <Minus color={colors.text} size={14} strokeWidth={2.3} />
-      </Pressable>
-      <Text style={styles.stepperValue}>{value}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Increase ${title}`}
-        onPress={() => onChange(1)}
-        style={styles.stepperButton}
-      >
-        <Plus color={colors.text} size={14} strokeWidth={2.3} />
-      </Pressable>
-    </View>
   </View>
 );
 
@@ -418,22 +267,26 @@ const ServerPicker = ({
               ) : null}
             </Pressable>
 
-            {PLAYBACK_SERVERS.map((server, index) => {
+            {EMBED_SERVERS.map((server, index) => {
               const active = server.id === activeId;
               return (
                 <Pressable
                   key={server.id}
+                  disabled={server.disabled}
                   onPress={() => onSelect(server.id)}
                   style={({ pressed }) => [
                     styles.serverRow,
                     active && styles.serverRowActive,
+                    server.disabled && styles.blockMuted,
                     pressed && styles.pressed,
                   ]}
                 >
                   <View style={styles.rowText}>
-                    <Text style={styles.rowTitle}>{server.name}</Text>
+                    <Text style={styles.rowTitle}>{server.label}</Text>
                     <Text style={styles.rowSubtitle} numberOfLines={1}>
-                      {server.url}
+                      {server.disabled
+                        ? 'Unavailable'
+                        : `Embed provider${server.note ? ` · ${server.note}` : ''}`}
                     </Text>
                   </View>
                   {active ? (

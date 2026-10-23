@@ -1,28 +1,23 @@
-import { useState } from 'react';
-import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Compass, Film, Flame, Radio, Star } from 'lucide-react-native';
 
-import { ANIME_CATEGORIES, useAnimeFeed, type AnimeCategory } from '../hooks/useAnimeFeed';
+import { isTmdbConfigured } from '../config/env';
+import { useAnimeSections } from '../hooks/useAnimeSections';
 import { colors, fonts, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
 import { AppHeader } from '../components/AppHeader';
-import { PosterCard } from '../components/PosterCard';
+import { Billboard } from '../components/Billboard';
+import { PosterGrid } from '../components/PosterGrid';
 import { TmdbSetup } from '../components/TmdbSetup';
-import { isTmdbConfigured } from '../config/env';
 import {
-  Chip,
+  EmptyState,
   ErrorState,
   Kicker,
   Screen,
+  SectionHeader,
   Skeleton,
 } from '../components/ui/Primitives';
 
@@ -30,111 +25,151 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const AnimeScreen = () => {
   const navigation = useNavigation<Nav>();
-  const { width } = useWindowDimensions();
-  const [category, setCategory] = useState<AnimeCategory>('trending');
-  const { items, loading, error, retry } = useAnimeFeed(category);
-
-  const cardWidth = (width - spacing.xl * 2 - spacing.md * 2) / 3;
+  const { sections, loading, error, retry } = useAnimeSections();
 
   const openDetail = (item: MediaItem) => navigation.navigate('Detail', { item });
+  const hero = sections.ongoing[0] ?? sections.popular[0];
+  const isEmpty =
+    !sections.ongoing.length &&
+    !sections.popular.length &&
+    !sections.topRated.length &&
+    !sections.movies.length;
 
   if (!isTmdbConfigured) {
     return (
       <Screen scroll contentStyle={styles.content}>
-        <AppHeader subtitle="Browse" />
+        <AppHeader subtitle="Anime" />
         <TmdbSetup />
       </Screen>
     );
   }
 
-  const header = (
-    <View>
-      <AppHeader subtitle="Browse" />
-      <View style={styles.pageHeader}>
-        <Kicker>Japanese animation</Kicker>
-        <Text style={styles.title}>Anime</Text>
-        <Text style={styles.description}>
-          Seasonal picks, beloved series and films worth the binge.
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chips}>
-        {ANIME_CATEGORIES.map(option => (
-          <Chip
-            key={option.key}
-            label={option.label}
-            active={category === option.key}
-            onPress={() => setCategory(option.key)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-
-  if (error) {
-    return (
-      <Screen contentStyle={styles.content}>
-        {header}
-        <ErrorState message={error} onRetry={retry} />
-      </Screen>
-    );
-  }
-
   return (
-    <Screen contentStyle={styles.content}>
-      <FlatList
-        data={loading ? [] : items}
-        keyExtractor={item => `${item.media_type}-${item.id}`}
-        renderItem={({ item }) => (
-          <PosterCard item={item} width={cardWidth} onPress={openDetail} compact />
-        )}
-        numColumns={3}
-        columnWrapperStyle={styles.column}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.gridSkeleton}>
-              {Array.from({ length: 9 }).map((_, index) => (
-                <Skeleton key={index} width={cardWidth} height={cardWidth * 1.48} />
-              ))}
-            </View>
-          ) : undefined
-        }
-        showsVerticalScrollIndicator={false}
-      />
+    <Screen scroll contentStyle={styles.content}>
+      <AppHeader subtitle="Anime" />
+
+      {loading ? (
+        <AnimeSkeleton />
+      ) : error && isEmpty ? (
+        <ErrorState
+          title="Anime unavailable"
+          message={error}
+          onRetry={retry}
+          retryLabel="Reload"
+        />
+      ) : isEmpty ? (
+        <EmptyState
+          title="No anime found"
+          message="TMDB returned no Japanese animation right now. Try again shortly."
+          icon={Compass}
+        />
+      ) : (
+        <>
+          {hero ? (
+            <Billboard
+              item={hero}
+              kicker="Anime spotlight"
+              liveLabel="Ongoing series"
+              actionLabel="Watch this anime"
+              onPlay={openDetail}
+            />
+          ) : null}
+
+          <SectionHeader
+            icon={Radio}
+            tone={colors.live}
+            kicker="This season"
+            title="Ongoing anime"
+            description="Series currently broadcasting new episodes."
+            action={
+              <View style={styles.seasonBadge}>
+                <Text style={styles.seasonBadgeText}>THIS SEASON</Text>
+              </View>
+            }
+          />
+          <PosterGrid items={sections.ongoing.slice(0, 18)} onPress={openDetail} />
+
+          <View style={styles.rail}>
+            <SectionHeader
+              icon={Flame}
+              kicker="Fan favourites"
+              title="Most popular anime"
+              description="Series with the biggest viewership and community following."
+            />
+            <PosterGrid items={sections.popular.slice(0, 18)} onPress={openDetail} />
+          </View>
+
+          <View style={styles.rail}>
+            <SectionHeader
+              icon={Star}
+              tone={colors.accent}
+              kicker="Critically loved"
+              title="Top rated anime"
+              description="Highest-scoring animation, filtered for enough votes."
+            />
+            <PosterGrid items={sections.topRated.slice(0, 18)} onPress={openDetail} />
+          </View>
+
+          <View style={styles.rail}>
+            <SectionHeader
+              icon={Film}
+              tone="#38bdf8"
+              kicker="Feature films"
+              title="Anime movies"
+              description="Theatrical animation from acclaimed studios and creators."
+            />
+            <PosterGrid items={sections.movies.slice(0, 18)} onPress={openDetail} />
+          </View>
+
+          <View style={styles.footer}>
+            <View style={styles.footerLine} />
+            <Kicker>Japanese animation · TMDB</Kicker>
+          </View>
+        </>
+      )}
     </Screen>
   );
 };
 
+const AnimeSkeleton = () => (
+  <View>
+    <Skeleton height={420} style={styles.heroSkeleton} />
+    <View style={styles.skeletonHeading}>
+      <Skeleton width={140} height={18} />
+      <Skeleton width={230} height={11} style={styles.skeletonLine} />
+    </View>
+    <View style={styles.skeletonGrid}>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Skeleton key={index} width={103} height={155} />
+      ))}
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  content: { paddingBottom: 0 },
-  list: { paddingBottom: 130 },
-  pageHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
-  title: {
-    fontFamily: fonts.displayBlack,
-    fontSize: 34,
-    letterSpacing: -1.1,
-    color: colors.text,
-    marginTop: 2,
+  content: { paddingBottom: 130 },
+  rail: { marginTop: spacing.xxxl },
+  seasonBadge: {
+    paddingHorizontal: 8,
+    height: 24,
+    justifyContent: 'center',
+    borderRadius: 7,
+    backgroundColor: colors.liveSoft,
+    borderWidth: 1,
+    borderColor: colors.liveBorder,
   },
-  description: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
+  seasonBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 8.5,
+    letterSpacing: 1,
+    color: colors.live,
   },
-  chips: {
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-    paddingBottom: spacing.xl,
-  },
-  column: { gap: spacing.md, paddingHorizontal: spacing.xl },
-  gridSkeleton: {
+  footer: { alignItems: 'center', gap: spacing.md, marginTop: spacing.xxl },
+  footerLine: { width: 32, height: 1, backgroundColor: colors.border },
+  heroSkeleton: { borderRadius: 0, marginBottom: spacing.xl },
+  skeletonHeading: { paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  skeletonLine: { marginTop: spacing.sm },
+  skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,

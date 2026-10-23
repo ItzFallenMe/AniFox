@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Search, X } from 'lucide-react-native';
@@ -18,7 +10,8 @@ import { colors, fonts, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
 import { AppHeader } from '../components/AppHeader';
-import { PosterCard } from '../components/PosterCard';
+import { Pagination } from '../components/Pagination';
+import { PosterGrid } from '../components/PosterGrid';
 import { TmdbSetup } from '../components/TmdbSetup';
 import {
   Chip,
@@ -26,7 +19,7 @@ import {
   ErrorState,
   Kicker,
   Screen,
-  Skeleton,
+  SectionHeader,
 } from '../components/ui/Primitives';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -42,11 +35,19 @@ const SUGGESTIONS = [
 
 export const SearchScreen = () => {
   const navigation = useNavigation<Nav>();
-  const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
-  const { results, loading, error, activeQuery, tooShort } = useSearch(query);
+  const {
+    results,
+    page,
+    totalPages,
+    loading,
+    error,
+    activeQuery,
+    tooShort,
+    goTo,
+    retry,
+  } = useSearch(query);
 
-  const cardWidth = (width - spacing.xl * 2 - spacing.md * 2) / 3;
   const openDetail = (item: MediaItem) => navigation.navigate('Detail', { item });
 
   if (!isTmdbConfigured) {
@@ -58,13 +59,16 @@ export const SearchScreen = () => {
     );
   }
 
-  const header = (
-    <View>
+  return (
+    <Screen scroll contentStyle={styles.content}>
       <AppHeader subtitle="Discover" />
 
       <View style={styles.pageHeader}>
         <Kicker>Find anything</Kicker>
         <Text style={styles.title}>Search</Text>
+        <Text style={styles.description}>
+          Movies, series and anime from the whole TMDB catalog.
+        </Text>
       </View>
 
       <View style={styles.searchBox}>
@@ -104,62 +108,53 @@ export const SearchScreen = () => {
             ))}
           </View>
         </View>
-      ) : loading ? null : results.length > 0 ? (
-        <View style={styles.resultsHeader}>
-          <Kicker>{results.length} results</Kicker>
-          <Text style={styles.resultsFor} numberOfLines={1}>
-            “{activeQuery}”
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
+      ) : (
+        <>
+          <SectionHeader
+            kicker={`Deep search${totalPages > 1 ? ` · page ${page} of ${totalPages}` : ''}`}
+            title={`Results for “${activeQuery}”`}
+            description={
+              loading
+                ? 'Searching the catalog…'
+                : results.length > 0
+                  ? `${results.length} title${results.length === 1 ? '' : 's'} on this page`
+                  : 'No titles found'
+            }
+          />
 
-  return (
-    <Screen contentStyle={styles.content}>
-      <FlatList
-        data={loading ? [] : results}
-        keyExtractor={item => `${item.media_type}-${item.id}`}
-        renderItem={({ item }) => (
-          <PosterCard item={item} width={cardWidth} onPress={openDetail} compact />
-        )}
-        numColumns={3}
-        columnWrapperStyle={styles.column}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={header}
-        ListEmptyComponent={
-          loading ? (
-            <View style={styles.gridSkeleton}>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} width={cardWidth} height={cardWidth * 1.48} />
-              ))}
-            </View>
+          {loading ? (
+            <PosterGrid items={[]} onPress={openDetail} loading />
           ) : error ? (
-            <ErrorState message={error} />
-          ) : tooShort ? (
-            <EmptyState
-              title="Keep typing"
-              message="Type at least two characters to search the catalog."
-              icon={Search}
-            />
-          ) : activeQuery ? (
-            <EmptyState
-              title="No matches"
-              message={`Nothing found for “${activeQuery}”. Try a different title.`}
-              icon={Search}
-            />
-          ) : undefined
-        }
-        showsVerticalScrollIndicator={false}
-      />
+            <ErrorState message={error} onRetry={retry} />
+          ) : results.length === 0 ? (
+            tooShort ? (
+              <EmptyState
+                title="Keep typing"
+                message="Type at least two characters to search the catalog."
+                icon={Search}
+              />
+            ) : (
+              <EmptyState
+                title="No matches"
+                message={`Nothing catalog-ready found for “${activeQuery}”. Try a different title.`}
+                icon={Search}
+              />
+            )
+          ) : (
+            <PosterGrid items={results} onPress={openDetail} />
+          )}
+
+          {!loading && !error && results.length > 0 ? (
+            <Pagination page={page} totalPages={totalPages} onChange={goTo} />
+          ) : null}
+        </>
+      )}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: 0 },
-  list: { paddingBottom: 130 },
+  content: { paddingBottom: 130 },
   pageHeader: { paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
   title: {
     fontFamily: fonts.displayBlack,
@@ -168,13 +163,21 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 2,
   },
+  description: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
   searchBox: {
     marginHorizontal: spacing.xl,
-    height: 52,
-    borderRadius: radius.md,
+    marginBottom: spacing.xl,
+    height: 50,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -187,25 +190,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     padding: 0,
   },
-  suggestions: { marginTop: spacing.xxl, paddingHorizontal: spacing.xl },
+  suggestions: { paddingHorizontal: spacing.xl },
   suggestionKicker: { marginBottom: spacing.md },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  resultsHeader: {
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.md,
-    gap: 2,
-  },
-  resultsFor: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text,
-  },
-  column: { gap: spacing.md, paddingHorizontal: spacing.xl },
-  gridSkeleton: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
 });

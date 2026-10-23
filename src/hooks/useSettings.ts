@@ -3,19 +3,14 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { DEFAULT_SETTINGS, type AppSettings } from '../config/settings';
 import { readStoredJson, writeStoredJson } from '../services/settingsStorage';
 
-export {
-  DEFAULT_SETTINGS,
-  PLAYBACK_RATES,
-  glassPreset,
-} from '../config/settings';
+export { DEFAULT_SETTINGS, glassPreset } from '../config/settings';
 export type { AppSettings, GlassIntensity } from '../config/settings';
 
 /**
  * App-wide preferences, persisted with AsyncStorage.
  *
- * Kept in a module-level store (same pattern as `useSubtitleSettings`) so the
- * tab bar, player and settings screen all read the same snapshot without a
- * provider wrapper.
+ * Kept in a module-level store so the tab bar, player and settings screen all
+ * read the same snapshot without a provider wrapper.
  */
 
 const STORAGE_KEY = 'anifox.settings.v1';

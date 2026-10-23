@@ -1,14 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { isTmdbConfigured } from '../config/env';
+import { MAX_CATALOG_PAGES } from '../services/catalogs';
 import { TMDBService } from '../services/tmdb';
 import type { MediaItem } from '../types';
 
+/**
+ * Debounced multi-search with sarui-movies' page semantics: TMDB relevance
+ * order is preserved, results are filtered by the catalog policy, and each
+ * page is requested explicitly.
+ */
 export const useSearch = (query: string) => {
   const [debounced, setDebounced] = useState('');
+  const [page, setPage] = useState(1);
   const [results, setResults] = useState<MediaItem[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState(0);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -17,10 +26,14 @@ export const useSearch = (query: string) => {
       setResults([]);
       setError(null);
       setLoading(false);
+      setPage(1);
       return;
     }
 
-    const timer = setTimeout(() => setDebounced(trimmed), 350);
+    const timer = setTimeout(() => {
+      setDebounced(trimmed);
+      setPage(1);
+    }, 350);
     return () => clearTimeout(timer);
   }, [query]);
 
@@ -31,15 +44,16 @@ export const useSearch = (query: string) => {
     setLoading(true);
     setError(null);
 
-    TMDBService.searchMulti(debounced)
+    TMDBService.searchMulti(debounced, page)
       .then(response => {
-        if (!cancelled) setResults(response.results);
+        if (cancelled) return;
+        setResults(response.results);
+        setTotalPages(Math.max(1, Math.min(response.total_pages, MAX_CATALOG_PAGES)));
       })
       .catch(caught => {
-        if (!cancelled) {
-          setResults([]);
-          setError(caught instanceof Error ? caught.message : 'Search failed.');
-        }
+        if (cancelled) return;
+        setResults([]);
+        setError(caught instanceof Error ? caught.message : 'Search failed.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -48,13 +62,23 @@ export const useSearch = (query: string) => {
     return () => {
       cancelled = true;
     };
-  }, [debounced]);
+  }, [debounced, page, token]);
+
+  const goTo = useCallback((next: number) => {
+    setPage(Math.min(Math.max(1, next), MAX_CATALOG_PAGES));
+  }, []);
+
+  const retry = useCallback(() => setToken(current => current + 1), []);
 
   return {
     results,
+    page,
+    totalPages,
     loading,
     error,
     activeQuery: debounced,
     tooShort: query.trim().length > 0 && query.trim().length < 2,
+    goTo,
+    retry,
   };
 };

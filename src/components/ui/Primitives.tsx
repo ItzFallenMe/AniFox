@@ -1,6 +1,7 @@
 import {
   useEffect,
   useRef,
+  useState,
   type ComponentType,
   type ReactElement,
   type ReactNode,
@@ -103,21 +104,45 @@ export const Kicker = ({
   style?: StyleProp<TextStyle>;
 }) => <Text style={[styles.kicker, { color }, style]}>{children}</Text>;
 
+/**
+ * Section heading with the sarui-movies treatment: an icon tile, a title, a
+ * one-line description and a hairline rule underneath.
+ */
 export const SectionHeader = ({
   kicker,
   title,
+  description,
+  icon: Icon,
+  tone = colors.primary,
   action,
 }: {
   kicker?: string;
   title: string;
+  description?: string;
+  icon?: IconType;
+  tone?: string;
   action?: ReactNode;
 }) => (
   <View style={styles.sectionHeader}>
     <View style={styles.sectionHeaderText}>
-      {kicker ? <Kicker>{kicker}</Kicker> : null}
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleRow}>
+        {Icon ? (
+          <View
+            style={[
+              styles.sectionIcon,
+              { backgroundColor: `${tone}1F`, borderColor: `${tone}52` },
+            ]}>
+            <Icon color={tone} size={16} strokeWidth={2} />
+          </View>
+        ) : null}
+        <View style={styles.sectionTitleText}>
+          {kicker ? <Kicker>{kicker}</Kicker> : null}
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        {action}
+      </View>
+      {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
     </View>
-    {action}
   </View>
 );
 
@@ -222,6 +247,10 @@ export const Chip = ({
 
 /* ── Feedback ────────────────────────────────────────────────────────────── */
 
+/**
+ * Loading placeholder with sarui-movies' shimmer sweep: a soft highlight
+ * travels across the surface instead of the whole block pulsing.
+ */
 export const Skeleton = ({
   width,
   height,
@@ -231,36 +260,55 @@ export const Skeleton = ({
   height: number;
   style?: StyleProp<ViewStyle>;
 }) => {
-  const pulse = useRef(new Animated.Value(0.35)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 0.85,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.35,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse]);
+  }, [shimmer]);
 
   return (
-    <Animated.View
-      style={[
-        styles.skeleton,
-        { width: width ?? '100%', height, opacity: pulse },
-        style,
-      ]}
-    />
+    <View
+      style={[styles.skeleton, { width: width ?? '100%', height }, style]}
+      onLayout={event => setMeasuredWidth(event.nativeEvent.layout.width)}>
+      {measuredWidth > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                {
+                  translateX: shimmer.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-measuredWidth, measuredWidth],
+                  }),
+                },
+              ],
+            },
+          ]}>
+          <LinearGradient
+            colors={[
+              'rgba(255,255,255,0)',
+              'rgba(255,255,255,0.09)',
+              'rgba(255,255,255,0)',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      ) : null}
+    </View>
   );
 };
 
@@ -389,15 +437,37 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
-  sectionHeaderText: { flex: 1 },
+  sectionHeaderText: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    paddingBottom: spacing.md,
+  },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sectionTitleText: { flex: 1 },
+  sectionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 20,
+    fontSize: 19,
     letterSpacing: -0.3,
     color: colors.text,
     marginTop: 2,
+  },
+  sectionDescription: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    lineHeight: 17,
+    color: colors.textMuted,
+    marginTop: 4,
   },
 
   primaryButton: {
@@ -467,8 +537,9 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.onPrimary, fontFamily: fonts.bodyBold },
 
   skeleton: {
-    backgroundColor: colors.glassStrong,
+    backgroundColor: colors.surfaceRaised,
     borderRadius: radius.md,
+    overflow: 'hidden',
   },
   centerState: {
     flex: 1,

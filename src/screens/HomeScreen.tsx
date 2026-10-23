@@ -1,24 +1,27 @@
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Search } from 'lucide-react-native';
+import { Compass, Search, TrendingUp } from 'lucide-react-native';
 
-import { isTmdbConfigured, APP_INFO } from '../config/env';
-import { useHomeFeed } from '../hooks/useHomeFeed';
-import { colors, spacing } from '../theme';
+import { APP_INFO, isTmdbConfigured } from '../config/env';
+import { usePagedCatalog } from '../hooks/usePagedCatalog';
+import { colors, fonts, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type { MediaItem } from '../types';
 import { FadeInView } from '../components/animations';
 import { AppHeader } from '../components/AppHeader';
-import { HeroCarousel } from '../components/HeroCarousel';
-import { ContentRow } from '../components/ContentRow';
-import { TopTenRow } from '../components/TopTenRow';
+import { Billboard } from '../components/Billboard';
+import { Pagination } from '../components/Pagination';
+import { PosterGrid } from '../components/PosterGrid';
 import { TmdbSetup } from '../components/TmdbSetup';
 import {
+  EmptyState,
   ErrorState,
   IconButton,
   Kicker,
   Screen,
+  SectionHeader,
   Skeleton,
 } from '../components/ui/Primitives';
 
@@ -26,11 +29,15 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen = () => {
   const navigation = useNavigation<Nav>();
-  const { hero, rows, loading, refreshing, error, refresh, retry } =
-    useHomeFeed();
+  const { items, page, totalPages, loading, error, goTo, retry } =
+    usePagedCatalog('trendingMovies');
 
-  const openDetail = (item: MediaItem) =>
-    navigation.navigate('Detail', { item });
+  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (!loading) setRefreshing(false);
+  }, [loading]);
+
+  const openDetail = (item: MediaItem) => navigation.navigate('Detail', { item });
   const play = (item: MediaItem) => navigation.navigate('Player', { item });
 
   const header = (
@@ -61,57 +68,67 @@ export const HomeScreen = () => {
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
-          onRefresh={refresh}
+          onRefresh={() => {
+            setRefreshing(true);
+            retry();
+          }}
           tintColor={colors.primary}
           colors={[colors.primary]}
           progressBackgroundColor={colors.surface}
         />
-      }
-    >
+      }>
       {header}
 
       {loading ? (
         <HomeSkeleton />
-      ) : error && hero.length === 0 ? (
+      ) : error && items.length === 0 ? (
         <ErrorState
           title="Catalog unavailable"
           message={error}
           onRetry={retry}
           retryLabel="Reload"
         />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="Nothing trending"
+          message="TMDB has no trending titles right now. Pull to refresh in a minute."
+          icon={Compass}
+        />
       ) : (
         <>
           <FadeInView duration={520} offset={8}>
-            <HeroCarousel items={hero} onPlay={play} onInfo={openDetail} />
+            <Billboard
+              item={items[0]}
+              kicker="Today's spotlight"
+              onPlay={play}
+              onInfo={openDetail}
+            />
           </FadeInView>
 
-          <View style={styles.rows}>
-            {rows.map((row, index) => (
-              <FadeInView key={row.key} delay={Math.min(index, 6) * 70}>
-                {row.variant === 'topTen' ? (
-                  <TopTenRow
-                    kicker={row.kicker}
-                    title={row.title}
-                    items={row.items}
-                    onPress={openDetail}
-                  />
-                ) : (
-                  <ContentRow
-                    kicker={row.kicker}
-                    title={row.title}
-                    items={row.items}
-                    onPress={openDetail}
-                  />
-                )}
-              </FadeInView>
-            ))}
-          </View>
+          <SectionHeader
+            icon={TrendingUp}
+            kicker="This week"
+            title="Trending today"
+            description="What's spiking in searches over the last day."
+            action={
+              <Kicker>
+                Page {page} of {totalPages}
+              </Kicker>
+            }
+          />
+
+          <PosterGrid items={items} onPress={openDetail} />
+
+          <Pagination page={page} totalPages={totalPages} onChange={goTo} />
 
           <View style={styles.footer}>
             <View style={styles.footerLine} />
             <Kicker>
               {APP_INFO.name} · curated by {APP_INFO.creator}
             </Kicker>
+            <Text style={styles.disclaimer}>
+              Metadata from TMDB. AniFox hosts no media.
+            </Text>
           </View>
         </>
       )}
@@ -121,27 +138,36 @@ export const HomeScreen = () => {
 
 const HomeSkeleton = () => (
   <View>
-    <Skeleton height={486} style={styles.heroSkeleton} />
-    {[0, 1].map(row => (
-      <View key={row} style={styles.skeletonRow}>
-        <Skeleton width={140} height={14} style={styles.skeletonTitle} />
-        <View style={styles.skeletonCards}>
-          {[0, 1, 2].map(card => (
-            <Skeleton key={card} width={118} height={175} />
-          ))}
-        </View>
-      </View>
-    ))}
+    <Skeleton height={430} style={styles.heroSkeleton} />
+    <View style={styles.skeletonHeading}>
+      <Skeleton width={150} height={18} />
+      <Skeleton width={220} height={11} style={styles.skeletonLine} />
+    </View>
+    <View style={styles.skeletonGrid}>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Skeleton key={index} width={103} height={155} />
+      ))}
+    </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
-  rows: { marginTop: spacing.sm },
-  footer: { alignItems: 'center', gap: spacing.md, paddingBottom: spacing.xxl },
+  heroSkeleton: { borderRadius: 0, marginBottom: spacing.xl },
+  skeletonHeading: { paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
+  skeletonLine: { marginTop: spacing.sm },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+  },
+  footer: { alignItems: 'center', gap: spacing.sm, paddingBottom: spacing.xxl },
   footerLine: { width: 32, height: 1, backgroundColor: colors.border },
-  heroSkeleton: { borderRadius: 0, marginBottom: spacing.xxl },
-  skeletonRow: { paddingHorizontal: spacing.xl, marginBottom: spacing.xxxl },
-  skeletonTitle: { marginBottom: spacing.md },
-  skeletonCards: { flexDirection: 'row', gap: spacing.md },
+  disclaimer: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textFaint,
+    textAlign: 'center',
+  },
 });

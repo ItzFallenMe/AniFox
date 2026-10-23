@@ -19,7 +19,7 @@ import {
 
 import { APP_INFO, TMDB_CONFIG, isTmdbConfigured } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
-import { PLAYBACK_SERVERS } from '../services/servers';
+import { PLAYABLE_SERVERS } from '../config/embedServers';
 import { colors, fonts, radius, spacing } from '../theme';
 import { AppHeader } from '../components/AppHeader';
 import { TmdbSetup } from '../components/TmdbSetup';
@@ -98,18 +98,18 @@ export const ProfileScreen = () => (
     <SectionHeader kicker="Playback" title="Streaming servers" />
     <View style={styles.section}>
       <GlassCard style={styles.listCard}>
-        {PLAYBACK_SERVERS.map((server, index) => (
+        {PLAYABLE_SERVERS.map((server, index) => (
           <View
             key={server.id}
             style={[
               styles.serverRow,
-              index < PLAYBACK_SERVERS.length - 1 && styles.rowDivider,
+              index < PLAYABLE_SERVERS.length - 1 && styles.rowDivider,
             ]}
           >
             <View style={styles.serverIcon}>
               <Server color={colors.textMuted} size={14} strokeWidth={2} />
             </View>
-            <Text style={styles.serverName}>{server.name}</Text>
+            <Text style={styles.serverName}>{server.label}</Text>
             <Text style={styles.serverIndex}>
               {String(index + 1).padStart(2, '0')}
             </Text>
@@ -202,7 +202,7 @@ const SettingsEntry = () => {
         <View style={styles.sourceText}>
           <Text style={styles.sourceName}>Settings</Text>
           <Text style={styles.sourceBody}>
-            Liquid glass bar, playback defaults and subtitle styling.
+            Liquid glass bar, default embed server and autoplay.
           </Text>
         </View>
         <ChevronRight color={colors.textMuted} size={16} strokeWidth={2} />
@@ -245,7 +245,8 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    // The mark ships on an opaque white square, so the tile stays white.
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

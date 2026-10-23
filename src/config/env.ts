@@ -25,22 +25,15 @@ export const isTmdbConfigured =
 export const CATALOG_REGION = 'US';
 
 /**
- * Subtitle search — the same two catalogues Flickv4 uses.
+ * Metadata language, as a TMDB locale. Ported from sarui-movies: when a title
+ * has no synopsis in this language, the service re-requests it in
+ * `FALLBACK_LANGUAGE` and copies only the missing overviews across.
  *
- * Vidrock's catalogue is keyless and needs no setup. Wyzie Subs
- * (https://docs.wyzie.io/subs/usage/direct) only contributes tracks once you
- * paste a key; leave `API_KEY` empty to search Vidrock alone.
+ * Leaving both at `en-US` keeps requests at one per endpoint; set this to
+ * e.g. `id-ID` to localize titles and synopses.
  */
-export const VDRK_SUBS_CONFIG = {
-  BASE_URL: 'https://sub.vdrk.site/v1',
-  TIMEOUT_MS: 10000,
-} as const;
-
-export const WYZIE_SUBS_CONFIG = {
-  BASE_URL: 'https://sub.wyzie.io',
-  API_KEY: '',
-  TIMEOUT_MS: 10000,
-} as const;
+export const CATALOG_LANGUAGE = 'en-US';
+export const FALLBACK_LANGUAGE = 'en-US';
 
 export const APP_INFO = {
   name: 'AniFox',

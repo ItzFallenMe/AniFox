@@ -4,13 +4,14 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { BlurView } from '@sbaiahmed1/react-native-blur';
-import { Home, Search, Sparkles, User } from 'lucide-react-native';
+import { Home, LayoutGrid, Search, Sparkles, User } from 'lucide-react-native';
 
 import { glassPreset, useSettings } from '../hooks/useSettings';
 import { colors, fonts, radius, spacing } from '../theme';
 
 const ICONS = {
   Home,
+  Browse: LayoutGrid,
   Anime: Sparkles,
   Search,
   User,
@@ -18,6 +19,7 @@ const ICONS = {
 
 const LABELS: Record<string, string> = {
   Home: 'Home',
+  Browse: 'Browse',
   Anime: 'Anime',
   Search: 'Search',
   You: 'You',

@@ -66,7 +66,8 @@ const styles = StyleSheet.create({
     width: 104,
     height: 104,
     borderRadius: radius.xl,
-    backgroundColor: colors.primary,
+    // The mark ships on an opaque white square, so the tile stays white.
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

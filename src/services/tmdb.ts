@@ -1,4 +1,4 @@
-import { TMDB_CONFIG } from '../config/env';
+import { CATALOG_LANGUAGE, FALLBACK_LANGUAGE, TMDB_CONFIG } from '../config/env';
 import type {
   CastMember,
   CreditsResponse,
@@ -10,6 +10,16 @@ import type {
   TVShow,
   TVShowDetails,
 } from '../types';
+import {
+  canShowInCatalog,
+  getMediaTitle,
+  getTrailerKey,
+  needsOverviewFallback,
+  type CatalogOptions,
+  type MediaType,
+  type PolicyMedia,
+  type VideosResponse,
+} from './tmdbPolicy';
 
 type QueryParams = Record<string, string | number | boolean | undefined>;
 
@@ -28,6 +38,59 @@ export class TMDBError extends Error {
 const REQUEST_TIMEOUT_MESSAGE =
   'TMDB did not respond. Check your connection and try again.';
 
+/** Detail payloads that can be missing some of their synopses. */
+interface OverviewData {
+  overview?: string;
+  seasons?: { id: number; overview?: string }[];
+  episodes?: { id: number; overview?: string }[];
+}
+
+/**
+ * Catalog hygiene, applied to every list before it reaches a screen:
+ * a real poster, a real title, and a release that has actually happened.
+ * Titles are re-written to the cleanest available name.
+ */
+const applyCatalogPolicy = <T extends Movie | TVShow>(
+  data: TMDBResponse<T>,
+  type?: MediaType,
+  options?: CatalogOptions,
+): TMDBResponse<T> => {
+  const results: T[] = [];
+
+  for (const item of data.results) {
+    const media = item as unknown as PolicyMedia;
+    const mediaType = (media.media_type as MediaType | undefined) ?? type;
+    if (!mediaType) continue;
+    if (!canShowInCatalog(media, type, options)) continue;
+
+    const title = getMediaTitle(media);
+    results.push(
+      (mediaType === 'tv' ? { ...item, name: title } : { ...item, title }) as T,
+    );
+  }
+
+  return { ...data, results };
+};
+
+/** Merge synopses from a fallback-language copy, matched by media type + id. */
+const mergeListOverviews = <T extends Movie | TVShow>(
+  data: TMDBResponse<T>,
+  fallback: TMDBResponse<T> | null,
+): TMDBResponse<T> => {
+  if (!fallback) return data;
+  const key = (item: Movie | TVShow) =>
+    `${(item as unknown as PolicyMedia).media_type ?? ''}-${item.id}`;
+  const byId = new Map(fallback.results.map(item => [key(item), item.overview?.trim()]));
+
+  return {
+    ...data,
+    results: data.results.map(item => ({
+      ...item,
+      overview: item.overview?.trim() || byId.get(key(item)) || '',
+    })),
+  };
+};
+
 /** Thin TMDB client on top of native fetch — no extra dependencies. */
 class TMDBServiceImpl {
   private readonly baseUrl = TMDB_CONFIG.BASE_URL;
@@ -36,6 +99,7 @@ class TMDBServiceImpl {
   private async request<T>(path: string, params: QueryParams = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
     url.searchParams.set('api_key', this.apiKey);
+    url.searchParams.set('language', CATALOG_LANGUAGE);
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
         url.searchParams.set(key, String(value));
@@ -69,7 +133,108 @@ class TMDBServiceImpl {
       throw new TMDBError(`TMDB request failed (${response.status}).`, response.status);
     }
 
-    return (await response.json()) as T;
+    try {
+      return (await response.json()) as T;
+    } catch {
+      // TMDB occasionally answers 200 with an empty body; never surface a raw
+      // JSON parse error to a screen.
+      throw new TMDBError('TMDB returned an unreadable response. Try again.', 502);
+    }
+  }
+
+  /**
+   * One page of a catalog: fetch, apply the policy, then (only when the app is
+   * running in a non-English locale) fill missing synopses from the fallback.
+   */
+  private async list<T extends Movie | TVShow>(
+    path: string,
+    params: QueryParams,
+    type?: MediaType,
+    options?: CatalogOptions,
+  ): Promise<TMDBResponse<T>> {
+    const data = applyCatalogPolicy(
+      await this.request<TMDBResponse<T>>(path, params),
+      type,
+      options,
+    );
+
+    if (CATALOG_LANGUAGE === FALLBACK_LANGUAGE) return data;
+    if (!data.results.some(item => !item.overview?.trim())) return data;
+
+    let fallback: TMDBResponse<T> | null = null;
+    try {
+      fallback = await this.request<TMDBResponse<T>>(path, {
+        ...params,
+        language: FALLBACK_LANGUAGE,
+      });
+    } catch {
+      fallback = null;
+    }
+    return mergeListOverviews(data, fallback);
+  }
+
+  /** Copy missing synopses — including seasons and episodes — from the fallback language. */
+  private async fillDetailOverviews<T extends OverviewData>(
+    path: string,
+    data: T,
+  ): Promise<T> {
+    if (CATALOG_LANGUAGE === FALLBACK_LANGUAGE) return data;
+    if (!needsOverviewFallback(data)) return data;
+
+    let fallback: OverviewData | null = null;
+    try {
+      fallback = await this.request<OverviewData>(path, {
+        language: FALLBACK_LANGUAGE,
+      });
+    } catch {
+      fallback = null;
+    }
+    if (!fallback) return data;
+
+    const fill = <I extends { id: number; overview?: string }>(
+      items: I[] | undefined,
+      source: { id: number; overview?: string }[] | undefined,
+    ): I[] | undefined => {
+      if (!items) return undefined;
+      const byId = new Map(source?.map(item => [item.id, item.overview?.trim()]));
+      return items.map(item => ({
+        ...item,
+        overview: item.overview?.trim() || byId.get(item.id) || '',
+      }));
+    };
+
+    return {
+      ...data,
+      overview: data.overview?.trim() || fallback.overview?.trim() || '',
+      ...(data.seasons ? { seasons: fill(data.seasons, fallback.seasons) } : {}),
+      ...(data.episodes ? { episodes: fill(data.episodes, fallback.episodes) } : {}),
+    };
+  }
+
+  private async detail<T extends MovieDetails | TVShowDetails>(
+    type: MediaType,
+    id: number,
+  ): Promise<T> {
+    const path = `/${type}/${id}`;
+    const data = await this.request<T>(path);
+    const title = getMediaTitle(data as unknown as PolicyMedia);
+    const clean = {
+      ...data,
+      ...(type === 'movie' ? { title } : { name: title }),
+    } as T;
+    return this.fillDetailOverviews(path, clean);
+  }
+
+  private async videos(type: MediaType, id: number): Promise<VideosResponse> {
+    const path = `/${type}/${id}/videos`;
+    try {
+      const localized = await this.request<VideosResponse>(path);
+      if (getTrailerKey(localized)) return localized;
+      if (CATALOG_LANGUAGE === FALLBACK_LANGUAGE) return localized;
+      return await this.request<VideosResponse>(path, { language: FALLBACK_LANGUAGE });
+    } catch {
+      return { results: [] };
+    }
   }
 
   // ── Images ───────────────────────────────────────────────────────────────
@@ -93,49 +258,76 @@ class TMDBServiceImpl {
     return this.imageUrl(path, 'w185');
   }
 
-  // ── Popular ──────────────────────────────────────────────────────────────
+  // ── Popular / curated catalogs ───────────────────────────────────────────
   getPopularMovies(page = 1, region?: string) {
-    return this.request<TMDBResponse<Movie>>('/movie/popular', { page, region });
+    return this.list<Movie>('/movie/popular', { page, region }, 'movie');
   }
 
   getPopularTVShows(page = 1, region?: string) {
-    return this.request<TMDBResponse<TVShow>>('/tv/popular', { page, region });
+    return this.list<TVShow>('/tv/popular', { page, region }, 'tv');
+  }
+
+  getTopRatedMovies(page = 1, region?: string) {
+    return this.list<Movie>('/movie/top_rated', { page, region }, 'movie');
   }
 
   getTopRatedTVShows(page = 1) {
-    return this.request<TMDBResponse<TVShow>>('/tv/top_rated', { page });
+    return this.list<TVShow>('/tv/top_rated', { page }, 'tv');
+  }
+
+  getNowPlayingMovies(page = 1, region?: string) {
+    return this.list<Movie>('/movie/now_playing', { page, region }, 'movie');
+  }
+
+  /** The one catalog that deliberately keeps titles that have not aired yet. */
+  getUpcomingMovies(page = 1, region?: string) {
+    return this.list<Movie>('/movie/upcoming', { page, region }, 'movie', {
+      allowUnreleased: true,
+    });
+  }
+
+  getAiringTodayTV(page = 1) {
+    return this.list<TVShow>('/tv/airing_today', { page }, 'tv');
+  }
+
+  getOnTheAirTV(page = 1) {
+    return this.list<TVShow>('/tv/on_the_air', { page }, 'tv');
   }
 
   getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = 'day') {
-    return this.request<TMDBResponse<Movie>>(`/trending/movie/${timeWindow}`, {
-      page,
-    });
+    return this.list<Movie>(`/trending/movie/${timeWindow}`, { page }, 'movie');
   }
 
   getTrendingTVShows(page = 1, timeWindow: 'day' | 'week' = 'day') {
-    return this.request<TMDBResponse<TVShow>>(`/trending/tv/${timeWindow}`, {
-      page,
-    });
+    return this.list<TVShow>(`/trending/tv/${timeWindow}`, { page }, 'tv');
   }
 
   discoverMoviesByGenre(genreId: number, page = 1, region?: string) {
-    return this.request<TMDBResponse<Movie>>('/discover/movie', {
-      with_genres: genreId,
-      sort_by: 'popularity.desc',
-      page,
-      region,
-      watch_region: region,
-    });
+    return this.list<Movie>(
+      '/discover/movie',
+      {
+        with_genres: genreId,
+        sort_by: 'popularity.desc',
+        page,
+        region,
+        watch_region: region,
+      },
+      'movie',
+    );
   }
 
   discoverTVByGenre(genreId: number, page = 1, region?: string) {
-    return this.request<TMDBResponse<TVShow>>('/discover/tv', {
-      with_genres: genreId,
-      sort_by: 'popularity.desc',
-      page,
-      region,
-      watch_region: region,
-    });
+    return this.list<TVShow>(
+      '/discover/tv',
+      {
+        with_genres: genreId,
+        sort_by: 'popularity.desc',
+        page,
+        region,
+        watch_region: region,
+      },
+      'tv',
+    );
   }
 
   /** Titles carried by a streaming provider in the catalog region. */
@@ -145,12 +337,16 @@ class TMDBServiceImpl {
     page = 1,
     region?: string,
   ) {
-    return this.request<TMDBResponse<Movie | TVShow>>(`/discover/${type}`, {
-      with_watch_providers: providerId,
-      watch_region: region,
-      sort_by: 'popularity.desc',
-      page,
-    });
+    return this.list<Movie | TVShow>(
+      `/discover/${type}`,
+      {
+        with_watch_providers: providerId,
+        watch_region: region,
+        sort_by: 'popularity.desc',
+        page,
+      },
+      type,
+    );
   }
 
   // ── Anime ────────────────────────────────────────────────────────────────
@@ -161,13 +357,17 @@ class TMDBServiceImpl {
       'popularity.desc',
     extra: QueryParams = {},
   ) {
-    return this.request<TMDBResponse<TVShow>>('/discover/tv', {
-      with_genres: 16,
-      with_original_language: 'ja',
-      sort_by: sortBy,
-      page,
-      ...extra,
-    });
+    return this.list<TVShow>(
+      '/discover/tv',
+      {
+        with_genres: 16,
+        with_original_language: 'ja',
+        sort_by: sortBy,
+        page,
+        ...extra,
+      },
+      'tv',
+    );
   }
 
   /** Japanese animated feature films. */
@@ -175,12 +375,16 @@ class TMDBServiceImpl {
     page = 1,
     sortBy: 'popularity.desc' | 'vote_average.desc' = 'popularity.desc',
   ) {
-    return this.request<TMDBResponse<Movie>>('/discover/movie', {
-      with_genres: 16,
-      with_original_language: 'ja',
-      sort_by: sortBy,
-      page,
-    });
+    return this.list<Movie>(
+      '/discover/movie',
+      {
+        with_genres: 16,
+        with_original_language: 'ja',
+        sort_by: sortBy,
+        page,
+      },
+      'movie',
+    );
   }
 
   /** Anime series that started airing inside the current season. */
@@ -200,31 +404,27 @@ class TMDBServiceImpl {
   }
 
   // ── Search ───────────────────────────────────────────────────────────────
-  async searchMulti(query: string, page = 1): Promise<TMDBResponse<MediaItem>> {
-    const data = await this.request<TMDBResponse<MediaItem>>('/search/multi', {
+  searchMulti(query: string, page = 1) {
+    return this.list<MediaItem>('/search/multi', {
       query,
       page,
       include_adult: false,
     });
-    return {
-      ...data,
-      results: data.results.filter(
-        item => item.media_type === 'movie' || item.media_type === 'tv',
-      ),
-    };
   }
 
   // ── Details ──────────────────────────────────────────────────────────────
   getMovieDetails(id: number) {
-    return this.request<MovieDetails>(`/movie/${id}`);
+    return this.detail<MovieDetails>('movie', id);
   }
 
   getTVShowDetails(id: number) {
-    return this.request<TVShowDetails>(`/tv/${id}`);
+    return this.detail<TVShowDetails>('tv', id);
   }
 
-  getSeasonDetails(tvId: number, seasonNumber: number) {
-    return this.request<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
+  async getSeasonDetails(tvId: number, seasonNumber: number) {
+    const path = `/tv/${tvId}/season/${seasonNumber}`;
+    const data = await this.request<SeasonDetails>(path);
+    return this.fillDetailOverviews(path, data);
   }
 
   async getMovieCredits(id: number): Promise<CastMember[]> {
@@ -238,13 +438,26 @@ class TMDBServiceImpl {
   }
 
   async getSimilarMovies(id: number, page = 1): Promise<MediaItem[]> {
-    const data = await this.request<TMDBResponse<Movie>>(`/movie/${id}/similar`, { page });
-    return data.results.map(movie => ({ ...movie, media_type: 'movie' as const }));
+    const data = await this.list<Movie>(`/movie/${id}/similar`, { page }, 'movie');
+    return tagMovies(data.results);
   }
 
   async getSimilarTVShows(id: number, page = 1): Promise<MediaItem[]> {
-    const data = await this.request<TMDBResponse<TVShow>>(`/tv/${id}/similar`, { page });
-    return data.results.map(show => ({ ...show, media_type: 'tv' as const }));
+    const data = await this.list<TVShow>(`/tv/${id}/similar`, { page }, 'tv');
+    return tagShows(data.results);
+  }
+
+  // ── Trailers ─────────────────────────────────────────────────────────────
+  getMovieVideos(id: number) {
+    return this.videos('movie', id);
+  }
+
+  getTVShowVideos(id: number) {
+    return this.videos('tv', id);
+  }
+
+  async getTrailerKey(type: MediaType, id: number): Promise<string | null> {
+    return getTrailerKey(await this.videos(type, id));
   }
 }
 

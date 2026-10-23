@@ -7,6 +7,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { SplashScreen } from '../screens/SplashScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { BrowseScreen } from '../screens/BrowseScreen';
+import { CatalogScreen } from '../screens/CatalogScreen';
 import { AnimeScreen } from '../screens/AnimeScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -45,6 +47,7 @@ const MainTabs = () => (
     }}
     tabBar={renderTabBar}>
     <Tabs.Screen name="Home" component={HomeScreen} />
+    <Tabs.Screen name="Browse" component={BrowseScreen} />
     <Tabs.Screen name="Anime" component={AnimeScreen} />
     <Tabs.Screen name="Search" component={SearchScreen} />
     <Tabs.Screen name="You" component={ProfileScreen} />
@@ -72,6 +75,7 @@ export const RootNavigator = () => (
         component={PlayerScreen}
         options={{ animation: 'fade' }}
       />
+      <Stack.Screen name="Catalog" component={CatalogScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   </NavigationContainer>

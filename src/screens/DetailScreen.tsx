@@ -12,6 +12,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, Clock, Film, Play, Star } from 'lucide-react-native';
+
+import { getOverviewText } from '../services/tmdbPolicy';
+import { PosterGrid } from '../components/PosterGrid';
+import { TrailerModal } from '../components/TrailerModal';
 import LinearGradient from 'react-native-linear-gradient';
 
 import { APP_INFO } from '../config/env';
@@ -30,10 +34,10 @@ import {
 } from '../types';
 import { formatRating, formatRuntime } from '../utils/format';
 import type { RootStackParamList } from '../navigation/types';
-import { ContentRow } from '../components/ContentRow';
 import {
   Chip,
   ErrorState,
+  GhostButton,
   GlassCard,
   IconButton,
   Kicker,
@@ -54,8 +58,10 @@ export const DetailScreen = () => {
   const { width } = useWindowDimensions();
   const movie = isMovie(item);
 
-  const { details, cast, similar, loading, error, retry } = useDetails(item);
+  const { details, cast, similar, trailerKey, loading, error, retry } =
+    useDetails(item);
   const [selectedSeason, setSelectedSeason] = useState<number | undefined>();
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   const seasons: Season[] = useMemo(
     () => (!movie && details ? ((details as TVShowDetails).seasons ?? []) : []),
@@ -141,7 +147,7 @@ export const DetailScreen = () => {
 
           <View style={styles.metaRow}>
             <View style={styles.ratingChip}>
-              <Star color={colors.onPrimary} size={10} strokeWidth={2.6} fill={colors.onPrimary} />
+              <Star color={colors.accent} size={10} strokeWidth={2.6} fill={colors.accent} />
               <Text style={styles.ratingText}>{formatRating(details.vote_average)}</Text>
             </View>
             {metaLine.map(piece => (
@@ -166,24 +172,33 @@ export const DetailScreen = () => {
             </View>
           ) : null}
 
-          <PrimaryButton
-            label={movie ? 'Watch now' : 'Watch episode'}
-            icon={Play}
-            onPress={() => openPlayer(movie ? undefined : episodes[0])}
-            style={styles.playButton}
-          />
+          <View style={styles.actionRow}>
+            <PrimaryButton
+              label={movie ? 'Watch now' : 'Watch episode'}
+              icon={Play}
+              onPress={() => openPlayer(movie ? undefined : episodes[0])}
+              style={styles.playButton}
+            />
+            {trailerKey ? (
+              <GhostButton
+                label="Trailer"
+                icon={Film}
+                onPress={() => setTrailerOpen(true)}
+              />
+            ) : null}
+          </View>
 
           <View style={styles.hintRow}>
             <Film color={colors.textFaint} size={12} strokeWidth={2} />
             <Text style={styles.hint}>
-              Playback picks the best working server automatically.
+              Streams from seven embed providers — switch servers in the player.
             </Text>
           </View>
         </GlassCard>
 
         <View style={styles.section}>
           <Kicker style={styles.sectionKicker}>Storyline</Kicker>
-          <Text style={styles.overview}>{details.overview || 'No synopsis available yet.'}</Text>
+          <Text style={styles.overview}>{getOverviewText(details.overview)}</Text>
         </View>
 
         {!movie && playableSeasons.length > 0 ? (
@@ -238,12 +253,12 @@ export const DetailScreen = () => {
 
         {similar.length > 0 ? (
           <View style={styles.similar}>
-            <ContentRow
+            <SectionHeader
               kicker="Because you watched"
               title="More like this"
-              items={similar}
-              onPress={openDetail}
+              description="Same mood, same catalogue policy."
             />
+            <PosterGrid items={similar.slice(0, 9)} onPress={openDetail} />
           </View>
         ) : null}
 
@@ -252,40 +267,65 @@ export const DetailScreen = () => {
           <Kicker>{APP_INFO.name} · curated by {APP_INFO.creator}</Kicker>
         </View>
       </ScrollView>
+
+      <TrailerModal
+        videoKey={trailerOpen ? trailerKey : null}
+        title={getTitle(item)}
+        onClose={() => setTrailerOpen(false)}
+      />
     </Screen>
   );
 };
 
-const EpisodeRow = ({ episode, onPress }: { episode: Episode; onPress: () => void }) => (
-  <Pressable
-    accessibilityRole="button"
-    onPress={onPress}
-    style={({ pressed }) => [styles.episodeRow, pressed && styles.pressed]}>
-    <Text style={styles.episodeNumber}>
-      {String(episode.episode_number).padStart(2, '0')}
-    </Text>
-    <View style={styles.episodeInfo}>
-      <Text numberOfLines={1} style={styles.episodeName}>
-        {episode.name}
-      </Text>
-      <View style={styles.episodeMeta}>
-        {episode.runtime ? (
-          <>
-            <Clock color={colors.textFaint} size={10} strokeWidth={2} />
-            <Text style={styles.episodeMetaText}>{formatRuntime(episode.runtime)}</Text>
-          </>
+const EpisodeRow = ({ episode, onPress }: { episode: Episode; onPress: () => void }) => {
+  const still = TMDBService.imageUrl(episode.still_path, 'w185');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Episode ${episode.episode_number}, ${episode.name}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.episodeRow, pressed && styles.pressed]}>
+      <View style={styles.episodeThumb}>
+        {still ? (
+          <Image source={{ uri: still }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <Text style={styles.episodeMetaText}>
-            {episode.air_date ? episode.air_date.slice(0, 4) : 'Episode'}
-          </Text>
+          <Film color={colors.textFaint} size={16} strokeWidth={1.6} />
         )}
       </View>
-    </View>
-    <View style={styles.episodePlay}>
-      <Play color={colors.primary} size={13} strokeWidth={2.4} fill={colors.primary} />
-    </View>
-  </Pressable>
-);
+
+      <View style={styles.episodeInfo}>
+        <Text style={styles.episodeKicker}>
+          EPISODE {String(episode.episode_number).padStart(2, '0')}
+        </Text>
+        <Text numberOfLines={1} style={styles.episodeName}>
+          {episode.name}
+        </Text>
+        {episode.overview ? (
+          <Text numberOfLines={2} style={styles.episodeOverview}>
+            {episode.overview}
+          </Text>
+        ) : null}
+        <View style={styles.episodeMeta}>
+          {episode.runtime ? (
+            <>
+              <Clock color={colors.textFaint} size={10} strokeWidth={2} />
+              <Text style={styles.episodeMetaText}>{formatRuntime(episode.runtime)}</Text>
+            </>
+          ) : (
+            <Text style={styles.episodeMetaText}>
+              {episode.air_date ? episode.air_date.slice(0, 4) : 'Episode'}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.episodePlay}>
+        <Play color={colors.primary} size={13} strokeWidth={2.4} fill={colors.primary} />
+      </View>
+    </Pressable>
+  );
+};
 
 const CastCard = ({ member }: { member: CastMember }) => {
   const [failed, setFailed] = useState(false);
@@ -373,13 +413,15 @@ const styles = StyleSheet.create({
     gap: 4,
     height: 24,
     paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   ratingText: {
     fontFamily: fonts.bodyBold,
     fontSize: 10,
-    color: colors.onPrimary,
+    color: colors.accent,
   },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   metaText: {
@@ -420,7 +462,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textSecondary,
   },
-  playButton: { marginTop: spacing.xl },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+  },
+  playButton: { flex: 1 },
   hintRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -460,17 +508,36 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     backgroundColor: colors.surface,
   },
-  episodeNumber: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    color: colors.textFaint,
-    width: 28,
+  episodeThumb: {
+    width: 74,
+    height: 42,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   episodeInfo: { flex: 1 },
+  episodeKicker: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 8.5,
+    letterSpacing: 1.1,
+    color: colors.primary,
+    marginBottom: 1,
+  },
   episodeName: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 12.5,
     color: colors.text,
+  },
+  episodeOverview: {
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    lineHeight: 15,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   episodeMeta: {
     flexDirection: 'row',
