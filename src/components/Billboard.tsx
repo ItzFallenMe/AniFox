@@ -68,16 +68,16 @@ export const Billboard = ({
 
       <LinearGradient
         colors={[
-          'rgba(9,9,11,0.15)',
-          'rgba(9,9,11,0.55)',
-          'rgba(9,9,11,0.92)',
+          'rgba(5,5,6,0.15)',
+          'rgba(5,5,6,0.6)',
+          'rgba(5,5,6,0.94)',
           colors.background,
         ]}
         locations={[0, 0.42, 0.82, 1]}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={['rgba(9,9,11,0.92)', 'rgba(9,9,11,0.25)', 'rgba(9,9,11,0)']}
+        colors={['rgba(5,5,6,0.94)', 'rgba(5,5,6,0.28)', 'rgba(5,5,6,0)']}
         locations={[0, 0.6, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -87,7 +87,7 @@ export const Billboard = ({
       <View style={styles.content}>
         <View style={styles.badges}>
           <View style={styles.spotlight}>
-            <KickerIcon color={colors.primary} size={11} strokeWidth={2.2} />
+            <KickerIcon color={colors.rose} size={11} strokeWidth={2.2} />
             <Text style={styles.spotlightText}>{kicker}</Text>
           </View>
 
@@ -156,16 +156,16 @@ const styles = StyleSheet.create({
     height: 24,
     paddingHorizontal: 8,
     borderRadius: 7,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.roseSoft,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    borderColor: colors.roseBorder,
   },
   spotlightText: {
     fontFamily: fonts.bodyBold,
     fontSize: 9,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.primary,
+    color: colors.rose,
   },
   live: {
     flexDirection: 'row',

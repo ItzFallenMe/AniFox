@@ -1,35 +1,39 @@
 /**
  * AniFox design tokens.
  *
- * Visual language ported from sarui-movies: a near-black zinc canvas, rose as
- * the action colour, amber for scores, hairline white borders and soft glass
- * surfaces.
+ * Premium black-glass language: deep black canvas, floating glass surfaces,
+ * low-opacity white hairlines, silver type and a single restrained rose accent
+ * used sparingly for spotlights, live states and the play affordance.
  */
 
 export const colors = {
-  background: '#09090b',
-  surface: '#111114',
-  surfaceRaised: '#18181b',
-  glass: 'rgba(255, 255, 255, 0.04)',
-  glassStrong: 'rgba(255, 255, 255, 0.07)',
+  background: '#050506',
+  surface: '#101014',
+  surfaceRaised: '#19191F',
+  glass: 'rgba(255, 255, 255, 0.035)',
+  glassStrong: 'rgba(255, 255, 255, 0.06)',
   border: 'rgba(255, 255, 255, 0.08)',
-  borderSubtle: 'rgba(255, 255, 255, 0.05)',
-  /** Rose action colour — CTAs, active chips, focal icons. */
-  primary: '#f43f5e',
-  primarySoft: 'rgba(244, 63, 94, 0.12)',
-  primaryBorder: 'rgba(244, 63, 94, 0.32)',
-  onPrimary: '#ffffff',
-  /** Amber score colour used by rating pills. */
-  accent: '#fbbf24',
+  borderSubtle: 'rgba(255, 255, 255, 0.045)',
+  /** Silver action colour — primary CTAs, active tabs, focal icons. */
+  primary: '#F5F5F7',
+  primarySoft: 'rgba(255, 255, 255, 0.06)',
+  primaryBorder: 'rgba(255, 255, 255, 0.14)',
+  onPrimary: '#0A0A0B',
+  /** Restrained rose, reserved for spotlights and live cues. */
+  rose: '#F43F5E',
+  roseSoft: 'rgba(244, 63, 94, 0.10)',
+  roseBorder: 'rgba(244, 63, 94, 0.24)',
+  /** Silver score colour used by rating pills. */
+  accent: '#D4D4D8',
   /** Emerald "live / ongoing" accent, used for airing badges. */
-  live: '#34d399',
-  liveSoft: 'rgba(52, 211, 153, 0.12)',
-  liveBorder: 'rgba(52, 211, 153, 0.28)',
-  text: '#fafafa',
-  textSecondary: '#a1a1aa',
-  textMuted: '#71717a',
-  textFaint: '#52525b',
-  danger: '#f87171',
+  live: '#34D399',
+  liveSoft: 'rgba(52, 211, 153, 0.10)',
+  liveBorder: 'rgba(52, 211, 153, 0.24)',
+  text: '#F5F5F7',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
+  textFaint: '#52525B',
+  danger: '#F87171',
   black: '#000000',
 } as const;
 
@@ -61,11 +65,11 @@ export const spacing = {
   xxxl: 32,
 } as const;
 
-/** The rose glow behind primary CTAs. */
+/** Soft white halo behind primary CTAs — restrained, never neon. */
 export const glow = {
-  shadowColor: '#f43f5e',
-  shadowOpacity: 0.35,
-  shadowRadius: 18,
+  shadowColor: '#ffffff',
+  shadowOpacity: 0.14,
+  shadowRadius: 20,
   shadowOffset: { width: 0, height: 0 },
-  elevation: 6,
+  elevation: 5,
 } as const;

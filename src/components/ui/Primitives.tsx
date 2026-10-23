@@ -23,6 +23,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { AlertTriangle, Inbox, RotateCw } from 'lucide-react-native';
 
 import { colors, fonts, glow, radius, spacing } from '../../theme';
+import { DiagonalPattern } from '../DiagonalPattern';
 
 type IconType = ComponentType<{
   color?: string;
@@ -32,17 +33,21 @@ type IconType = ComponentType<{
 
 /* ── Screen shell ────────────────────────────────────────────────────────── */
 
-/** Black canvas with the dashboard's soft aurora light. */
+/**
+ * Deep-black canvas: diagonal hairline texture, two soft ambient lights and a
+ * single specular hairline along the top edge.
+ */
 export const ScreenBackground = () => (
   <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <DiagonalPattern />
     <LinearGradient
-      colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0)']}
+      colors={['rgba(255,255,255,0.055)', 'rgba(255,255,255,0)']}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.auroraTop}
     />
     <LinearGradient
-      colors={['rgba(255,255,255,0.035)', 'rgba(255,255,255,0)']}
+      colors={['rgba(255,255,255,0.025)', 'rgba(255,255,255,0)']}
       start={{ x: 1, y: 0 }}
       end={{ x: 0, y: 1 }}
       style={styles.auroraBottom}
@@ -415,15 +420,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
 
   glassCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(16, 16, 20, 0.92)',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: spacing.xl,
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 6,
   },
 
   kicker: {
@@ -528,6 +538,11 @@ const styles = StyleSheet.create({
   chipActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
+    shadowColor: '#ffffff',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   chipText: {
     fontFamily: fonts.bodyMedium,

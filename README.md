@@ -1,6 +1,10 @@
 # AniFox
 
+<<<<<<< HEAD
 **Anime & movies, beautifully unified.** A bare React Native Android app — no Expo — written in TypeScript and built around the sarui-movies design language: a near-black zinc canvas, a rose action colour, amber scores and cinematic billboards.
+=======
+**Anime & movies, beautifully unified.** A bare React Native Android app  written in TypeScript language.
+>>>>>>> 2de0643a55a1047b75d5dcc7d56c55568f8eede1
 
 Created and maintained by **ItzFallenMe** · [github.com/ItzFallenMe](https://github.com/ItzFallenMe)
 
