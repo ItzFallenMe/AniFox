@@ -47,9 +47,16 @@ android {
         }
     }
 
+    // CI builds without secrets fall back to debug signing instead of failing.
+    val hasReleaseKeystore =
+        keystorePropertiesFile.exists() &&
+            !keystoreProperties.getProperty("storeFile").isNullOrBlank()
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig =
+                if (hasReleaseKeystore) signingConfigs.getByName("release")
+                else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

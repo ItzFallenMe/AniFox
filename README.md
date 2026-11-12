@@ -11,6 +11,16 @@
   Built by <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.
 </p>
 
+<p align="center">
+  <a href="https://github.com/ItzFallenMe/AniFox/actions/workflows/test-apk.yml"><img alt="Test APK" src="https://github.com/ItzFallenMe/AniFox/actions/workflows/test-apk.yml/badge.svg" /></a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?label=release" /></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-orange" /></a>
+</p>
+
+> **AniFox: Reimagined** — this branch is the rebuilt app. The `main` branch
+> still contains the earlier code and will be replaced once the rebuild is
+> complete.
+
 ## Features
 
 - **Metadata-first browsing** – discover anime, movies and TV shows using TMDB,
@@ -27,7 +37,16 @@
   navigation surface (toggle it in Settings → UI).
 - **Local-first data** – library, history and settings stay on device; backups can
   be exported and restored.
+- **Web client** — a bingr.one-inspired streaming UI with a floating top
+  navigation, ranked Top 10 rail, animated poster rails and Chromecast support.
 - **No ads, no accounts required.**
+
+## Credits
+
+AniFox is created and maintained by
+[ItzFallenMe](https://github.com/ItzFallenMe). The web client also credits TMDB,
+AniList and MyAnimeList for metadata, and the third-party embed hosts that
+supply playback. A full credits page lives at `/credits` on the website.
 
 ## Getting started
 
@@ -89,9 +108,32 @@ storage. Anime metadata comes from AniList. Playback stays in the selected
 third-party embed iframe; the web app does not download media. The landing page
 shows the combined GitHub release-asset download count.
 
+The site deploys to Vercel or Cloudflare (through the OpenNext adapter, see
+[`website/README.md`](website/README.md)). Chromecast requires a custom receiver
+application id — setup is documented there too.
+
 To enable web manga, set `MANGA_API_URL` to the deployed AniFox Manga API URL in
 `website/.env.local` and in the website deployment's environment settings.
 See [website/README.md](website/README.md) for all routes and configuration.
+
+## CI & releases
+
+Two GitHub Actions workflows are included:
+
+- **Test APK** (`.github/workflows/test-apk.yml`) — runs `flutter analyze` and
+  uploads a debug APK on pushes and pull requests.
+- **Release APK** (`.github/workflows/release-apk.yml`) — triggered by a `v*`
+  tag, builds split-per-ABI release APKs and attaches them to a GitHub release.
+
+Release builds are signed with the keystore provided through the
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+`ANDROID_KEY_PASSWORD` repository secrets. Without them the build still
+completes and is debug-signed.
+
+```bash
+git tag v2.1.5
+git push origin v2.1.5
+```
 
 ## Manga API
 

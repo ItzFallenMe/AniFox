@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { Hero } from "@/components/hero";
 import { Rail } from "@/components/rail";
@@ -75,11 +76,29 @@ export default function StreamingHomePage() {
     );
   }
 
+  const topTen = (data?.trending.length ? data.trending : data?.animeTrending ?? [])
+    .filter((item) => item.backdrop || item.poster)
+    .slice(0, 10);
+
   return (
     <div className="streaming-home pb-10">
       <Hero items={heroItems} />
+      <div className="home-quicklinks" aria-label="Browse categories">
+        {[
+          { href: "/movies", label: "Movies" },
+          { href: "/tv", label: "TV Shows" },
+          { href: "/anime", label: "Anime" },
+          { href: "/manga", label: "Manga" },
+          { href: "/explore", label: "All titles" },
+        ].map((item) => (
+          <Link key={item.href} href={item.href} className="home-quicklink">
+            {item.label}
+          </Link>
+        ))}
+      </div>
       <div className="home-rails">
         <div className="home-rails-intro"><span>YOUR WATCHLIST STARTS HERE</span><i /></div>
+        {topTen.length ? <Rail title="Top 10 on AniFox today" items={topTen} ranked href="/explore" /> : null}
         {rails.map((rail) => (
           <Rail key={rail.title} {...rail} />
         ))}

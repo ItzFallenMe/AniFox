@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronLeftIcon } from "@/components/icons";
+import { CastButton } from "@/components/cast-button";
 import { ErrorNotice } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
 import { getAnimeDetails } from "@/lib/anilist";
@@ -188,6 +189,7 @@ function WatchContent() {
             <div className="vp-subtitle">{subtitle}</div>
           </div>
           <div className="vp-top-actions">
+            <CastButton src={embedUrl} title={data.title} />
             <div className="vp-trigger-wrap" onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"

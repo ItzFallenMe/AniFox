@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { MobileNav, Sidebar } from "./sidebar";
+import { TopNav } from "./top-nav";
 import { ArrowUpIcon, GithubIcon } from "./icons";
 
 function BackToTop() {
@@ -23,7 +23,7 @@ function BackToTop() {
       type="button"
       aria-label="Back to top"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className={`fixed bottom-24 right-4 z-[45] flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#141419]/90 text-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition duration-300 ease-smooth hover:bg-[#1f1f26] hover:text-fox-soft active:scale-95 md:bottom-8 md:right-8 ${
+      className={`fixed bottom-6 right-4 z-[45] flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#141419]/90 text-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition duration-300 ease-smooth hover:bg-[#1f1f26] hover:text-fox-soft active:scale-95 md:right-8 ${
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
       }`}
     >
@@ -34,9 +34,8 @@ function BackToTop() {
 
 function Footer() {
   return (
-    <footer className="relative z-10 mt-auto w-full bg-black px-6 py-6 pb-24 text-white/50 md:pb-6 md:pl-[80px] md:pr-14 lg:pl-[100px]">
-      <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-12">
+    <footer className="relative z-10 mt-auto w-full border-t border-white/[0.06] bg-black px-6 py-8 pb-16 text-white/50 md:pb-8">
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-12">
         <p className="max-w-xl text-[11px] leading-[1.7] text-white/40">
           AniFox does not host, upload or store any media. Titles are indexed from
           public metadata providers (TMDB, AniList, MyAnimeList) and playback is
@@ -79,20 +78,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (
     pathname === "/" ||
     pathname.startsWith("/watch/") ||
+    pathname.startsWith("/cast") ||
     (routeSegments[0] === "manga" && routeSegments.length === 3)
-  ) return <>{children}</>;
+  ) {
+    return <>{children}</>;
+  }
+
+  // The home hero runs edge-to-edge underneath the floating navigation.
+  const overlayNav = pathname === "/home";
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-black text-white">
-      <Sidebar />
+      <TopNav />
       <main
         key={pathname}
-        className="relative z-10 -mt-4 animate-fade-in pb-20 md:pl-[80px] md:pb-0 lg:pl-[100px]"
+        className={`relative z-10 flex-1 animate-fade-in ${overlayNav ? "" : "pt-[68px]"} pb-10`}
       >
         {children}
       </main>
       <Footer />
-      <MobileNav />
       <BackToTop />
     </div>
   );

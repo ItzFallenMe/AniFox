@@ -41,7 +41,12 @@ export async function GET(
   const requestUrl = new URL(request.url);
   for (const [name, value] of requestUrl.searchParams) {
     if (!ALLOWED_QUERY_KEYS.has(name)) continue;
-    if (name === "append_to_response" && !/^(credits|external_ids)(,(credits|external_ids))*$/.test(value)) {
+    if (
+      name === "append_to_response" &&
+      !/^(credits|external_ids|release_dates|content_ratings)(,(credits|external_ids|release_dates|content_ratings))*$/.test(
+        value,
+      )
+    ) {
       continue;
     }
     sourceUrl.searchParams.set(name, value);

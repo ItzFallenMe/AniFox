@@ -13,6 +13,15 @@ export const metadata: Metadata = {
     "Discover anime, movies, and TV in AniFox — a free, open-source streaming client for your favorite screens.",
 };
 
+const platforms = [
+  { name: "Android", mark: "A", detail: "APK for phones and tablets", href: RELEASES, featured: true },
+  { name: "iOS", mark: "iOS", detail: "Built with Flutter", href: RELEASES, featured: false },
+  { name: "Windows", mark: "▦", detail: "Installer for Windows 10+", href: RELEASES, featured: false },
+  { name: "macOS", mark: "⌘", detail: "Universal app", href: RELEASES, featured: false },
+  { name: "Linux", mark: "⌁", detail: "AppImage and archives", href: RELEASES, featured: false },
+  { name: "Web app", mark: "▶", detail: "No install, runs in the browser", href: "/home", featured: false },
+];
+
 const features = [
   {
     number: "01",
@@ -52,6 +61,7 @@ export default function DownloadLandingPage() {
           <nav className="landing-nav" aria-label="Landing page">
             <a href="#features">Features</a>
             <a href="#platforms">Platforms</a>
+            <Link href="/credits">Credits</Link>
             <a href={GITHUB} target="_blank" rel="noreferrer" className="landing-source-link">
               <GithubIcon /> Source
             </a>
@@ -213,12 +223,43 @@ export default function DownloadLandingPage() {
           </div>
         </section>
 
+        <section className="landing-downloads" aria-label="Download AniFox by platform">
+          <div className="landing-section-heading">
+            <span>DOWNLOAD ANIFOX</span>
+            <h2>Pick your platform.<br /><em>Start in seconds.</em></h2>
+          </div>
+          <div className="landing-download-grid">
+            {platforms.map((platform) => (
+              <a
+                key={platform.name}
+                href={platform.href}
+                target={platform.href.startsWith("#") ? undefined : "_blank"}
+                rel={platform.href.startsWith("#") ? undefined : "noreferrer"}
+                className={`landing-download-card ${platform.featured ? "is-featured" : ""}`}
+              >
+                <span className="landing-download-mark" aria-hidden="true">{platform.mark}</span>
+                <span className="landing-download-copy">
+                  <b>{platform.name}</b>
+                  <small>{platform.detail}</small>
+                </span>
+                <span className="landing-download-action">
+                  {platform.featured ? "Recommended" : "Download"}
+                  <ChevronRightIcon />
+                </span>
+              </a>
+            ))}
+          </div>
+          <p className="landing-downloads-note">
+            Every build is published on GitHub Releases. File availability depends on the latest release.
+          </p>
+        </section>
+
         <footer className="landing-footer">
           <Link href="/" className="landing-brand landing-brand-small">
             <Image src="/logo.png" width={30} height={30} alt="" />
             <span>AniFox</span>
           </Link>
-          <p>A free, open-source project by <a href="https://github.com/ItzFallenMe" target="_blank" rel="noreferrer">ItzFallenMe</a>.</p>
+          <p>A free, open-source project by <a href="https://github.com/ItzFallenMe" target="_blank" rel="noreferrer">ItzFallenMe</a> · <Link href="/credits">Credits</Link>.</p>
           <p className="landing-footer-license">GPL-3.0 · AniFox does not host media.</p>
         </footer>
       </div>
