@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PlayIcon, StarIcon } from "@/components/icons";
+import { DownloadOptions } from "@/components/download-options";
 import { ErrorNotice, PageSkeleton } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
 import { getAnimeDetails } from "@/lib/anilist";
@@ -106,6 +107,7 @@ export default function TitlePage() {
                 <a href={`https://anilist.co/anime/${data.anilistId}`} target="_blank" rel="noreferrer" className="title-outbound-link">AniList ↗</a>
               ) : null}
             </div>
+            <DownloadOptions type={type} details={data} season={season} />
           </div>
         </div>
       </section>
@@ -125,16 +127,33 @@ export default function TitlePage() {
               <section className="title-episodes">
                 <div className="title-section-heading title-episodes-heading">
                   <div><span>KEEP WATCHING</span><h2>Episodes</h2></div>
-                  <label className="title-season-picker">
-                    <span className="sr-only">Select season</span>
-                    <select value={season} onChange={(event) => setSeason(Number(event.target.value))}>
-                      {data.seasonList?.map((item) => <option key={item.number} value={item.number}>{item.name}</option>)}
-                    </select>
-                  </label>
+                  <span className="title-episode-total">
+                    {data.episodes ? `${data.episodes} episodes` : null}
+                    {data.seasons ? ` · ${data.seasons} season${data.seasons > 1 ? "s" : ""}` : null}
+                  </span>
+                </div>
+                <div className="title-season-tabs" role="tablist" aria-label="Seasons">
+                  {data.seasonList?.map((item) => (
+                    <button
+                      key={item.number}
+                      type="button"
+                      role="tab"
+                      aria-selected={item.number === season}
+                      className={`title-season-tab ${item.number === season ? "is-active" : ""}`}
+                      onClick={() => setSeason(item.number)}
+                    >
+                      <strong>{item.name}</strong>
+                      <small>{item.episodes} eps</small>
+                    </button>
+                  ))}
                 </div>
                 {seasonEpisodes.loading ? (
-                  <p className="title-muted-note">Loading episodes…</p>
-                ) : (
+                  <div className="title-episode-grid" aria-busy="true">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div key={index} className="title-episode-card title-episode-skeleton skeleton" />
+                    ))}
+                  </div>
+                ) : (seasonEpisodes.data ?? []).length ? (
                   <div className="title-episode-grid">
                     {(seasonEpisodes.data ?? []).map((episode) => (
                       <Link key={episode.number} href={watchHref("tv", id, episode.number, season)} className="title-episode-card">
@@ -149,6 +168,8 @@ export default function TitlePage() {
                       </Link>
                     ))}
                   </div>
+                ) : (
+                  <p className="title-muted-note">No episodes are listed for this season yet.</p>
                 )}
               </section>
             ) : null}

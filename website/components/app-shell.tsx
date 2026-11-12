@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { TopNav } from "./top-nav";
+import { Sidebar } from "./sidebar";
 import { ArrowUpIcon, GithubIcon } from "./icons";
 
 function BackToTop() {
@@ -34,7 +35,7 @@ function BackToTop() {
 
 function Footer() {
   return (
-    <footer className="relative z-10 mt-auto w-full border-t border-white/[0.06] bg-black px-6 py-8 pb-16 text-white/50 md:pb-8">
+    <footer className="app-footer relative z-10 mt-auto w-full border-t border-white/[0.06] bg-black px-6 py-8 pb-16 text-white/50 md:pb-8">
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-12">
         <p className="max-w-xl text-[11px] leading-[1.7] text-white/40">
           AniFox does not host, upload or store any media. Titles are indexed from
@@ -84,16 +85,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // The home hero runs edge-to-edge underneath the floating navigation.
-  const overlayNav = pathname === "/home";
-
   return (
-    <div className="flex min-h-screen flex-col overflow-x-clip bg-black text-white">
+    <div className="app-frame flex min-h-screen flex-col overflow-x-clip bg-black text-white">
+      <Sidebar />
       <TopNav />
-      <main
-        key={pathname}
-        className={`relative z-10 flex-1 animate-fade-in ${overlayNav ? "" : "pt-[68px]"} pb-10`}
-      >
+      <main key={pathname} className="app-main relative z-10 flex-1 animate-fade-in pb-10">
         {children}
       </main>
       <Footer />

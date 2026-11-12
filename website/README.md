@@ -87,7 +87,50 @@ MANGA_API_URL=https://your-manga-api.vercel.app
 
 # Optional Chromecast receiver application id.
 NEXT_PUBLIC_CAST_RECEIVER_APP_ID=
+
+# Optional streaming source (listed first when set).
+NEXT_PUBLIC_STREAM_API_URL=
+
+# Optional licensed download provider (server-side only).
+DOWNLOAD_API_URL=
+DOWNLOAD_API_KEY=
 ```
+
+## Streaming source
+
+Setting `NEXT_PUBLIC_STREAM_API_URL` adds a source named "AniFox Source" to the
+player and makes it the default. It must serve these routes, each returning an
+embeddable player:
+
+```
+/movie/{tmdbId}
+/tv/{tmdbId}/{season}/{episode}
+/anime/{anilistId}/{episode}
+```
+
+## Download provider
+
+AniFox does not ship a download source. Point `DOWNLOAD_API_URL` at a provider
+you are licensed to use; the key is sent server-side only.
+
+```
+GET {DOWNLOAD_API_URL}/downloads?type=movie|tv|anime&tmdbId=&anilistId=&malId=&season=&episode=
+Authorization: Bearer {DOWNLOAD_API_KEY}
+```
+
+Expected response:
+
+```json
+{
+  "downloads": [
+    { "label": "1080p", "quality": "1080p", "size": "2.1 GB", "format": "mp4", "url": "https://..." }
+  ]
+}
+```
+
+Options render on the title page only when the provider is configured and
+returns results. Requests are proxied through `/api/download/downloads` with a
+parameter allowlist, so the key never reaches the browser.
 
 `.env.local` is git-ignored. Do not commit real keys — set them in your hosting
 provider's dashboard instead.

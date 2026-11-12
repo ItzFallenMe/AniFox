@@ -127,8 +127,12 @@ export async function getAnimeDetails(id: number): Promise<MediaDetails> {
     { id },
   );
   const media = mapMedia(data.Media);
-  const finished = data.Media.status === "FINISHED";
-  const knownEpisodes = data.Media.episodes ?? data.Media.nextAiringEpisode?.episode;
+  const nextEpisode = data.Media.nextAiringEpisode?.episode;
+  // Total episode count when known; otherwise the episodes aired so far.
+  const knownEpisodes = data.Media.episodes ?? (nextEpisode ? nextEpisode - 1 : null);
+  // For airing shows `nextAiringEpisode` points at the upcoming episode, so only
+  // everything before it is actually available to watch.
+  const airedEpisodes = nextEpisode ? Math.max(0, nextEpisode - 1) : knownEpisodes ?? 0;
 
   return {
     ...media,
@@ -139,8 +143,8 @@ export async function getAnimeDetails(id: number): Promise<MediaDetails> {
     studios: data.Media.studios?.nodes?.map((studio) => studio.name) ?? [],
     episodes: knownEpisodes ?? null,
     episodeList:
-      knownEpisodes && finished
-        ? Array.from({ length: knownEpisodes }, (_, index) => ({
+      airedEpisodes > 0
+        ? Array.from({ length: airedEpisodes }, (_, index) => ({
             number: index + 1,
             title: null,
             overview: null,
@@ -149,6 +153,7 @@ export async function getAnimeDetails(id: number): Promise<MediaDetails> {
             runtime: data.Media.duration ?? null,
           }))
         : [],
+    status: data.Media.status ?? null,
   };
 }
 

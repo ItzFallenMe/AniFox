@@ -44,9 +44,7 @@ body {
   display: none;
 }
 
-/* ------------------------------------------------------------------ */
-/* Shell gradients, copied from the saved AniFox reference pages       */
-/* ------------------------------------------------------------------ */
+/* Shell gradients, copied from the saved AniFox reference pages */
 
 .hero-mask {
   background:
@@ -118,9 +116,7 @@ body {
   opacity: 1;
 }
 
-/* ------------------------------------------------------------------ */
-/* Animation tokens copied from the reference stylesheet               */
-/* ------------------------------------------------------------------ */
+/* Animation tokens copied from the reference stylesheet */
 
 @keyframes fade-in {
   from {
@@ -318,9 +314,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Download landing page                                                */
-/* ------------------------------------------------------------------ */
+/* Download landing page */
 
 .landing-page {
   --landing-bg: #08090c;
@@ -1591,9 +1585,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Cinematic title detail pages                                         */
-/* ------------------------------------------------------------------ */
+/* Cinematic title detail pages */
 
 .title-page {
   min-height: 100vh;
@@ -2288,9 +2280,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Manga catalog and reader                                             */
-/* ------------------------------------------------------------------ */
+/* Manga catalog and reader */
 
 .manga-catalog-page,
 .manga-detail-page {
@@ -3035,9 +3025,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Streaming home, discovery and collection pages                       */
-/* ------------------------------------------------------------------ */
+/* Streaming home, discovery and collection pages */
 
 .streaming-home,
 .catalog-page {
@@ -4007,9 +3995,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* bingr.one-inspired floating navigation and card refresh             */
-/* ------------------------------------------------------------------ */
+/* bingr.one-inspired floating navigation and card refresh */
 
 :root {
   --nav-h: 68px;
@@ -4268,7 +4254,7 @@ body {
   }
 }
 
-/* Home quick category links ---------------------------------------- */
+/* Home quick category links */
 
 .home-quicklinks {
   display: flex;
@@ -4307,7 +4293,7 @@ body {
   transform: translateY(-2px);
 }
 
-/* Rail arrows ------------------------------------------------------ */
+/* Rail arrows */
 
 .media-rail-arrows {
   align-items: center;
@@ -4348,7 +4334,7 @@ body {
   height: 14px;
 }
 
-/* Card refresh ----------------------------------------------------- */
+/* Card refresh */
 
 .media-card-art {
   border-radius: 12px !important;
@@ -4378,7 +4364,7 @@ body {
   transform: translateY(0);
 }
 
-/* Ranked Top 10 rail ----------------------------------------------- */
+/* Ranked Top 10 rail */
 
 .media-rail-ranked > .stagger {
   counter-reset: rank;
@@ -4430,7 +4416,7 @@ body {
   }
 }
 
-/* Hero alignment for the floating navigation ----------------------- */
+/* Hero alignment for the floating navigation */
 
 .stream-hero-topline {
   top: calc(var(--nav-h) + 24px) !important;
@@ -4475,9 +4461,7 @@ body {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Chromecast                                                          */
-/* ------------------------------------------------------------------ */
+/* Chromecast */
 
 .vp-trigger:disabled {
   cursor: not-allowed;
@@ -4540,9 +4524,7 @@ body {
   font-size: 13px;
 }
 
-/* ------------------------------------------------------------------ */
-/* Download landing extras + credits                                   */
-/* ------------------------------------------------------------------ */
+/* Download landing extras + credits */
 
 .landing-downloads {
   margin-top: 78px;
@@ -4687,7 +4669,7 @@ body {
   }
 }
 
-/* Credits page ----------------------------------------------------- */
+/* Credits page */
 
 .credits-page {
   min-height: calc(100vh - var(--nav-h));
@@ -4863,4 +4845,449 @@ body {
   .credits-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Desktop sidebar layout (mobile keeps the floating top navigation) */
+
+.app-frame {
+  --sidebar-w: 220px;
+}
+
+.app-sidebar {
+  display: none;
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--sidebar-w);
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 14px 18px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 122, 26, 0.055), transparent 32%),
+    rgba(7, 7, 10, 0.92);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 8px 6px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.app-sidebar-brand img {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  filter: drop-shadow(0 4px 16px rgba(255, 112, 28, 0.3));
+}
+
+.app-sidebar-brand span {
+  font-family: var(--font-bebas), Impact, sans-serif;
+  font-size: 25px;
+  letter-spacing: 0.055em;
+  line-height: 1;
+}
+
+.app-sidebar-search {
+  display: flex;
+  height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.app-sidebar-search:focus-within {
+  border-color: rgba(255, 145, 80, 0.42);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-sidebar-search svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.app-sidebar-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  font-size: 12px;
+  outline: none;
+}
+
+.app-sidebar-search input::placeholder {
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.app-sidebar-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.app-sidebar-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12.5px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition: color 180ms ease, background 200ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-sidebar-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  transition: background 200ms ease, color 200ms ease, transform 200ms ease;
+}
+
+.app-sidebar-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-sidebar-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.055);
+  transform: translateX(2px);
+}
+
+.app-sidebar-link.is-active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.app-sidebar-link.is-active .app-sidebar-icon {
+  background: rgba(255, 122, 26, 0.16);
+  color: var(--fox-soft);
+}
+
+.app-sidebar-link.is-active i {
+  position: absolute;
+  top: 50%;
+  left: -14px;
+  width: 3px;
+  height: 18px;
+  border-radius: 0 3px 3px 0;
+  background: var(--fox);
+  box-shadow: 0 0 12px rgba(255, 122, 26, 0.7);
+  transform: translateY(-50%);
+}
+
+.app-sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.app-sidebar-utility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 180ms ease, background 180ms ease;
+}
+
+.app-sidebar-utility:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app-sidebar-utility svg {
+  width: 14px;
+  height: 14px;
+}
+
+.app-sidebar-utility span {
+  flex: 1;
+}
+
+.app-sidebar-download {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #ffb16e, #ff7c32 82%);
+  color: #1b0c05;
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease;
+}
+
+.app-sidebar-download:hover {
+  box-shadow: 0 10px 26px rgba(255, 104, 31, 0.28);
+  transform: translateY(-2px);
+}
+
+.app-main {
+  padding-top: var(--nav-h);
+}
+
+@media (min-width: 900px) {
+  .app-sidebar {
+    display: flex;
+  }
+
+  .top-nav {
+    display: none;
+  }
+
+  .app-main {
+    padding-top: 0;
+    padding-left: var(--sidebar-w);
+  }
+
+  .app-footer {
+    padding-left: calc(var(--sidebar-w) + 24px);
+  }
+}
+
+/* Fix hero spacing now that navigation no longer overlaps it. */
+.stream-hero-topline {
+  top: 30px !important;
+}
+
+.stream-hero-copy {
+  bottom: clamp(84px, 12vh, 128px);
+}
+
+.home-quicklinks {
+  margin-top: -10px;
+}
+
+@media (max-width: 899px) {
+  .stream-hero-topline {
+    top: 22px !important;
+  }
+}
+
+/* Watch page controls */
+
+.vp-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vp-step-btn {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(11, 11, 14, 0.49);
+  color: rgba(255, 255, 255, 0.86);
+  text-decoration: none;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.vp-step-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.vp-step-btn:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.vp-step-btn.is-disabled {
+  cursor: default;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.vp-season-picker select {
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
+.vp-season-picker select:focus-visible {
+  border-color: rgba(255, 145, 80, 0.55);
+}
+
+@media (max-width: 767px) {
+  .vp-step {
+    display: none;
+  }
+}
+
+/* Title page season tabs + spacing */
+
+.title-backdrop {
+  padding-top: clamp(48px, 7vw, 90px) !important;
+}
+
+.title-episode-total {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.title-season-tabs {
+  display: flex;
+  gap: 7px;
+  margin: 4px 0 18px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.title-season-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.title-season-tab {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.62);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.title-season-tab strong {
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.title-season-tab small {
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.title-season-tab:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.title-season-tab.is-active {
+  border-color: rgba(255, 145, 83, 0.38);
+  background: linear-gradient(135deg, rgba(255, 128, 61, 0.16), rgba(255, 128, 61, 0.04));
+  color: #fff;
+}
+
+.title-season-tab.is-active small {
+  color: rgba(255, 178, 130, 0.75);
+}
+
+.title-episode-skeleton {
+  min-height: 168px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Download options on the title page */
+
+.download-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.download-options-label {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.download-options-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.download-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  text-decoration: none;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.download-option:hover {
+  border-color: rgba(255, 145, 83, 0.36);
+  background: rgba(255, 128, 61, 0.12);
+  transform: translateY(-1px);
+}
+
+.download-option-quality {
+  font-weight: 700;
+}
+
+.download-option-meta {
+  color: rgba(255, 255, 255, 0.44);
+  font-size: 9px;
+}
+
+.download-option-icon {
+  color: var(--fox-soft);
+  font-size: 12px;
+  line-height: 1;
 }

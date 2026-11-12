@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ChevronLeftIcon } from "@/components/icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { CastButton } from "@/components/cast-button";
 import { ErrorNotice } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
@@ -158,7 +158,7 @@ function WatchContent() {
       <div
         className={`vp-root ${episodes.length ? "has-episodes" : ""} ${panel ? "has-panel" : ""}`}
         onClick={() => {
-          if (serverPanelOpen) setPanel(null);
+          if (panel) setPanel(null);
         }}
       >
         {embedUrl ? (
@@ -189,6 +189,34 @@ function WatchContent() {
             <div className="vp-subtitle">{subtitle}</div>
           </div>
           <div className="vp-top-actions">
+            {episodes.length > 1 ? (
+              <div className="vp-step">
+                <Link
+                  className={`vp-step-btn ${episode <= 1 ? "is-disabled" : ""}`}
+                  href={episode > 1 ? `${watchBase}/${episode - 1}${type === "tv" && season > 1 ? `?season=${season}` : ""}` : `${watchBase}/${episode}`}
+                  aria-label="Previous episode"
+                  aria-disabled={episode <= 1}
+                  onClick={(event) => {
+                    if (episode <= 1) event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <ChevronLeftIcon />
+                </Link>
+                <Link
+                  className={`vp-step-btn ${episode >= episodes.length ? "is-disabled" : ""}`}
+                  href={episode < episodes.length ? `${watchBase}/${episode + 1}${type === "tv" && season > 1 ? `?season=${season}` : ""}` : `${watchBase}/${episode}`}
+                  aria-label="Next episode"
+                  aria-disabled={episode >= episodes.length}
+                  onClick={(event) => {
+                    if (episode >= episodes.length) event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                >
+                  <ChevronRightIcon />
+                </Link>
+              </div>
+            ) : null}
             <CastButton src={embedUrl} title={data.title} />
             <div className="vp-trigger-wrap" onClick={(event) => event.stopPropagation()}>
               <button
@@ -287,6 +315,23 @@ function WatchContent() {
               <h2 className="vp-eps-title">Episodes</h2>
             </div>
             <div className="vp-eps-actions">
+              {type === "tv" && (data.seasonList?.length ?? 0) > 1 ? (
+                <label className="vp-season-picker">
+                  <span className="sr-only">Season</span>
+                  <select
+                    value={season}
+                    onChange={(event) => {
+                      window.location.href = `${watchBase}/1?season=${event.target.value}`;
+                    }}
+                  >
+                    {data.seasonList?.map((item) => (
+                      <option key={item.number} value={item.number}>
+                        {item.name} ({item.episodes})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <span className="vp-note">{episodes.length} episodes</span>
               <button
                 type="button"

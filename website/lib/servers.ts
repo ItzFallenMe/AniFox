@@ -1,4 +1,4 @@
-export type ServerId = "vidly" | "vidy" | "embedwave" | "vidbolt";
+export type ServerId = "vidly" | "vidy" | "embedwave" | "vidbolt" | "custom";
 
 export interface ServerInfo {
   id: ServerId;
@@ -7,15 +7,31 @@ export interface ServerInfo {
   tagline: string;
 }
 
-/** The four streaming backends bundled with AniFox. */
-export const SERVERS: ServerInfo[] = [
+/**
+ * Optional operator-configured source. When NEXT_PUBLIC_STREAM_API_URL is set it
+ * is listed first and used by default. Expected routes:
+ *   /movie/{tmdbId}
+ *   /tv/{tmdbId}/{season}/{episode}
+ *   /anime/{anilistId}/{episode}
+ */
+const CUSTOM_BASE = (process.env.NEXT_PUBLIC_STREAM_API_URL ?? "").trim().replace(/\/+$/, "");
+
+const BUNDLED_SERVERS: ServerInfo[] = [
   { id: "vidly", name: "Vidly", baseUrl: "https://vidly.pro", tagline: "Server 1 · anime, TV, movies" },
   { id: "vidbolt", name: "VidBolt", baseUrl: "https://vidbolt.xyz", tagline: "Server 2 · anime, TV, movies" },
   { id: "vidy", name: "Vidy", baseUrl: "https://vidy.st", tagline: "Server 3 · anime and TV" },
   { id: "embedwave", name: "EmbedWave", baseUrl: "https://embedwave.cc", tagline: "Server 4 · TMDB player" },
 ];
 
-export const DEFAULT_SERVER: ServerId = "vidly";
+/** Streaming backends: the configured source first, then the bundled hosts. */
+export const SERVERS: ServerInfo[] = CUSTOM_BASE
+  ? [
+      { id: "custom", name: "AniFox Source", baseUrl: CUSTOM_BASE, tagline: "Configured source" },
+      ...BUNDLED_SERVERS,
+    ]
+  : BUNDLED_SERVERS;
+
+export const DEFAULT_SERVER: ServerId = CUSTOM_BASE ? "custom" : "vidly";
 
 export interface PlaybackInfo {
   type: "movie" | "tv" | "anime";
@@ -45,6 +61,12 @@ export function buildEmbedUrl(info: PlaybackInfo, serverId: ServerId): string | 
   const isMovie = type === "movie";
 
   switch (serverId) {
+    case "custom":
+      if (isAnime && anilistId) return `${base}/anime/${anilistId}/${episode}`;
+      if (isMovie && tmdbId) return `${base}/movie/${tmdbId}`;
+      if (tmdbId) return `${base}/tv/${tmdbId}/${season}/${episode}`;
+      return null;
+
     case "vidly":
       if (isAnime) {
         if (anilistId) return `${base}/anime/${anilistId}/${episode}`;
