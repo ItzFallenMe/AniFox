@@ -1,0 +1,716 @@
+import 'package:anifox/modules/browse/models/models/search_filter_options.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_filter_options.dart';
+import 'package:anifox/core/utils/app_logger.dart';
+
+import 'package:anifox/core/network/http_client.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_category.dart';
+import 'package:anifox/common/state/content_prefs_provider.dart';
+import 'package:anifox/modules/tracking/engine/base_tracker.dart';
+import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/streaming/models/paginated_result.dart';
+
+import 'anilist_tracker_queries.dart';
+
+class AnilistException implements Exception {
+  final String message;
+  AnilistException(this.message);
+  @override
+  String toString() => message;
+}
+
+mixin AnilistMetadata on BaseTracker implements RemoteTracker {
+  HTTP get http;
+
+  final String _endpoint = 'https://graphql.anilist.co';
+
+  @override
+  List<TrackerCategory> get supportedCategories => [
+    TrackerCategory.trending,
+    TrackerCategory.popular,
+    TrackerCategory.topRated,
+    TrackerCategory.upcoming,
+  ];
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getCategoryItems(
+    TrackerCategory category, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    if (category == TrackerCategory.trending) {
+      return getTrending(
+        page: page,
+        type: type,
+        cacheDuration: cacheDuration,
+        adultMode: adultMode,
+      );
+    }
+
+    SearchSort sortOption = SearchSort.popularity;
+    SearchStatusFilter statusOption = SearchStatusFilter.all;
+
+    switch (category) {
+      case TrackerCategory.popular:
+      case TrackerCategory.popularThisSeason:
+        sortOption = SearchSort.popularity;
+        break;
+      case TrackerCategory.topRated:
+        sortOption = SearchSort.score;
+        break;
+      case TrackerCategory.recentlyUpdated:
+        sortOption = SearchSort.newest;
+        break;
+      case TrackerCategory.upcoming:
+        sortOption = SearchSort.popularity;
+        statusOption = SearchStatusFilter.notYetReleased;
+        break;
+      default:
+        sortOption = SearchSort.popularity;
+        break;
+    }
+
+    return search(
+      '',
+      page: page,
+      type: type,
+      cacheDuration: cacheDuration,
+      adultMode: adultMode,
+      sort: sortOption,
+      status: statusOption,
+    );
+  }
+
+  Map<String, dynamic> _validateAndParseResponse(
+    dynamic body,
+    String operation,
+  ) {
+    if (body is! Map) {
+      AppLogger.e(
+        'AnilistTracker.$operation',
+        'Invalid response type: ${body.runtimeType}',
+        body,
+      );
+      throw AnilistException('Invalid response format');
+    }
+
+    if (body['errors'] != null) {
+      AppLogger.e(
+        'AnilistTracker.$operation',
+        'GraphQL Errors returned',
+        body['errors'],
+      );
+      throw AnilistException('GraphQL Error: ${body['errors']}');
+    }
+
+    final data = body['data'] as Map?;
+    if (data == null) {
+      AppLogger.e('AnilistTracker.$operation', 'Response data is null', body);
+      throw AnilistException('Missing data field in response');
+    }
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getTrending({
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('TRENDING | ${type.displayName}', () async {
+      final response = await http.post(
+        _endpoint,
+        body: {
+          'query': AnilistTrackerQueries.trending(adultMode),
+          'variables': {'page': page, 'type': type.name},
+        },
+        headers: {'Referer': 'https://anilist.co'},
+        cacheDuration: cacheDuration ?? const Duration(days: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getTrending');
+      final pageData = data['Page'] as Map?;
+
+      if (pageData == null) {
+        AppLogger.w('AnilistTracker.getTrending', 'Page data is null');
+        return PaginatedResult(items: [], hasNextPage: false);
+      }
+
+      final hasNextPage = pageData['pageInfo']?['hasNextPage'] ?? false;
+      final rawList = pageData['media'] as List? ?? [];
+
+      final items = rawList
+          .whereType<Map>()
+          .map((json) => _mapToUnified(json, type, requestId))
+          .toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> search(
+    String query, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    List<String>? genres,
+    List<String>? tags,
+    SearchSort sort = SearchSort.popularity,
+    SearchStatusFilter status = SearchStatusFilter.all,
+    SearchFormatFilter format = SearchFormatFilter.all,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    List<String> sortList;
+    switch (sort) {
+      case SearchSort.popularity:
+        sortList = query.isNotEmpty ? ['SEARCH_MATCH'] : ['POPULARITY_DESC'];
+        break;
+      case SearchSort.score:
+        sortList = ['SCORE_DESC'];
+        break;
+      case SearchSort.newest:
+        sortList = ['START_DATE_DESC'];
+        break;
+      case SearchSort.oldest:
+        sortList = ['START_DATE'];
+        break;
+      case SearchSort.alphabeticalAZ:
+        sortList = ['TITLE_ROMAJI'];
+        break;
+      case SearchSort.alphabeticalZA:
+        sortList = ['TITLE_ROMAJI_DESC'];
+        break;
+    }
+
+    List<String>? statusIn;
+    switch (status) {
+      case SearchStatusFilter.releasing:
+        statusIn = ['RELEASING'];
+        break;
+      case SearchStatusFilter.finished:
+        statusIn = ['FINISHED'];
+        break;
+      case SearchStatusFilter.notYetReleased:
+        statusIn = ['NOT_YET_RELEASED'];
+        break;
+      case SearchStatusFilter.all:
+        statusIn = null;
+        break;
+    }
+
+    List<String>? formatIn;
+    switch (format) {
+      case SearchFormatFilter.tv:
+        formatIn = ['TV', 'TV_SHORT'];
+        break;
+      case SearchFormatFilter.movie:
+        formatIn = ['MOVIE'];
+        break;
+      case SearchFormatFilter.ova:
+        formatIn = ['OVA', 'ONA', 'SPECIAL'];
+        break;
+      case SearchFormatFilter.manga:
+        formatIn = ['MANGA'];
+        break;
+      case SearchFormatFilter.oneShot:
+        formatIn = ['ONE_SHOT'];
+        break;
+      case SearchFormatFilter.all:
+        formatIn = null;
+        break;
+    }
+
+    return executeApi('SEARCH_METADATA', () async {
+      final variables = <String, dynamic>{
+        'search': query.isEmpty ? null : query,
+        'page': page,
+        'type': type.name,
+        'sort': sortList,
+      };
+
+      if (genres != null && genres.isNotEmpty) {
+        variables['genre_in'] = genres;
+      }
+
+      if (tags != null && tags.isNotEmpty) {
+        variables['tag_in'] = tags;
+      }
+
+      if (statusIn != null && statusIn.isNotEmpty) {
+        variables['status_in'] = statusIn;
+      }
+
+      if (formatIn != null && formatIn.isNotEmpty) {
+        variables['format_in'] = formatIn;
+      }
+
+      final response = await http.post(
+        _endpoint,
+        body: {
+          'query': AnilistTrackerQueries.metadataSearch(adultMode),
+          'variables': variables,
+        },
+        headers: {'Referer': 'https://anilist.co'},
+        cacheDuration: cacheDuration ?? const Duration(hours: 12),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'search');
+      final pageData = data['Page'] as Map?;
+
+      if (pageData == null) {
+        AppLogger.w('AnilistTracker.search', 'Page data is null');
+        return PaginatedResult(items: [], hasNextPage: false);
+      }
+
+      final hasNextPage = pageData['pageInfo']?['hasNextPage'] ?? false;
+      final rawList = pageData['media'] as List? ?? [];
+
+      final items = rawList
+          .whereType<Map>()
+          .map((json) => _mapToUnified(json, type, requestId))
+          .toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<UnifiedMedia> getDetails(String providerId, MediaType type) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('DETAILS', () async {
+      final id = int.tryParse(providerId);
+      if (id == null) {
+        AppLogger.e(
+          'AnilistTracker.getDetails',
+          'Invalid providerId: $providerId',
+        );
+        throw AnilistException('Invalid providerId: $providerId');
+      }
+
+      final response = await http.post(
+        _endpoint,
+        body: {
+          'query': AnilistTrackerQueries.details,
+          'variables': {'id': id, 'type': type.name},
+        },
+        headers: {'Referer': 'https://anilist.co'},
+        cacheDuration: const Duration(days: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getDetails');
+      final json = data['Media'] as Map?;
+
+      if (json == null) {
+        AppLogger.e(
+          'AnilistTracker.getDetails',
+          'Media not found for id: $providerId',
+        );
+        throw AnilistException('Media not found for id: $providerId');
+      }
+
+      return _mapToUnified(json, type, requestId);
+    });
+  }
+
+  @override
+  Future<TrackerFilterOptions> fetchFilterOptions([MediaType? type]) async {
+    final results = await Future.wait([fetchGenres(), fetchTags()]);
+
+    var formats = SearchFormatFilter.values;
+    if (type == MediaType.ANIME) {
+      formats = formats
+          .where(
+            (f) =>
+                f != SearchFormatFilter.manga &&
+                f != SearchFormatFilter.oneShot,
+          )
+          .toList();
+    } else if (type == MediaType.MANGA) {
+      formats = formats
+          .where(
+            (f) =>
+                f == SearchFormatFilter.manga ||
+                f == SearchFormatFilter.oneShot ||
+                f == SearchFormatFilter.all,
+          )
+          .toList();
+    }
+
+    return TrackerFilterOptions(
+      genres: results[0],
+      tags: results[1],
+      sorts: SearchSort.values,
+      statuses: SearchStatusFilter.values,
+      formats: formats,
+    );
+  }
+
+  @override
+  Future<List<String>> fetchGenres() async {
+    return executeApi('FETCH_GENRES', () async {
+      final response = await http.post(
+        _endpoint,
+        body: {'query': AnilistTrackerQueries.genres},
+        headers: {'Referer': 'https://anilist.co'},
+        cacheDuration: const Duration(days: 7),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'fetchGenres');
+      final list = data['GenreCollection'] as List? ?? [];
+      return list.whereType<String>().toList();
+    });
+  }
+
+  @override
+  Future<List<String>> fetchTags() async {
+    return executeApi('FETCH_TAGS', () async {
+      final response = await http.post(
+        _endpoint,
+        body: {'query': AnilistTrackerQueries.tags},
+        headers: {'Referer': 'https://anilist.co'},
+        cacheDuration: const Duration(days: 7),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'fetchTags');
+      final list = data['MediaTagCollection'] as List? ?? [];
+      return list
+          .whereType<Map>()
+          .map((e) => e['name'] as String?)
+          .whereType<String>()
+          .toList();
+    });
+  }
+
+  UnifiedMedia _mapToUnified(
+    Map<dynamic, dynamic> json,
+    MediaType type,
+    int requestId, {
+    String? relationType,
+  }) {
+    try {
+      final titleJson = json['title'] as Map? ?? {};
+
+      final title = MediaTitle(
+        english: titleJson['english'],
+        romaji: titleJson['romaji'],
+        native: titleJson['native'],
+      );
+
+      String status = '';
+      switch (json['status']) {
+        case 'RELEASING':
+          status = 'Ongoing';
+          break;
+        case 'FINISHED':
+          status = 'Completed';
+          break;
+        case 'NOT_YET_RELEASED':
+          status = 'Upcoming';
+          break;
+      }
+
+      final relations = ((json['relations'] as Map?)?['edges'] as List?)
+          ?.map((e) {
+            final node = (e as Map?)?['node'];
+            final relType = e?['relationType']?.toString();
+            if (node == null) return null;
+            final nodeType = MediaType.values.firstWhere(
+              (t) => t.name == node['type'],
+              orElse: () => MediaType.ANIME,
+            );
+            return _mapToUnified(
+              node,
+              nodeType,
+              requestId,
+              relationType: relType,
+            );
+          })
+          .whereType<UnifiedMedia>()
+          .toList();
+
+      final tags = (json['tags'] as List?)
+          ?.whereType<Map>()
+          .map(
+            (e) => MediaTag(
+              id: e['id']?.toString() ?? '',
+              name: e['name'] ?? '',
+              category: e['category'] ?? '',
+            ),
+          )
+          .toList();
+
+      final recommendations =
+          ((json['recommendations'] as Map?)?['nodes'] as List?)
+              ?.map((e) => (e as Map?)?['mediaRecommendation'])
+              .whereType<Map>()
+              .map((node) {
+                final nodeType = MediaType.values.firstWhere(
+                  (t) => t.name == node['type'],
+                  orElse: () => MediaType.ANIME,
+                );
+                return _mapToUnified(node, nodeType, requestId);
+              })
+              .toList();
+      final airingAt = json['nextAiringEpisode']?['airingAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(
+              json['nextAiringEpisode']['airingAt'] * 1000,
+            )
+          : null;
+      final nextEpisode = json['nextAiringEpisode']?['episode'];
+
+      final scoreVal = (json['averageScore'] as num?)?.toDouble();
+      final score = scoreVal != null && scoreVal > 0
+          ? (scoreVal > 10 ? scoreVal / 10.0 : scoreVal)
+          : null;
+      final seasonStr = json['seasonYear'] != null
+          ? json['seasonYear'].toString()
+          : json['season']?.toString();
+
+      final year =
+          (json['seasonYear'] as num?)?.toInt() ??
+          ((json['startDate'] as Map?)?['year'] as num?)?.toInt();
+      final trailerObj = json['trailer'] as Map?;
+      final String? trailer = trailerObj != null && trailerObj['id'] != null
+          ? (trailerObj['site'] == 'youtube'
+                ? 'https://www.youtube.com/watch?v=${trailerObj['id']}'
+                : trailerObj['id'].toString())
+          : null;
+
+      final studios = ((json['studios'] as Map?)?['nodes'] as List?)
+          ?.map((s) => (s as Map)['name']?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      final synonyms = (json['synonyms'] as List?)
+          ?.map((s) => s.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      final externalLinks = ((json['externalLinks'] as List?) ?? [])
+          .whereType<Map>()
+          .map(
+            (link) => MediaExternalLink(
+              id: link['id']?.toString() ?? '',
+              url: link['url']?.toString() ?? '',
+              site: link['site']?.toString() ?? '',
+              icon: link['icon']?.toString(),
+            ),
+          )
+          .where((link) => link.url.isNotEmpty)
+          .toList();
+
+      final characters = ((json['characters'] as Map?)?['edges'] as List?)
+          ?.whereType<Map>()
+          .map((edge) {
+            final node = edge['node'] as Map? ?? {};
+            final voiceActor =
+                (edge['voiceActors'] as List?)?.firstOrNull as Map?;
+            return MediaCharacter(
+              id: node['id']?.toString() ?? '',
+              name: (node['name'] as Map?)?['full']?.toString() ?? 'Unknown',
+              role: edge['role']?.toString(),
+              image: (node['image'] as Map?)?['large']?.toString(),
+              voiceActorName: (voiceActor?['name'] as Map?)?['full']
+                  ?.toString(),
+              voiceActorImage: (voiceActor?['image'] as Map?)?['large']
+                  ?.toString(),
+            );
+          })
+          .where((c) => c.name.isNotEmpty)
+          .toList();
+
+      final anilistId = json['id']?.toString();
+      final malId = json['idMal']?.toString();
+
+      return UnifiedMedia(
+        id: anilistId ?? '',
+        idMal: malId,
+        url: anilistId != null
+            ? 'https://anilist.co/${type.name.toLowerCase()}/$anilistId'
+            : null,
+        externalIds: MediaExternalIds(anilist: anilistId, mal: malId),
+        type: type,
+        airingAt: airingAt,
+        providerId: anilistId ?? '',
+        title: title,
+        format: json['format'],
+        score: score,
+        season: seasonStr,
+        year: year,
+        trailer: trailer,
+        cover:
+            (json['coverImage'] as Map?)?['extraLarge'] ??
+            (json['coverImage'] as Map?)?['large'] ??
+            (json['coverImage'] as Map?)?['medium'],
+        banner: json['bannerImage'],
+        description: _cleanBio(json['description']?.toString()),
+        status: status,
+        episodes: json['episodes'],
+        chapters: json['chapters'],
+        volumes: json['volumes'],
+        duration: json['duration'],
+        source: json['source'],
+        popularity: json['popularity'],
+        favourites: json['favourites'],
+        studios: studios,
+        synonyms: synonyms,
+        externalLinks: externalLinks,
+        characters: characters,
+        relationType: relationType,
+        relations: relations,
+        recommendations: recommendations,
+        nextEpisode: nextEpisode,
+        genres: (json['genres'] as List?)?.map((e) => e.toString()).toList(),
+        tags: tags,
+      );
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'AnilistTracker._mapToUnified',
+        'Error mapping UnifiedMedia',
+        e,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  @override
+  Future<PaginatedResult<MediaCharacter>> getCharacters(
+    String providerId, {
+    int page = 1,
+    int perPage = 50,
+    MediaType type = MediaType.ANIME,
+  }) async {
+    final numericId = int.tryParse(providerId);
+    if (numericId == null) {
+      return PaginatedResult(items: [], hasNextPage: false);
+    }
+
+    return executeApi(
+      'GET_CHARACTERS',
+      () async {
+        final response = await http.post(
+          _endpoint,
+          body: {
+            'query': AnilistTrackerQueries.characters,
+            'variables': {'id': numericId, 'page': page, 'perPage': perPage},
+          },
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://anilist.co',
+          },
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final data = _validateAndParseResponse(response.json, 'getCharacters');
+        final mediaMap = data['Media'] as Map?;
+        final charMap = mediaMap?['characters'] as Map?;
+        final pageInfo = charMap?['pageInfo'] as Map?;
+        final edges = (charMap?['edges'] as List?)?.whereType<Map>() ?? [];
+        final hasNextPage = pageInfo?['hasNextPage'] as bool? ?? false;
+
+        final items = edges
+            .map((edge) {
+              final node = edge['node'] as Map? ?? {};
+              final voiceActor =
+                  (edge['voiceActors'] as List?)?.firstOrNull as Map?;
+              return MediaCharacter(
+                id: node['id']?.toString() ?? '',
+                name: (node['name'] as Map?)?['full']?.toString() ?? 'Unknown',
+                nativeName: (node['name'] as Map?)?['native']?.toString(),
+                role: edge['role']?.toString(),
+                image: (node['image'] as Map?)?['large']?.toString(),
+                description: _cleanBio(node['description']?.toString()),
+                voiceActorName: (voiceActor?['name'] as Map?)?['full']
+                    ?.toString(),
+                voiceActorImage: (voiceActor?['image'] as Map?)?['large']
+                    ?.toString(),
+              );
+            })
+            .where((c) => c.name.isNotEmpty)
+            .toList();
+
+        return PaginatedResult(items: items, hasNextPage: hasNextPage);
+      },
+      fallback: (error, stackTrace) {
+        AppLogger.e(
+          'AnilistTracker.getCharacters',
+          'Error fetching characters',
+          error,
+          stackTrace,
+        );
+        throw error;
+      },
+    );
+  }
+
+  @override
+  Future<MediaCharacter?> getCharacterDetails(String characterId) async {
+    final numericId = int.tryParse(characterId);
+    if (numericId == null) return null;
+
+    return executeApi(
+      'GET_CHARACTER_DETAILS',
+      () async {
+        final response = await http.post(
+          _endpoint,
+          body: {
+            'query': AnilistTrackerQueries.characterDetails,
+            'variables': {'id': numericId},
+          },
+          headers: {
+            'Content-Type': 'application/json',
+            'Referer': 'https://anilist.co',
+          },
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final data = _validateAndParseResponse(
+          response.json,
+          'getCharacterDetails',
+        );
+        final charMap = data['Character'] as Map?;
+        if (charMap == null) return null;
+
+        return MediaCharacter(
+          id: charMap['id']?.toString() ?? '',
+          name: (charMap['name'] as Map?)?['full']?.toString() ?? 'Unknown',
+          nativeName: (charMap['name'] as Map?)?['native']?.toString(),
+          image: (charMap['image'] as Map?)?['large']?.toString(),
+          description: _cleanBio(charMap['description']?.toString()),
+        );
+      },
+      fallback: (error, stackTrace) {
+        AppLogger.e(
+          'AnilistTracker.getCharacterDetails',
+          'Error fetching character details',
+          error,
+          stackTrace,
+        );
+        return null;
+      },
+    );
+  }
+
+  String? cleanBio(String? text) => _cleanBio(text);
+
+  String? _cleanBio(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    var s = text;
+    s = s.replaceAll('~!', '').replaceAll('!~', '');
+    s = s.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    s = s.replaceAll(RegExp(r'<[^>]*>'), '');
+    s = s.replaceAll(RegExp(r'\n+'), '\n\n');
+    return s.trim();
+  }
+}

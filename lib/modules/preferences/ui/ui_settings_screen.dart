@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/common/state/ui_prefs_provider.dart';
+import 'package:anifox/common/state/theme_prefs_provider.dart';
+import 'package:anifox/modules/preferences/ui/widgets/settings_ui_components.dart';
+import 'package:anifox/modules/preferences/ui/widgets/ui_settings_sheets.dart';
+import 'package:anifox/common/widgets/app_scaffold.dart';
+
+class UiSettingsScreen extends ConsumerWidget {
+  const UiSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    final prefs = ref.watch(uiPrefsProvider);
+    final notifier = ref.read(uiPrefsProvider.notifier);
+
+    final themePrefs = ref.watch(themePrefsProvider);
+    final themeNotifier = ref.read(themePrefsProvider.notifier);
+
+    return AppScaffold(
+      title: 'UI',
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 50),
+        children: [
+          SettingsSection(
+            title: 'Experimental',
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.tv_rounded,
+                title: 'Experimental TV / New UI',
+                subtitle:
+                    'A cinematic, spatial interface built for D-pad, remote, and keyboard navigation',
+                value: prefs.useNewUi,
+                onChanged: (val) => notifier.setUseNewUi(val),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Appearance',
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.blur_on_rounded,
+                title: 'Liquid Glass',
+                subtitle:
+                    'Frosted, refractive navigation surfaces. Disable for a flat, higher-performance UI.',
+                value: prefs.liquidGlass,
+                onChanged: (val) => notifier.setLiquidGlass(val),
+              ),
+              SettingsActionTile(
+                icon: Icons.tune_rounded,
+                title: 'Global UI Customization',
+                subtitle: 'Adjust corner radius, widget scale, and text scale',
+                onTap: () => showAppearanceSheet(
+                  context,
+                  ref,
+                  themeNotifier,
+                  themePrefs,
+                  theme,
+                ),
+              ),
+              SettingsActionTile(
+                icon: Icons.animation_rounded,
+                title: 'Sheet Physics',
+                subtitle: 'Adjust bottom sheet motion physics',
+                trailing: _Chip(
+                  label: prefs.sheetPhysics ? 'Hammer' : 'Slide Up',
+                  cs: cs,
+                ),
+                onTap: () => showSheetPhysicsSheet(context, ref),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Home Screen',
+            children: [
+              SettingsActionTile(
+                icon: Icons.view_headline_rounded,
+                title: 'Header Style',
+                subtitle: 'Layout and style of the home header area',
+                trailing: _Chip(
+                  label: prefs.homeHeaderStyle.displayName,
+                  cs: cs,
+                ),
+                onTap: () =>
+                    showHomeHeaderStyleSheet(context, ref, notifier, theme),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Media Cards',
+            children: [
+              SettingsActionTile(
+                icon: Icons.style_outlined,
+                title: 'Card Style',
+                subtitle: 'Style of media cards on Home & Discover',
+                trailing: _Chip(label: prefs.cardStyle.displayName, cs: cs),
+                onTap: () => showCardStyleSheet(context, ref, notifier, theme),
+              ),
+              SettingsActionTile(
+                icon: Icons.play_circle_outline_rounded,
+                title: 'Continue Watching Style',
+                subtitle: 'Style of cards on the Continue Watching row',
+                trailing: _Chip(
+                  label: prefs.continueWatchingStyle.displayName,
+                  cs: cs,
+                ),
+                onTap: () =>
+                    showContinueWatchingSheet(context, ref, notifier, theme),
+              ),
+              SettingsActionTile(
+                icon: Icons.menu_book_rounded,
+                title: 'Continue Reading Style',
+                subtitle: 'Style of cards on the Continue Reading row',
+                trailing: _Chip(
+                  label: prefs.continueReadingStyle.displayName,
+                  cs: cs,
+                ),
+                onTap: () =>
+                    showContinueReadingSheet(context, ref, notifier, theme),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Episodes',
+            children: [
+              SettingsActionTile(
+                icon: Icons.view_list_rounded,
+                title: 'Episode/Chapter View mode',
+                subtitle: 'Default view mode for episode lists',
+                trailing: _Chip(
+                  label: prefs.episodeViewMode.displayName,
+                  cs: cs,
+                ),
+                onTap: () =>
+                    showEpisodeModeSheet(context, ref, notifier, theme),
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Navigation',
+            children: [
+              SettingsActionTile(
+                icon: Icons.navigation_rounded,
+                title: 'Navigation Bar Style',
+                subtitle: 'Style of the bottom navigation bar',
+                trailing: _Chip(label: prefs.navBarStyle.displayName, cs: cs),
+                onTap: () =>
+                    showNavBarStyleSheet(context, ref, notifier, theme),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final ColorScheme cs;
+
+  const _Chip({required this.label, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: cs.primary,
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,43 @@
+import 'package:http/http.dart' as http;
+import 'package:anifox/core/network/http_client.dart';
+
+class HTTPAdapter extends http.BaseClient {
+  final HTTP api;
+
+  HTTPAdapter(this.api);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    HttpResponse response;
+
+    switch (request.method.toUpperCase()) {
+      case 'GET':
+        response = await api.get(
+          request.url.toString(),
+          headers: request.headers,
+          cacheDuration: const Duration(minutes: 10),
+        );
+        break;
+
+      case 'POST':
+        final body = await request.finalize().bytesToString();
+
+        response = await api.post(
+          request.url.toString(),
+          headers: request.headers,
+          body: body,
+          cacheDuration: const Duration(minutes: 1),
+        );
+        break;
+
+      default:
+        throw UnsupportedError('Method ${request.method} not implemented');
+    }
+
+    return http.StreamedResponse(
+      Stream.value(response.bodyBytes),
+      response.statusCode,
+      headers: response.headers ?? {},
+    );
+  }
+}

@@ -1,0 +1,561 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/core/router/app_navigator.dart';
+import 'package:anifox/modules/browse/models/models/home_section.dart';
+import 'package:anifox/modules/browse/ui/widgets/cards/media_card.dart';
+import 'package:anifox/modules/browse/ui/widgets/continue/continue_media_row.dart';
+import 'package:anifox/modules/browse/ui/widgets/rows/horizontal_section.dart';
+import 'package:anifox/modules/browse/ui/widgets/rows/library_row.dart';
+import 'package:anifox/modules/browse/ui/widgets/sheets/discovery_mode_sheet.dart';
+import 'package:anifox/modules/browse/ui/widgets/sheets/tracker_error_sheet.dart';
+import 'package:anifox/modules/browse/state/discovery_prefs_provider.dart';
+import 'package:anifox/modules/browse/state/discovery_tracker_error_provider.dart';
+import 'package:anifox/modules/browse/state/home_feed_provider.dart';
+import 'package:anifox/modules/library/state/cloud_library_provider.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
+import 'package:anifox/streaming/streaming_providers.dart';
+import 'package:anifox/modules/tracking/state/tracker_registry.dart';
+import 'package:anifox/modules/browse/ui/widgets/header/home_header.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/common/state/theme_prefs_provider.dart';
+import 'package:anifox/common/state/ui_prefs_provider.dart';
+import 'package:anifox/common/widgets/app_scaffold.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _hasShownOutageSheet = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeSections = ref.watch(homeFeedSectionsProvider);
+
+    ref.listen<DiscoveryTrackerErrorInfo?>(discoveryTrackerErrorProvider, (
+      previous,
+      next,
+    ) {
+      if (next != null &&
+          (previous?.trackerType != next.trackerType ||
+              !_hasShownOutageSheet) &&
+          mounted) {
+        _hasShownOutageSheet = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            TrackerErrorSheet.show(
+              context,
+              failedTracker: next.trackerType,
+              error: next.error,
+            );
+          }
+        });
+      } else if (next == null) {
+        _hasShownOutageSheet = false;
+      }
+    });
+
+    return AppScaffold(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _hasShownOutageSheet = false;
+          ref.read(discoveryTrackerErrorProvider.notifier).clear();
+          for (final section in activeSections) {
+            if (section.isDiscovery) {
+              ref.invalidate(homeSectionFeedProvider(section));
+            } else if (section.isLibraryStatus &&
+                section.homeSection?.libraryStatus != null &&
+                section.homeSection?.targetTracker != TrackerType.local) {
+              ref
+                  .read(
+                    cloudLibraryProvider((
+                      status: section.homeSection!.libraryStatus!,
+                      trackerType: section.homeSection!.targetTracker,
+                      mediaType: section.mediaType,
+                    )).notifier,
+                  )
+                  .refresh();
+            }
+          }
+        },
+        child: CustomScrollView(
+          scrollCacheExtent: ScrollCacheExtent.pixels(500),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            // Top Header Bar
+            Consumer(
+              builder: (context, ref, _) {
+                final style = ref.watch(
+                  uiPrefsProvider.select((s) => s.homeHeaderStyle),
+                );
+                final isDocked = style == HomeHeaderStyle.docked;
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: isDocked
+                        ? const EdgeInsets.only(top: 0)
+                        : const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                    child: HomeHeader(),
+                  ),
+                );
+              },
+            ),
+
+            // Tracker Outage Alert Banner
+            Consumer(
+              builder: (context, ref, _) {
+                final trackerError = ref.watch(discoveryTrackerErrorProvider);
+                if (trackerError == null) {
+                  return const SliverToBoxAdapter(child: SizedBox.shrink());
+                }
+
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                    child: _TrackerOutageBanner(
+                      trackerType: trackerError.trackerType,
+                      isAuto: trackerError.isAuto,
+                      error: trackerError.error,
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            if (activeSections.isEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: Text('No active sections or sources')),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final section = activeSections[index];
+                    return _KeepAliveSection(
+                      key: ValueKey(section.id),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: _buildSectionWidget(context, ref, section),
+                      ),
+                    );
+                  },
+                  findChildIndexCallback: (Key key) {
+                    if (key is ValueKey<String>) {
+                      final index = activeSections.indexWhere(
+                        (s) => s.id == key.value,
+                      );
+                      return index == -1 ? null : index;
+                    }
+                    return null;
+                  },
+                  childCount: activeSections.length,
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionWidget(
+    BuildContext context,
+    WidgetRef ref,
+    HomeFeedSection section,
+  ) {
+    switch (section.type) {
+      case HomeSectionType.continueMedia:
+        return ContinueMediaRow(title: section.title, type: section.mediaType);
+
+      case HomeSectionType.libraryStatus:
+        final hs = section.homeSection;
+        if (hs == null || hs.libraryStatus == null) {
+          return const SizedBox.shrink();
+        }
+        final activeTracker = hs.targetTracker != null
+            ? ref
+                  .watch(availableTrackersProvider)
+                  .firstWhere((t) => t.type == hs.targetTracker!)
+            : ref.watch(primaryTrackerProvider);
+
+        return LibraryRow(
+          title: section.title,
+          status: hs.libraryStatus!,
+          targetTracker: activeTracker.type,
+          targetMediaType: section.mediaType,
+        );
+
+      case HomeSectionType.discovery:
+        final style = ref.watch(uiPrefsProvider.select((p) => p.cardStyle));
+        final isWide = ref.watch(
+          uiPrefsProvider.select((p) => p.isMediaCardWide(style.name)),
+        );
+        final feedData = ref.watch(homeSectionFeedProvider(section));
+        final metadataTracker = ref.watch(metadataSourceProvider);
+
+        return HorizontalSection<UnifiedMedia>(
+          title: section.title,
+          height: style.getLayout(isWideMode: isWide).height,
+          onMoreTap: () => context.pushDiscover(
+            category: section.title,
+            type: section.mediaType,
+            source: section.sourceInfo?.id,
+          ),
+          data: feedData,
+          errorBuilder: (context, error, st) {
+            return _DiscoverySectionErrorWidget(
+              height: style.getLayout(isWideMode: isWide).height,
+              sectionTitle: section.title,
+              trackerType: section.sourceInfo != null
+                  ? null
+                  : metadataTracker.type,
+              error: error,
+            );
+          },
+          skeletonItemBuilder: (context, index) {
+            return MediaCard(
+              media: UnifiedMedia(
+                id: 'skeleton-${section.id}-$index',
+                type: MediaType.ANIME,
+                title: const MediaTitle(english: 'Placeholder Title'),
+                cover: '',
+                format: 'TV',
+                score: 8.5,
+                year: 2026,
+              ),
+              tag: 'skeleton-${section.id}-$index',
+              style: style,
+              onTap: () {},
+            );
+          },
+          itemBuilder: (context, item) {
+            return MediaCard(
+              media: item,
+              tag: '${section.id}-${item.id}',
+              style: style,
+              onTap: () => context.pushDetails(
+                mediaType: item.type,
+                media: item,
+                tag: '${section.id}-${item.id}',
+              ),
+            );
+          },
+        );
+    }
+  }
+}
+
+class _KeepAliveSection extends StatefulWidget {
+  final Widget child;
+  const _KeepAliveSection({super.key, required this.child});
+
+  @override
+  State<_KeepAliveSection> createState() => _KeepAliveSectionState();
+}
+
+class _KeepAliveSectionState extends State<_KeepAliveSection>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
+class _TrackerOutageBanner extends ConsumerWidget {
+  final TrackerType trackerType;
+  final bool isAuto;
+  final Object error;
+
+  const _TrackerOutageBanner({
+    required this.trackerType,
+    required this.isAuto,
+    required this.error,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final r = ref.watch(themePrefsProvider.select((s) => s.uiRoundness));
+    final radius = BorderRadius.circular(r);
+
+    return Material(
+      color: cs.errorContainer.withValues(alpha: 0.2),
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => TrackerErrorSheet.show(
+          context,
+          failedTracker: trackerType,
+          error: error,
+        ),
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              trackerType.getIconWidget(size: 20, color: cs.error),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${trackerType.displayName} service is unavailable',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    Text(
+                      TrackerErrorSheet.extractErrorMessage(
+                        error,
+                        trackerType.displayName,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(borderRadius: radius),
+                ),
+                onPressed: () => DiscoveryModeSheet.show(context),
+                child: const Text('Switch'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscoverySectionErrorWidget extends ConsumerWidget {
+  final double height;
+  final String sectionTitle;
+  final TrackerType? trackerType;
+  final Object error;
+
+  const _DiscoverySectionErrorWidget({
+    required this.height,
+    required this.sectionTitle,
+    required this.trackerType,
+    required this.error,
+  });
+
+  void _switchSource({
+    required BuildContext context,
+    required WidgetRef ref,
+    required VoidCallback onApply,
+    required Widget icon,
+    required String label,
+    required double roundness,
+  }) {
+    onApply();
+    ref.read(discoveryTrackerErrorProvider.notifier).clear();
+    ref.invalidate(homeSectionFeedProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            icon,
+            const SizedBox(width: 8),
+            Text('Switched discovery source to $label'),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(roundness),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildQuickButton({
+    required BuildContext context,
+    required Widget icon,
+    required String label,
+    required VoidCallback onTap,
+    required BorderRadius borderRadius,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    final r = ref.watch(themePrefsProvider.select((s) => s.uiRoundness));
+    final chipRadius = BorderRadius.circular(r * 0.75);
+
+    final tracker = trackerType;
+    final trackerName = tracker?.displayName ?? 'Tracker';
+    final errorText = TrackerErrorSheet.extractErrorMessage(error, trackerName);
+
+    final prefs = ref.watch(discoveryPrefsProvider);
+    final isAuto = prefs.metadataTrackerId == null;
+    final primaryTracker = ref.watch(primaryTrackerProvider);
+    final primaryType = primaryTracker.type;
+    final isLocalPrimary = primaryType == TrackerType.local;
+    final effectiveAutoType = isLocalPrimary
+        ? TrackerType.anilist
+        : primaryType;
+
+    final otherTrackers = ref
+        .watch(availableTrackersProvider)
+        .where((t) => t.type != tracker && t.type != TrackerType.local)
+        .toList();
+
+    return SizedBox(
+      height: height,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (tracker != null)
+                tracker.getIconWidget(size: 28, color: cs.error)
+              else
+                Icon(Icons.cloud_off_rounded, size: 28, color: cs.error),
+              const SizedBox(height: 6),
+              Text(
+                errorText,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 12,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (!isAuto)
+                    _buildQuickButton(
+                      context: context,
+                      borderRadius: chipRadius,
+                      icon: Icon(
+                        Icons.sync_rounded,
+                        size: 14,
+                        color: cs.primary,
+                      ),
+                      label: 'Auto (${effectiveAutoType.displayName})',
+                      onTap: () => _switchSource(
+                        context: context,
+                        ref: ref,
+                        onApply: () => ref
+                            .read(discoveryPrefsProvider.notifier)
+                            .setMetadataTrackerId(null),
+                        icon: const Icon(
+                          Icons.sync_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        label: 'Auto (${effectiveAutoType.displayName})',
+                        roundness: r,
+                      ),
+                    ),
+                  ...otherTrackers.map((t) {
+                    final TrackerType type = t.type;
+                    return _buildQuickButton(
+                      context: context,
+                      borderRadius: chipRadius,
+                      icon: type.getIconWidget(size: 14, color: cs.primary),
+                      label: type.displayName,
+                      onTap: () => _switchSource(
+                        context: context,
+                        ref: ref,
+                        onApply: () => ref
+                            .read(discoveryPrefsProvider.notifier)
+                            .setMetadataTrackerId(type.id),
+                        icon: type.getIconWidget(size: 16, color: Colors.white),
+                        label: type.displayName,
+                        roundness: r,
+                      ),
+                    );
+                  }),
+                  _buildQuickButton(
+                    context: context,
+                    borderRadius: chipRadius,
+                    icon: Icon(
+                      Icons.tune_rounded,
+                      size: 14,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    label: 'Options',
+                    onTap: () => TrackerErrorSheet.show(
+                      context,
+                      failedTracker: tracker,
+                      error: error,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

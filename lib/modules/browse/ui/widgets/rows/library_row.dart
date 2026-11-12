@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:anifox/modules/library/state/cloud_library_provider.dart';
+import 'package:anifox/common/state/ui_prefs_provider.dart';
+import 'package:anifox/modules/browse/ui/widgets/rows/horizontal_section.dart';
+import 'package:anifox/modules/browse/ui/widgets/cards/media_card.dart';
+import 'package:anifox/modules/library/state/library_view_provider.dart';
+import 'package:anifox/modules/tracking/models/models/tracked_status.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
+import 'package:anifox/common/models/unified_media.dart';
+
+class LibraryRow extends ConsumerWidget {
+  final String title;
+  final TrackedStatus status;
+  final TrackerType targetTracker;
+  final MediaType? targetMediaType;
+
+  const LibraryRow({
+    super.key,
+    required this.title,
+    required this.status,
+    required this.targetTracker,
+    this.targetMediaType,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLocal = targetTracker == TrackerType.local;
+    final mediaType = targetMediaType ?? MediaType.ANIME;
+    final style = ref.watch(uiPrefsProvider.select((s) => s.cardStyle));
+    final isWide = ref.watch(
+      uiPrefsProvider.select((s) => s.isMediaCardWide(style.name)),
+    );
+    final rowHeight = style.getLayout(isWideMode: isWide).height;
+
+    Widget buildCard(BuildContext ctx, dynamic entry, String tagPrefix) {
+      final isAnime = mediaType == MediaType.ANIME;
+      final unit = isAnime ? 'Ep' : 'Ch';
+      final watched = (entry.episodesWatched as int?) ?? 0;
+      final total = (entry.episodes as int?);
+
+      double? progress;
+      String? progressText;
+
+      if (watched > 0) {
+        if (total != null && total > 0) {
+          progress = (watched / total).clamp(0.0, 1.0);
+          progressText = '$unit $watched/$total';
+        } else {
+          progressText = '$unit $watched';
+        }
+      }
+
+      final cardTag = '$tagPrefix-$status-${entry.providerId}';
+
+      return MediaCard(
+        media: entry.toUnifiedMedia(),
+        tag: cardTag,
+        progress: progress,
+        progressText: progressText,
+        style: style,
+        onTap: () => ctx.push(
+          '/details/${entry.type}/?tag=$cardTag',
+          extra: entry.toUnifiedMedia(),
+        ),
+      );
+    }
+
+    if (isLocal) {
+      final asyncData = ref.watch(
+        localLibraryListProvider((status: status, mediaType: mediaType)),
+      );
+      return HorizontalSection(
+        title: title,
+        height: rowHeight,
+        emptyText: 'No items in this list.',
+        data: asyncData,
+        itemBuilder: (context, entry) =>
+            buildCard(context, entry, 'local-library'),
+        skeletonItemBuilder: (context, index) {
+          return MediaCard(
+            media: UnifiedMedia(
+              id: 'skeleton-${status.id}-$index',
+              type: MediaType.ANIME,
+              title: const MediaTitle(english: 'Placeholder Title'),
+            ),
+            tag: 'skeleton-${status.id}-$index',
+            style: style,
+            onTap: () {},
+          );
+        },
+      );
+    } else {
+      final asyncData = ref.watch(
+        cloudLibraryProvider((
+          status: status,
+          trackerType: targetTracker,
+          mediaType: mediaType,
+        )),
+      );
+      return HorizontalSection(
+        title: title,
+        height: rowHeight,
+        emptyText: 'No items in this list.',
+        data: asyncData,
+        itemBuilder: (context, entry) => buildCard(context, entry, 'library'),
+        skeletonItemBuilder: (context, index) {
+          return MediaCard(
+            media: UnifiedMedia(
+              id: 'skeleton-${status.id}-$index',
+              type: MediaType.ANIME,
+            ),
+            tag: 'skeleton-${status.id}-$index',
+            style: style,
+            onTap: () {},
+          );
+        },
+      );
+    }
+  }
+}

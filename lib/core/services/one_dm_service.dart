@@ -1,0 +1,145 @@
+import 'dart:io';
+
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter_device_apps/flutter_device_apps.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class OneDMService {
+  OneDMService._();
+
+  static final OneDMService instance = OneDMService._();
+
+  static const List<String> _packages = [
+    'idm.internet.download.manager.plus',
+    'idm.internet.download.manager',
+    'idm.internet.download.manager.adm.lite',
+  ];
+
+  static const String _downloaderComponent =
+      'idm.internet.download.manager.Downloader';
+
+  String? _cachedPackage;
+
+  Future<String?> getInstalledPackage() async {
+    if (_cachedPackage != null) {
+      return _cachedPackage;
+    }
+
+    for (final package in _packages) {
+      final installed = (await FlutterDeviceApps.getApp(package)) != null;
+
+      if (installed) {
+        _cachedPackage = package;
+        return package;
+      }
+    }
+
+    return null;
+  }
+
+  Future<bool> download({
+    required String url,
+    String? fileName,
+    Map<String, String>? headers,
+    List<String>? subtitleUrls,
+    List<String>? subtitleFileNames,
+  }) async {
+    if (!Platform.isAndroid) {
+      return false;
+    }
+
+    final package = await getInstalledPackage();
+
+    if (package == null) {
+      return false;
+    }
+
+    final hasSubtitles = subtitleUrls != null && subtitleUrls.isNotEmpty;
+
+    final intent = AndroidIntent(
+      action: 'android.intent.action.VIEW',
+      package: package,
+      componentName: _downloaderComponent,
+      data: url,
+      arguments: {
+        if (fileName != null) ...{
+          'title': fileName,
+          'name': fileName,
+          'filename': fileName,
+          'extra_filename': fileName,
+          'com.android.extra.filename': fileName,
+        },
+        if (hasSubtitles) ...{
+          'subs': subtitleUrls,
+          'subs.filename': subtitleFileNames ?? subtitleUrls,
+          'subs.name': subtitleFileNames ?? subtitleUrls,
+          'video_list': [url],
+          'video_list.filename': [if (fileName != null) fileName],
+          'video_list.name': [if (fileName != null) fileName],
+        },
+        if (headers != null) ...{
+          'android.media.intent.extra.HTTP_HEADERS': headers,
+          'extra_headers': headers,
+        },
+      },
+    );
+
+    await intent.launch();
+
+    return true;
+  }
+
+  Future<bool> downloadBatch({
+    required List<String> urls,
+    required List<String> fileNames,
+    Map<String, String>? headers,
+  }) async {
+    if (!Platform.isAndroid || urls.isEmpty) {
+      return false;
+    }
+
+    final package = await getInstalledPackage();
+
+    if (package == null) {
+      return false;
+    }
+
+    final intent = AndroidIntent(
+      action: 'android.intent.action.VIEW',
+      package: package,
+      componentName: _downloaderComponent,
+      data: urls.first,
+      arguments: {
+        'url_list': urls,
+        'url_list.filename': fileNames,
+        'url_list.name': fileNames,
+        if (headers != null) ...{
+          'android.media.intent.extra.HTTP_HEADERS': headers,
+          'extra_headers': headers,
+        },
+      },
+    );
+
+    await intent.launch();
+
+    return true;
+  }
+
+  Future<bool> isOneDMAvailable() async {
+    if (!Platform.isAndroid) return false;
+    final package = await getInstalledPackage();
+    return package != null;
+  }
+
+  Future<bool> launchPlayStore() async {
+    final uri = Uri.parse(
+      'https://play.google.com/store/apps/details?id=idm.internet.download.manager',
+    );
+    return await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+final isOneDMInstalledProvider = FutureProvider.autoDispose<bool>((ref) async {
+  return await OneDMService.instance.isOneDMAvailable();
+});

@@ -1,0 +1,550 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+
+import 'package:anifox/core/utils/app_logger.dart';
+import 'package:anifox/modules/playback/models/media_kit_prefs.dart';
+import 'package:anifox/modules/playback/models/subtitle_prefs.dart';
+import 'package:anifox/modules/playback/engine/video_engine.dart';
+import 'package:anifox/modules/playback/state/subtitle_prefs_provider.dart';
+import 'package:anifox/common/models/video_stream.dart' as stream;
+
+class MediaKitEngine implements VideoEngine {
+  static final _log = AppLogger.scope('MediaKitEngine');
+
+  late Player _player;
+  late VideoController _controller;
+  final ValueNotifier<int> _playerVersion = ValueNotifier(0);
+
+  stream.VideoStream? _currentStream;
+  stream.SubtitleTrack? _currentSubtitle;
+
+  MediaKitPrefs prefs;
+
+  bool _disposed = false;
+
+  StreamSubscription<Duration>? _positionSubscription;
+
+  @override
+  final ValueNotifier<Duration> positionNotifier = ValueNotifier(Duration.zero);
+  @override
+  final ValueNotifier<Duration> durationNotifier = ValueNotifier(Duration.zero);
+  @override
+  final ValueNotifier<Duration> bufferNotifier = ValueNotifier(Duration.zero);
+  @override
+  final ValueNotifier<PlayerStatus> statusNotifier = ValueNotifier(
+    PlayerStatus.idle,
+  );
+  @override
+  final ValueNotifier<List<stream.SubtitleTrack>> subtitleTracksNotifier =
+      ValueNotifier([]);
+  @override
+  final ValueNotifier<List<stream.AudioTrack>> audioTracksNotifier =
+      ValueNotifier([]);
+  @override
+  final ValueNotifier<stream.SubtitleTrack?> activeSubtitleNotifier =
+      ValueNotifier(null);
+  @override
+  final ValueNotifier<stream.AudioTrack?> activeAudioNotifier = ValueNotifier(
+    null,
+  );
+
+  Future<void> updatePrefs(MediaKitPrefs newPrefs) async {
+    final changes = prefs.diff(newPrefs);
+    if (changes.isNotEmpty) {
+      _log.d('Updating preferences: ${changes.join(', ')}');
+    }
+    if (_disposed) return;
+
+    final requiresReinit =
+        prefs.hwdec != newPrefs.hwdec ||
+        prefs.enableHardwareAcceleration !=
+            newPrefs.enableHardwareAcceleration ||
+        prefs.vo != newPrefs.vo ||
+        prefs.rawConfiguration != newPrefs.rawConfiguration ||
+        prefs.libassEnabled != newPrefs.libassEnabled;
+
+    prefs = newPrefs;
+
+    if (requiresReinit) {
+      _log.i('Preferences require player reinitialization');
+      await refresh();
+      return;
+    }
+
+    final player = _player.platform;
+    if (player is! NativePlayer) return;
+
+    Future<void> setPropSafe(String key, String value) async {
+      if (_disposed) return;
+      try {
+        await player.setProperty(key, value);
+      } catch (e) {
+        _log.w('Failed to set property $key=$value: $e');
+      }
+    }
+
+    await setPropSafe('audio-channels', prefs.audioChannel.value);
+    await setPropSafe('volume-max', '200');
+
+    await setPropSafe('cache', 'yes');
+    await setPropSafe('cache-secs', prefs.maxBuffer.inSeconds.toString());
+    await setPropSafe('cache-on-disk', 'no');
+    await setPropSafe('demuxer-max-bytes', '134217728'); // 128MB
+    await setPropSafe('demuxer-max-back-bytes', '33554432'); // 32MB
+
+    await setPropSafe('autosync', '30');
+    await setPropSafe('framedrop', 'no');
+    await setPropSafe('seg_max_retry', '5');
+    await setPropSafe('network-timeout', '30');
+
+    try {
+      await _player.setVolume(prefs.boostVolume ? 140 : 100);
+    } catch (_) {}
+
+    if (prefs.audioNormalizePreset != MediaKitAudioNormalizePreset.none) {
+      await setPropSafe('af', prefs.audioNormalizePreset.filter);
+    } else {
+      await setPropSafe('af', '');
+    }
+
+    await setPropSafe('brightness', prefs.brightness.toString());
+    await setPropSafe('contrast', prefs.contrast.toString());
+    await setPropSafe('saturation', prefs.saturation.toString());
+    await setPropSafe('gamma', prefs.gamma.toString());
+    await setPropSafe('hue', prefs.hue.toString());
+
+    if (prefs.rawConfiguration.isNotEmpty) {
+      for (final line in prefs.rawConfiguration.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+        final index = trimmed.indexOf('=');
+
+        if (index != -1) {
+          final key = trimmed.substring(0, index).trim();
+          final value = trimmed.substring(index + 1).trim();
+
+          await setPropSafe(key, value);
+        }
+      }
+    }
+  }
+
+  final List<StreamSubscription> _subscriptions = [];
+
+  @override
+  Future<void> refresh() async {
+    if (_currentStream == null || _disposed) return;
+    _log.i('Refreshing MediaKitEngine');
+
+    final position = currentPosition;
+    final isPlaying = _player.state.playing;
+
+    for (var s in _subscriptions) {
+      await s.cancel();
+    }
+    _subscriptions.clear();
+
+    await _player.dispose();
+
+    _player = Player(
+      configuration: PlayerConfiguration(
+        libass: prefs.libassEnabled,
+        bufferSize: 64 * 1024 * 1024, // 64MB
+      ),
+    );
+    _controller = VideoController(
+      _player,
+      configuration: VideoControllerConfiguration(
+        hwdec: prefs.hwdec,
+        enableHardwareAcceleration: prefs.enableHardwareAcceleration,
+        vo: prefs.vo != 'auto' ? prefs.vo : null,
+      ),
+    );
+
+    await updatePrefs(prefs);
+    _setupSubscriptions();
+
+    _playerVersion.value++;
+
+    await initialize(
+      _currentStream!,
+      subtitle: _currentSubtitle,
+      startAt: position,
+    );
+
+    if (!isPlaying) {
+      await _player.pause();
+    }
+  }
+
+  MediaKitEngine(this.prefs) {
+    _player = Player(
+      configuration: PlayerConfiguration(
+        libass: prefs.libassEnabled,
+        bufferSize: 64 * 1024 * 1024, // 64MB,
+      ),
+    );
+    _controller = VideoController(
+      _player,
+      configuration: VideoControllerConfiguration(
+        hwdec: prefs.hwdec,
+        enableHardwareAcceleration: prefs.enableHardwareAcceleration,
+        vo: prefs.vo != 'auto' ? prefs.vo : null,
+      ),
+    );
+    updatePrefs(prefs);
+    _setupSubscriptions();
+  }
+
+  void _setupSubscriptions() {
+    _subscriptions.addAll([
+      _player.stream.position.listen((pos) {
+        if (!_disposed) {
+          positionNotifier.value = pos;
+        }
+      }),
+      _player.stream.duration.listen((dur) {
+        if (!_disposed) {
+          durationNotifier.value = dur;
+        }
+      }),
+      _player.stream.buffer.listen((buf) {
+        if (!_disposed) {
+          bufferNotifier.value = buf;
+        }
+      }),
+      _player.stream.playing.listen((playing) {
+        if (!_disposed) {
+          statusNotifier.value = playing
+              ? PlayerStatus.playing
+              : PlayerStatus.paused;
+        }
+      }),
+      _player.stream.buffering.listen((buffering) {
+        if (!_disposed) {
+          if (buffering) {
+            statusNotifier.value = PlayerStatus.buffering;
+          } else {
+            statusNotifier.value = _player.state.playing
+                ? PlayerStatus.playing
+                : PlayerStatus.paused;
+          }
+        }
+      }),
+      _player.stream.tracks.listen((tracks) {
+        if (!_disposed) {
+          audioTracksNotifier.value = tracks.audio
+              .map((t) => _mapAudioTrack(t))
+              .toList();
+          subtitleTracksNotifier.value = tracks.subtitle
+              .map((t) => _mapSubtitleTrack(t))
+              .toList();
+        }
+      }),
+      _player.stream.track.listen((track) {
+        if (!_disposed) {
+          activeAudioNotifier.value = _mapAudioTrack(track.audio);
+        }
+      }),
+      _player.stream.error.listen((error) {
+        if (!_disposed) {
+          _log.e('Player stream error: $error');
+          statusNotifier.value = PlayerStatus.error;
+        }
+      }),
+      _player.stream.log.listen((event) {
+        if (!_disposed && event.level == 'error') {
+          _log.e('MPV: [${event.level}] ${event.prefix}: ${event.text}');
+        } else if (!_disposed && event.level == 'warn') {
+          _log.w('MPV: [${event.level}] ${event.prefix}: ${event.text}');
+        }
+      }),
+    ]);
+
+    Future.microtask(() {
+      if (!_disposed) {
+        audioTracksNotifier.value = _player.state.tracks.audio
+            .map((t) => _mapAudioTrack(t))
+            .toList();
+        activeAudioNotifier.value = _mapAudioTrack(_player.state.track.audio);
+        subtitleTracksNotifier.value = _player.state.tracks.subtitle
+            .map((t) => _mapSubtitleTrack(t))
+            .toList();
+      }
+    });
+  }
+
+  Future<void> _waitUntilReady(Future<void> Function() onReady) async {
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+
+    final completer = Completer<void>();
+    var handled = false;
+
+    _positionSubscription = _player.stream.position.listen((position) async {
+      if (handled || position.inMilliseconds <= 0) return;
+      handled = true;
+
+      await _positionSubscription?.cancel();
+      _positionSubscription = null;
+
+      try {
+        await onReady();
+      } finally {
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+
+    await completer.future;
+  }
+
+  @override
+  Future<void> initialize(
+    stream.VideoStream videoStream, {
+    stream.SubtitleTrack? subtitle,
+    Duration? startAt,
+  }) async {
+    _currentStream = videoStream;
+    _currentSubtitle = subtitle;
+
+    _log.i('Initializing player with URL: ${videoStream.url}');
+    final media = Media(videoStream.url, httpHeaders: videoStream.headers);
+
+    await _player.open(media, play: true);
+
+    await _waitUntilReady(() async {
+      if (subtitle != null) {
+        await setSubtitle(subtitle);
+      }
+      if (startAt != null) {
+        await _player.seek(startAt);
+      }
+    });
+  }
+
+  @override
+  Widget buildVideoView({BoxFit fit = BoxFit.contain}) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final subtitlePrefs = ref.watch(subtitlePrefsProvider);
+        final screenWidth = MediaQuery.sizeOf(context).width;
+        final responsiveFontSize = getResponsiveSubtitleSize(
+          screenWidth,
+          subtitlePrefs.fontSize,
+        );
+
+        final bool shouldShowFlutterSubtitle = !prefs.libassEnabled;
+
+        return ValueListenableBuilder<int>(
+          valueListenable: _playerVersion,
+          builder: (context, version, _) {
+            return Video(
+              controller: _controller,
+              controls: NoVideoControls,
+              fit: fit,
+              subtitleViewConfiguration: shouldShowFlutterSubtitle
+                  ? SubtitleViewConfiguration(
+                      padding: EdgeInsets.only(
+                        bottom: subtitlePrefs.bottomPadding,
+                      ),
+                      style: getSubtitleStrokeStyleInShadowForm(
+                        subtitlePrefs,
+                        responsiveFontSize,
+                      ),
+                    )
+                  : const SubtitleViewConfiguration(
+                      style: TextStyle(color: Colors.transparent),
+                    ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Future<void> play() => _player.play();
+
+  @override
+  Future<void> pause() => _player.pause();
+
+  @override
+  Future<void> seekTo(Duration position) => _player.seek(position);
+
+  @override
+  Future<void> seekRelative(Duration offset) async {
+    final currentPos = _player.state.position;
+    await _player.seek(currentPos + offset);
+  }
+
+  @override
+  Future<void> changeQuality(stream.VideoStream newStream) async {
+    _log.i('Changing quality to URL: ${newStream.url}');
+    final currentPos = _player.state.position;
+
+    await _player.open(Media(newStream.url, httpHeaders: newStream.headers));
+    await _waitUntilReady(() async {
+      await _player.seek(currentPos);
+      await _player.play();
+    });
+  }
+
+  @override
+  Future<void> setSubtitle(stream.SubtitleTrack? subtitle) async {
+    _currentSubtitle = subtitle;
+
+    final player = _player.platform;
+
+    if (subtitle == null ||
+        subtitle == stream.SubtitleTrack.none ||
+        subtitle.url.isEmpty) {
+      _log.d('Disabling subtitle');
+      await _player.setSubtitleTrack(SubtitleTrack.no());
+      if (player is NativePlayer) {
+        try {
+          await player.setProperty('sub-visibility', 'no');
+        } catch (_) {}
+      }
+    } else if (subtitle.url.startsWith('internal:')) {
+      final trackId = subtitle.url.replaceFirst('internal:', '');
+      _log.d(
+        'Setting internal subtitle: $trackId (lang: ${subtitle.language})',
+      );
+
+      final target = _player.state.tracks.subtitle.firstWhere(
+        (t) => t.id == trackId,
+        orElse: () => SubtitleTrack(trackId, null, subtitle.language),
+      );
+      await _player.setSubtitleTrack(target);
+      if (player is NativePlayer) {
+        try {
+          await player.setProperty('sub-visibility', 'yes');
+          await player.setProperty('sub-ass', 'yes');
+        } catch (_) {}
+      }
+    } else {
+      _log.d('Setting subtitle: ${subtitle.url} (lang: ${subtitle.language})');
+      await _player.setSubtitleTrack(
+        SubtitleTrack.uri(subtitle.url, language: subtitle.language),
+      );
+      if (player is NativePlayer) {
+        try {
+          await player.setProperty('sub-visibility', 'yes');
+          await player.setProperty('sub-ass', 'yes');
+        } catch (_) {}
+      }
+    }
+  }
+
+  stream.SubtitleTrack _mapSubtitleTrack(SubtitleTrack track) {
+    if (track.id == 'no' || track.id == 'auto') {
+      return stream.SubtitleTrack.none;
+    }
+
+    final title = track.title?.trim();
+    final lang = track.language?.trim();
+
+    String label;
+    if (title != null && title.isNotEmpty) {
+      if (lang != null &&
+          lang.isNotEmpty &&
+          !title.toLowerCase().contains(lang.toLowerCase())) {
+        label = '$title ($lang)';
+      } else {
+        label = title;
+      }
+    } else if (lang != null && lang.isNotEmpty) {
+      label = lang.toUpperCase();
+    } else {
+      label = 'Track ${track.id}';
+    }
+
+    return stream.SubtitleTrack(
+      url: 'internal:${track.id}',
+      language: lang ?? 'Unknown',
+      label: label,
+    );
+  }
+
+  stream.AudioTrack _mapAudioTrack(AudioTrack track) {
+    if (track.id == 'auto' && track.title == null && track.language == null) {
+      return stream.AudioTrack.auto;
+    }
+    if (track.id == 'no' && track.title == null && track.language == null) {
+      return stream.AudioTrack.none;
+    }
+
+    final title = track.title?.trim();
+    final lang = track.language?.trim();
+
+    String label;
+    if (title != null && title.isNotEmpty) {
+      if (lang != null &&
+          lang.isNotEmpty &&
+          !title.toLowerCase().contains(lang.toLowerCase())) {
+        label = '$title ($lang)';
+      } else {
+        label = title;
+      }
+    } else if (lang != null && lang.isNotEmpty) {
+      label = lang.toUpperCase();
+    } else {
+      label = 'Track ${track.id}';
+    }
+
+    return stream.AudioTrack(id: track.id, label: label, language: lang);
+  }
+
+  @override
+  Future<void> setAudioTrack(stream.AudioTrack track) async {
+    if (track == stream.AudioTrack.auto) {
+      _log.d('Setting audio track: auto');
+      await _player.setAudioTrack(AudioTrack.auto());
+    } else if (track == stream.AudioTrack.none) {
+      _log.d('Disabling audio track');
+      await _player.setAudioTrack(AudioTrack.no());
+    } else {
+      final target = _player.state.tracks.audio.firstWhere(
+        (t) => t.id == track.id,
+        orElse: () => AudioTrack.auto(),
+      );
+      _log.d('Setting audio track: ${target.id} (${target.title})');
+      await _player.setAudioTrack(target);
+    }
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    await _player.setRate(speed);
+  }
+
+  @override
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _log.i('Disposing engine');
+    _disposed = true;
+    await _positionSubscription?.cancel();
+    for (final sub in _subscriptions) {
+      await sub.cancel();
+    }
+    await _player.dispose();
+
+    positionNotifier.dispose();
+    durationNotifier.dispose();
+    bufferNotifier.dispose();
+    statusNotifier.dispose();
+    subtitleTracksNotifier.dispose();
+    audioTracksNotifier.dispose();
+    activeSubtitleNotifier.dispose();
+    activeAudioNotifier.dispose();
+  }
+
+  @override
+  Duration get currentPosition => _player.state.position;
+
+  @override
+  Duration get currentDuration => _player.state.duration;
+}

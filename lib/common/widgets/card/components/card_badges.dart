@@ -1,0 +1,513 @@
+import 'package:flutter/material.dart';
+import 'package:anifox/common/models/unified_media.dart';
+
+class CardBadgeOverlay extends StatelessWidget {
+  final UnifiedMedia media;
+  final String styleName;
+  final bool isWideMode;
+  final bool isActive;
+  final bool showRatings;
+  final double? progress;
+  final String? progressText;
+  final Widget? topLeftBadge;
+  final Widget? topRightBadge;
+  final Widget? bottomLeftBadge;
+  final Widget? bottomRightBadge;
+
+  const CardBadgeOverlay({
+    super.key,
+    required this.media,
+    required this.styleName,
+    required this.isWideMode,
+    required this.isActive,
+    required this.showRatings,
+    this.progress,
+    this.progressText,
+    this.topLeftBadge,
+    this.topRightBadge,
+    this.bottomLeftBadge,
+    this.bottomRightBadge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isHorizontalLayout = isWideMode || (100 > 100 * 1.2);
+    final hasScore =
+        showRatings &&
+        media.score != null &&
+        (media.score ?? 0) > 0 &&
+        !isHorizontalLayout;
+    final formattedScore = _getFormattedScore();
+
+    final showFormatBadge = media.format != null;
+    final topLBadge =
+        topLeftBadge ?? (showFormatBadge ? _buildFormatBadge(theme, cs) : null);
+    final topRBadge =
+        topRightBadge ??
+        ((hasScore && formattedScore != null)
+            ? buildStyleRatingBadge(theme, styleName, formattedScore)
+            : null);
+
+    final effectiveProgressText =
+        progressText ??
+        (progress != null
+            ? '${(progress!.clamp(0.0, 1.0) * 100).toInt()}%'
+            : null);
+    final showBottomProgress =
+        !isHorizontalLayout &&
+        styleName != 'minimal' &&
+        styleName != 'wideBanner' &&
+        effectiveProgressText != null &&
+        effectiveProgressText.isNotEmpty;
+
+    final bottomLBadge =
+        bottomLeftBadge ??
+        (showBottomProgress
+            ? IgnorePointer(
+                child: _buildProgressBadge(theme, effectiveProgressText),
+              )
+            : null);
+    final bottomRBadge = bottomRightBadge;
+
+    if (topLBadge == null &&
+        topRBadge == null &&
+        bottomLBadge == null &&
+        bottomRBadge == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned.fill(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (topLBadge != null || topRBadge != null)
+            Positioned(
+              top: 8,
+              left: 8,
+              right: 8,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (topLBadge != null)
+                    Flexible(child: topLBadge)
+                  else
+                    const SizedBox.shrink(),
+                  if (topRBadge != null)
+                    Flexible(child: topRBadge)
+                  else
+                    const SizedBox.shrink(),
+                ],
+              ),
+            ),
+          if (bottomLBadge != null || bottomRBadge != null)
+            Positioned(
+              bottom: 6,
+              left: 6,
+              right: 6,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (bottomLBadge != null)
+                    Flexible(child: bottomLBadge)
+                  else
+                    const SizedBox.shrink(),
+                  if (bottomRBadge != null)
+                    Flexible(child: bottomRBadge)
+                  else
+                    const SizedBox.shrink(),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormatBadge(ThemeData theme, ColorScheme cs) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        media.format!.toUpperCase(),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: cs.onPrimaryContainer,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+          fontSize: 9.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBadge(ThemeData theme, String text) {
+    final cs = theme.colorScheme;
+    final isManga =
+        text.toLowerCase().contains('ch') ||
+        text.toLowerCase().contains('read') ||
+        text.toLowerCase().contains('vol');
+
+    final icon = isManga
+        ? Icons.auto_stories_rounded
+        : Icons.play_arrow_rounded;
+
+    BoxDecoration decoration;
+    Color textColor;
+    Color iconColor;
+
+    switch (styleName) {
+      case 'expressive':
+        decoration = BoxDecoration(
+          color: cs.primaryContainer.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 4,
+            ),
+          ],
+        );
+        textColor = cs.onPrimaryContainer;
+        iconColor = cs.onPrimaryContainer;
+        break;
+
+      case 'material':
+        decoration = BoxDecoration(
+          color: cs.secondaryContainer.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.3),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 4,
+            ),
+          ],
+        );
+        textColor = cs.onSecondaryContainer;
+        iconColor = cs.primary;
+        break;
+
+      case 'neon':
+        decoration = BoxDecoration(
+          color: cs.surface.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: cs.primary, width: 1.2),
+          boxShadow: [
+            BoxShadow(color: cs.primary.withValues(alpha: 0.45), blurRadius: 6),
+          ],
+        );
+        textColor = cs.primary;
+        iconColor = cs.primary;
+        break;
+
+      case 'editorial':
+        decoration = BoxDecoration(
+          color: cs.surface.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: cs.onSurface.withValues(alpha: 0.2),
+            width: 1.0,
+          ),
+        );
+        textColor = cs.onSurface;
+        iconColor = cs.primary;
+        break;
+
+      case 'cinematic':
+        decoration = BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: cs.primary.withValues(alpha: 0.5),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 4,
+            ),
+          ],
+        );
+        textColor = Colors.white;
+        iconColor = cs.primary;
+        break;
+
+      case 'classic':
+      default:
+        decoration = BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: cs.primary.withValues(alpha: 0.55),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        );
+        textColor = Colors.white;
+        iconColor = cs.primary;
+        break;
+    }
+
+    final cardW = 76.0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 2.5),
+      decoration: decoration,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10.5, color: iconColor),
+          const SizedBox(width: 3),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: cardW),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 9.5,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget buildStyleRatingBadge(
+    ThemeData theme,
+    String styleName,
+    String formattedScore,
+  ) {
+    final cs = theme.colorScheme;
+
+    switch (styleName) {
+      case 'expressive':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star_rounded, size: 11, color: cs.onPrimaryContainer),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: TextStyle(
+                  color: cs.onPrimaryContainer,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'material':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.secondaryContainer.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.3),
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star_rounded, size: 11, color: cs.primary),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: TextStyle(
+                  color: cs.onSecondaryContainer,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'minimal':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                size: 11,
+                color: Color(0xFFFFB703),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'neon':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.surface.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: cs.primary, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: cs.primary.withValues(alpha: 0.4),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.star_rounded, size: 11, color: cs.primary),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: TextStyle(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'editorial':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: cs.onSurface.withValues(alpha: 0.2),
+              width: 1.0,
+            ),
+          ),
+          child: Text(
+            '$formattedScore ★',
+            style: TextStyle(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w900,
+              fontSize: 9.5,
+              letterSpacing: 0.3,
+            ),
+          ),
+        );
+
+      case 'cinematic':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.82),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFFFFB703).withValues(alpha: 0.4),
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                size: 11,
+                color: Color(0xFFFFB703),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'classic':
+      default:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: const Color(0xFFFFB703).withValues(alpha: 0.5),
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                size: 10,
+                color: Color(0xFFFFB703),
+              ),
+              const SizedBox(width: 2),
+              Text(
+                formattedScore,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 9.5,
+                ),
+              ),
+            ],
+          ),
+        );
+    }
+  }
+
+  String? _getFormattedScore() {
+    if (!showRatings || media.score == null || media.score! <= 0) return null;
+    return media.score! > 10
+        ? (media.score! / 10).toStringAsFixed(1)
+        : media.score!.toStringAsFixed(1);
+  }
+}

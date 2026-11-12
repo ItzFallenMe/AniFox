@@ -1,0 +1,672 @@
+import 'dart:io';
+
+import 'package:anifox/common/widgets/smart_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/modules/tracking/state/tracker_auth_provider.dart';
+import 'package:anifox/modules/preferences/ui/widgets/settings_ui_components.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_auth_mode.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
+import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
+import 'package:anifox/modules/tracking/state/tracker_registry.dart';
+import 'package:anifox/modules/tracking/state/tracking_prefs_provider.dart';
+import 'package:anifox/modules/tracking/ui/widgets/tracker_profile_sheet.dart';
+import 'package:anifox/common/widgets/app_bottom_sheet.dart';
+import 'package:anifox/common/widgets/app_dialog.dart';
+import 'package:anifox/common/widgets/app_scaffold.dart';
+import 'package:anifox/common/widgets/tracker_avatar.dart';
+import 'package:anifox/core/utils/env.dart';
+
+class TrackingSettingsScreen extends ConsumerStatefulWidget {
+  const TrackingSettingsScreen({super.key});
+
+  @override
+  ConsumerState<TrackingSettingsScreen> createState() =>
+      _TrackingSettingsScreenState();
+}
+
+class _TrackingSettingsScreenState
+    extends ConsumerState<TrackingSettingsScreen> {
+  bool _hasCredentials(TrackerType type) {
+    final prefs = ref.read(trackingPrefsProvider);
+    final custom = prefs.customCredentials[type];
+    if (custom != null && custom.clientId.trim().isNotEmpty) {
+      return true;
+    }
+    switch (type) {
+      case TrackerType.anilist:
+        return Env.ANILIST_CLIENT_ID.isNotEmpty;
+      case TrackerType.myanimelist:
+        return Env.MAL_CLIENT_ID.isNotEmpty;
+      case TrackerType.simkl:
+        return Env.SIMKL_CLIENT_ID.isNotEmpty;
+      default:
+        return true;
+    }
+  }
+
+  void _showCredentialsDialog(TrackerType type) {
+    final prefs = ref.read(trackingPrefsProvider);
+    final custom = prefs.customCredentials[type];
+    final hasCustom =
+        custom != null &&
+        (custom.clientId.trim().isNotEmpty ||
+            custom.clientSecret.trim().isNotEmpty);
+
+    final idController = TextEditingController(text: custom?.clientId ?? '');
+    final secretController = TextEditingController(
+      text: custom?.clientSecret ?? '',
+    );
+
+    AppDialog.show(
+      context: context,
+      title: '${type.displayName} Credentials',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Provide your own API Client ID and Secret. This overrides the default bundled credentials.\nLeave blank or click Reset to use the default credentials.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Active Redirect URI (${prefs.authMode.displayName} mode):',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                SelectableText(
+                  prefs.authMode == TrackerAuthMode.browser ||
+                          (prefs.authMode == TrackerAuthMode.auto &&
+                              (Platform.isWindows || Platform.isLinux))
+                      ? 'http://localhost:43824/success?code=1337'
+                      : 'anifox://callback',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: idController,
+            decoration: const InputDecoration(
+              labelText: 'Client ID',
+              hintText: 'Leave empty for default',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: secretController,
+            decoration: const InputDecoration(
+              labelText: 'Client Secret',
+              hintText: 'Leave empty for default',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (hasCustom)
+          TextButton.icon(
+            onPressed: () {
+              ref
+                  .read(trackingPrefsProvider.notifier)
+                  .clearCustomCredentials(type);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Reset ${type.displayName} credentials to default',
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.restore, size: 18),
+            label: const Text('Reset'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final id = idController.text.trim();
+            final secret = secretController.text.trim();
+            if (id.isEmpty && secret.isEmpty) {
+              ref
+                  .read(trackingPrefsProvider.notifier)
+                  .clearCustomCredentials(type);
+            } else {
+              ref
+                  .read(trackingPrefsProvider.notifier)
+                  .setCustomCredentials(type, id, secret);
+            }
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final prefs = ref.watch(trackingPrefsProvider);
+    final authTokens = ref.watch(authTokensProvider).value ?? {};
+    final allTrackers = ref.watch(availableTrackersProvider);
+
+    return AppScaffold(
+      title: 'Tracking & Sync',
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 50),
+        children: [
+          SettingsSection(
+            title: 'General',
+            children: [
+              SettingsSegmentedTile<TrackerAuthMode>(
+                title: 'OAuth Authentication Method',
+                segments: const [
+                  ButtonSegment(
+                    value: TrackerAuthMode.auto,
+                    label: Text('Auto'),
+                    icon: Icon(Icons.auto_mode_outlined),
+                  ),
+                  ButtonSegment(
+                    value: TrackerAuthMode.browser,
+                    label: Text('Browser'),
+                    icon: Icon(Icons.open_in_browser_outlined),
+                  ),
+                  ButtonSegment(
+                    value: TrackerAuthMode.webview,
+                    label: Text('WebView'),
+                    icon: Icon(Icons.web_outlined),
+                  ),
+                ],
+                selected: {prefs.authMode},
+                onSelectionChanged: (set) {
+                  if (set.isNotEmpty) {
+                    ref
+                        .read(trackingPrefsProvider.notifier)
+                        .setAuthMode(set.first);
+                  }
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                child: Text(
+                  prefs.authMode.description,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SettingsSliderTile(
+                icon: Icons.percent,
+                title: 'Sync Threshold',
+                subtitle:
+                    'Mark episode as watched after ${(prefs.syncThreshold * 100).toInt()}% runtime',
+                value: prefs.syncThreshold,
+                min: 0.1,
+                max: 1.0,
+                divisions: 9,
+                label: '${(prefs.syncThreshold * 100).toInt()}%',
+                onChanged: (val) {
+                  ref
+                      .read(trackingPrefsProvider.notifier)
+                      .updateSyncThreshold(val);
+                },
+              ),
+            ],
+          ),
+          SettingsSection(
+            title: 'Automation',
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.auto_awesome_outlined,
+                title: 'Auto-Link Trackers',
+                subtitle:
+                    'Automatically create mappings with active trackers when matching IDs are found',
+                value: prefs.autoTrackPrimary,
+                onInfoCallback: () {
+                  final theme = Theme.of(context);
+                  final cs = theme.colorScheme;
+                  final textTheme = theme.textTheme;
+
+                  AppBottomSheet.show(
+                    context: context,
+                    title: 'Auto-Link Trackers',
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.auto_awesome_outlined,
+                                color: cs.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Automatically connect tracker entries',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          Text(
+                            'Normally you need to manually link anime and manga to your trackers. '
+                            'With Auto-Link Trackers enabled, AniFox automatically creates mappings with your active trackers whenever matching IDs are found.',
+                            style: textTheme.bodyMedium,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.bolt_rounded,
+                                  size: 24,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'If a media is already in your cloud tracker library, '
+                                    'its status and progress will appear instantly without manual linking. '
+                                    'Watched episodes and read chapters will also sync progress automatically.',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: cs.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          RichText(
+                            text: TextSpan(
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: cs.onSurface,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: 'Best results: ',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                TextSpan(
+                                  text:
+                                      'Use the same service for both your Discovery Source and Primary Tracker (for example, AniList + AniList).',
+                                  style: TextStyle(color: cs.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          Text(
+                            'When disabled, tracker mappings will never be created automatically and unlinked media will not sync.',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                onChanged: (_) {
+                  ref
+                      .read(trackingPrefsProvider.notifier)
+                      .toggleAutoTrackPrimary();
+                },
+              ),
+            ],
+          ),
+          SettingsSection(
+            title: 'Trackers',
+            children: allTrackers.map((tracker) {
+              final isRemote = tracker is RemoteTracker;
+              final loadingTracker = ref.watch(authLoadingTrackerProvider);
+              final isLoggingIn = isRemote && loadingTracker == tracker.type;
+
+              final localProfile = tracker.type.getProfile(ref);
+              final isLoggedIn = isRemote
+                  ? (authTokens.containsKey(tracker.type) &&
+                        localProfile != null)
+                  : true;
+              final isPrimary =
+                  prefs.primaryTracker == tracker.type && !prefs.isIncognito;
+
+              final profileName = isRemote
+                  ? localProfile?.username
+                  : (localProfile?.username != null &&
+                            localProfile!.username != 'Guest'
+                        ? localProfile.username
+                        : 'Guest');
+
+              return AbsorbPointer(
+                absorbing: prefs.isIncognito || isLoggingIn,
+                child: Opacity(
+                  opacity: prefs.isIncognito ? 0.5 : 1.0,
+                  child: Stack(
+                    children: [
+                      if (localProfile?.bannerUrl != null &&
+                          localProfile!.bannerUrl!.isNotEmpty)
+                        Positioned.fill(
+                          child: SmartImage(
+                            imageUrl: localProfile.bannerUrl!,
+                            fit: BoxFit.cover,
+                            color: theme.colorScheme.surface.withValues(
+                              alpha: 0.85,
+                            ),
+                            colorBlendMode: BlendMode.srcOver,
+                          ),
+                        ),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                        selected: isPrimary,
+                        selectedTileColor: theme.colorScheme.primaryContainer
+                            .withValues(alpha: 0.3),
+                        selectedColor: theme.colorScheme.primary,
+                        leading: isRemote
+                            ? isLoggingIn
+                                  ? Container(
+                                      width: 40,
+                                      height: 40,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: theme
+                                            .colorScheme
+                                            .primaryContainer
+                                            .withValues(alpha: 0.4),
+                                      ),
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    )
+                                  : isLoggedIn
+                                  ? Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: theme.colorScheme.primary,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: ClipOval(
+                                        child: SmartImage(
+                                          imageUrl:
+                                              localProfile?.avatarUrl ?? '',
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              const CircularProgressIndicator(),
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(Icons.person_outline),
+                                        ),
+                                      ),
+                                    )
+                                  : Padding(
+                                      padding: const EdgeInsets.only(left: 5),
+                                      child: tracker.type.getIconWidget(
+                                        size: 24,
+                                        color: isPrimary
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.7),
+                                      ),
+                                    )
+                            : (localProfile?.avatarUrl != null
+                                  ? ClipOval(
+                                      child: TrackerAvatarWidget(
+                                        imageUrl: localProfile!.avatarUrl,
+                                        size: 40,
+                                      ),
+                                    )
+                                  : Padding(
+                                      padding: const EdgeInsets.only(left: 5),
+                                      child: Icon(
+                                        Icons.cloud_off,
+                                        color: isPrimary
+                                            ? theme.colorScheme.primary
+                                            : null,
+                                      ),
+                                    )),
+                        title: Text(
+                          '${tracker.type.displayName} ${isPrimary ? '(Primary)' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: isLoggingIn
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Logging in...',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                isRemote
+                                    ? (isLoggedIn
+                                          ? 'Logged in as $profileName'
+                                          : (!_hasCredentials(tracker.type)
+                                                ? 'Missing API Credentials'
+                                                : 'Not logged in'))
+                                    : ('Logged in as $profileName'),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: !isPrimary
+                                      ? null
+                                      : theme.colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                        onTap: isLoggingIn
+                            ? null
+                            : () {
+                                ref
+                                    .read(trackingPrefsProvider.notifier)
+                                    .setPrimaryTracker(tracker.type);
+                              },
+                        trailing: isLoggingIn
+                            ? FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                ),
+                                onPressed: null,
+                                icon: SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                label: const Text('Logging in...'),
+                              )
+                            : (!isRemote || isLoggedIn
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.key_rounded,
+                                            size: 20,
+                                          ),
+                                          onPressed: () =>
+                                              _showCredentialsDialog(
+                                                tracker.type,
+                                              ),
+                                          tooltip: 'Custom API Credentials',
+                                        ),
+                                        const SizedBox(width: 4),
+                                        IconButton.filledTonal(
+                                          onPressed: () => showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            useSafeArea: true,
+                                            builder: (_) => TrackerProfileSheet(
+                                              trackerType: tracker.type,
+                                            ),
+                                          ),
+                                          icon: const Icon(
+                                            Icons.edit_outlined,
+                                            size: 20,
+                                          ),
+                                          tooltip: 'Customize',
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (!_hasCredentials(tracker.type))
+                                          FilledButton.icon(
+                                            style: IconButton.styleFrom(
+                                              backgroundColor:
+                                                  theme.colorScheme.error,
+                                              foregroundColor:
+                                                  theme.colorScheme.onError,
+                                            ),
+                                            onPressed: () =>
+                                                _showCredentialsDialog(
+                                                  tracker.type,
+                                                ),
+                                            icon: const Icon(Icons.key_off),
+                                            label: const Text(
+                                              'Add Credentials',
+                                            ),
+                                          )
+                                        else ...[
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.key_rounded,
+                                              size: 20,
+                                            ),
+                                            onPressed: () =>
+                                                _showCredentialsDialog(
+                                                  tracker.type,
+                                                ),
+                                            tooltip: 'Custom API Credentials',
+                                          ),
+                                          const SizedBox(width: 4),
+                                          FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                  ),
+                                            ),
+                                            onPressed: () async {
+                                              try {
+                                                await ref
+                                                    .read(
+                                                      authTokensProvider
+                                                          .notifier,
+                                                    )
+                                                    .login(tracker);
+                                              } catch (e) {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        e.toString().replaceAll(
+                                                          'Exception: ',
+                                                          '',
+                                                        ),
+                                                      ),
+                                                      backgroundColor: theme
+                                                          .colorScheme
+                                                          .error,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                            child: const Text('Login'),
+                                          ),
+                                        ],
+                                      ],
+                                    )),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}

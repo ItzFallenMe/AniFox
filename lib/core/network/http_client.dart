@@ -1,0 +1,525 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rhttp/rhttp.dart' as rhttp;
+import 'package:anifox/core/caching/cache_manager.dart';
+import 'package:anifox/core/caching/models/cache_entry.dart';
+import 'package:anifox/core/network/doh/doh_resolver.dart';
+import 'package:anifox/core/network/session_manager.dart';
+import 'package:anifox/core/network/network_config.dart';
+import 'package:anifox/core/utils/app_logger.dart';
+
+class HttpResponse {
+  final int statusCode;
+  final Map<String, String>? headers;
+  final Uint8List bodyBytes;
+
+  HttpResponse(this.statusCode, this.bodyBytes, {this.headers});
+
+  String get body {
+    try {
+      return utf8.decode(bodyBytes);
+    } catch (_) {
+      return String.fromCharCodes(bodyBytes);
+    }
+  }
+
+  dynamic get json {
+    if (statusCode < 200 || statusCode >= 300) {
+      throw HttpException('HTTP $statusCode: $body');
+    }
+    if (body.trimLeft().startsWith('<')) {
+      throw Exception(
+        'Expected JSON but received HTML (status $statusCode). '
+        'The server may be behind a Cloudflare challenge.',
+      );
+    }
+    return jsonDecode(body);
+  }
+}
+
+class HTTP {
+  HTTP._internal({CacheManager? cacheManager, DohResolver? dohResolver})
+    : _dohResolver = dohResolver ?? DohResolver.instance,
+      _client = rhttp.RhttpClient.createSync(
+        settings: rhttp.ClientSettings(
+          throwOnStatusCode: false,
+          userAgent:
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          tlsSettings: const rhttp.TlsSettings(verifyCertificates: false),
+          timeoutSettings: const rhttp.TimeoutSettings(
+            timeout: Duration(seconds: 30),
+            connectTimeout: Duration(seconds: 15),
+          ),
+          dnsSettings: rhttp.DnsSettings.dynamic(
+            resolver: (host) =>
+                (dohResolver ?? DohResolver.instance).resolve(host),
+          ),
+        ),
+      ),
+      _cache = cacheManager;
+
+  static HTTP? _instance;
+  static final _log = AppLogger.scope('HTTP');
+
+  factory HTTP({CacheManager? cacheManager, DohResolver? dohResolver}) {
+    final instance = _instance ??= HTTP._internal(
+      cacheManager: cacheManager,
+      dohResolver: dohResolver,
+    );
+    if (cacheManager != null) instance._cache = cacheManager;
+    return instance;
+  }
+
+  final DohResolver _dohResolver;
+  DohResolver get dohResolver => _dohResolver;
+
+  final rhttp.RhttpClient _client;
+  CacheManager? _cache;
+  final Map<String, Future<HttpResponse>> _inFlightGetRequests = {};
+
+  String _normalizeBody(String input) {
+    return input.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  String _buildKey(String url, Map<String, String>? query, Object? body) {
+    final buffer = StringBuffer(url);
+
+    if (query != null && query.isNotEmpty) {
+      buffer.write('?');
+
+      final keys = query.keys.toList()..sort();
+      for (var i = 0; i < keys.length; i++) {
+        if (i > 0) buffer.write('&');
+        final key = keys[i];
+        buffer
+          ..write(key)
+          ..write('=')
+          ..write(query[key]);
+      }
+    }
+
+    if (body != null) {
+      buffer.write(query == null || query.isEmpty ? '?' : '&');
+      buffer.write('body=');
+
+      if (body is String) {
+        buffer.write(_normalizeBody(body));
+      } else {
+        buffer.write(_normalizeBody(jsonEncode(body)));
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  Duration _getEffectiveCacheDuration(
+    Map<String, String> lowerHeaders,
+    Duration? cacheDuration,
+  ) {
+    if (cacheDuration != null && cacheDuration > Duration.zero) {
+      return cacheDuration;
+    }
+
+    final cacheControl = lowerHeaders[HttpHeaders.cacheControlHeader];
+    if (cacheControl != null) {
+      final match = RegExp(r'max-age=(\d+)').firstMatch(cacheControl);
+      if (match != null) {
+        final seconds = int.tryParse(match.group(1) ?? '');
+        if (seconds != null && seconds > 0) {
+          return Duration(seconds: seconds);
+        }
+      }
+    }
+
+    return Duration.zero;
+  }
+
+  Future<HttpResponse> _request(
+    String method,
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Object? body,
+    Duration? cacheDuration,
+    bool suppressLogs = false,
+    bool forceRefresh = false,
+    String? Function(String)? cacheInterceptor,
+  }) async {
+    if (method == 'GET') {
+      final requestKey = _buildRequestKey(url, headers, queryParameters, body);
+      final inFlight = _inFlightGetRequests[requestKey];
+      if (inFlight != null) return inFlight;
+
+      late final Future<HttpResponse> request;
+      request =
+          _sendRequest(
+            method,
+            url,
+            headers: headers,
+            queryParameters: queryParameters,
+            body: body,
+            cacheDuration: cacheDuration,
+            suppressLogs: suppressLogs,
+            forceRefresh: forceRefresh,
+            cacheInterceptor: cacheInterceptor,
+          ).whenComplete(() {
+            if (identical(_inFlightGetRequests[requestKey], request)) {
+              _inFlightGetRequests.remove(requestKey);
+            }
+          });
+      _inFlightGetRequests[requestKey] = request;
+      return request;
+    }
+
+    return _sendRequest(
+      method,
+      url,
+      headers: headers,
+      queryParameters: queryParameters,
+      body: body,
+      cacheDuration: cacheDuration,
+      suppressLogs: suppressLogs,
+      forceRefresh: forceRefresh,
+      cacheInterceptor: cacheInterceptor,
+    );
+  }
+
+  String _buildRequestKey(
+    String url,
+    Map<String, String>? headers,
+    Map<String, String>? query,
+    Object? body,
+  ) {
+    final buffer = StringBuffer(_buildKey(url, query, body));
+    if (headers == null || headers.isEmpty) return buffer.toString();
+
+    final normalizedHeaders = <String, String>{
+      for (final entry in headers.entries) entry.key.toLowerCase(): entry.value,
+    };
+    final keys = normalizedHeaders.keys.toList()..sort();
+    for (final key in keys) {
+      buffer
+        ..write('|')
+        ..write(key)
+        ..write('=')
+        ..write(normalizedHeaders[key]);
+    }
+    return buffer.toString();
+  }
+
+  Future<HttpResponse> _sendRequest(
+    String method,
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Object? body,
+    Duration? cacheDuration,
+    bool suppressLogs = false,
+    bool forceRefresh = false,
+    String? Function(String)? cacheInterceptor,
+  }) async {
+    final key = _buildKey(url, queryParameters, body);
+
+    final bool isCacheable =
+        method == 'GET' ||
+        (method == 'POST' &&
+            cacheDuration != null &&
+            cacheDuration > Duration.zero);
+
+    if (_cache != null &&
+        _cache!.cacheConfig.enableCaching &&
+        !_cache!.cacheConfig.bypassCache &&
+        !forceRefresh &&
+        isCacheable) {
+      final cached = await _cache!.get(key, suppressLogs: suppressLogs);
+      if (cached != null) {
+        return HttpResponse(200, Uint8List.fromList(cached.bodyBytes));
+      }
+    }
+
+    // Normalize all headers to lower-case keys to eliminate case-insensitive duplicates (e.g. Referer vs referer)
+    final requestHeaders = <String, String>{};
+    if (headers != null) {
+      for (final entry in headers.entries) {
+        final key = entry.key.trim().toLowerCase();
+        if (key.isNotEmpty) {
+          requestHeaders[key] = entry.value
+              .replaceAll('\r', '')
+              .replaceAll('\n', '')
+              .trim();
+        }
+      }
+    }
+
+    final sessionManager = SessionManager();
+    final cookies = sessionManager.getCookiesSync(url);
+    final userAgent =
+        sessionManager.getUserAgentSync(url) ?? NetworkConfig.globalUserAgent;
+
+    for (final entry in NetworkConfig.globalHeaders.entries) {
+      requestHeaders.putIfAbsent(
+        entry.key.trim().toLowerCase(),
+        () => entry.value.replaceAll('\r', '').replaceAll('\n', '').trim(),
+      );
+    }
+    requestHeaders['user-agent'] = userAgent;
+
+    if (cookies.isNotEmpty) {
+      final existingCookie = requestHeaders['cookie'];
+      if (existingCookie != null && existingCookie.isNotEmpty) {
+        if (!existingCookie.contains('cf_clearance') &&
+            cookies.contains('cf_clearance')) {
+          requestHeaders['cookie'] = '$existingCookie; $cookies';
+        }
+      } else {
+        requestHeaders['cookie'] = cookies;
+      }
+    }
+
+    rhttp.HttpBody? rBody;
+
+    if (body != null) {
+      if (!requestHeaders.containsKey('content-type')) {
+        requestHeaders['content-type'] = 'application/json';
+      }
+      rBody = rhttp.HttpBody.text(body is String ? body : jsonEncode(body));
+    }
+
+    rhttp.HttpMethod rMethod;
+    switch (method.toUpperCase()) {
+      case 'GET':
+        rMethod = rhttp.HttpMethod.get;
+        break;
+      case 'POST':
+        rMethod = rhttp.HttpMethod.post;
+        break;
+      case 'PUT':
+        rMethod = rhttp.HttpMethod.put;
+        break;
+      case 'PATCH':
+        rMethod = rhttp.HttpMethod.patch;
+        break;
+      case 'DELETE':
+        rMethod = rhttp.HttpMethod.delete;
+        break;
+      case 'HEAD':
+        rMethod = rhttp.HttpMethod.head;
+        break;
+      default:
+        rMethod = rhttp.HttpMethod.get;
+    }
+
+    rhttp.HttpBytesResponse res;
+    try {
+      res = await _client.requestBytes(
+        method: rMethod,
+        url: url,
+        headers: requestHeaders.isNotEmpty
+            ? rhttp.HttpHeaders.rawMap(requestHeaders)
+            : null,
+        query: queryParameters,
+        body: rBody,
+      );
+    } catch (e) {
+      if (e is rhttp.RhttpTimeoutException) {
+        throw HttpException('Request timeout');
+      }
+      rethrow;
+    }
+
+    final bodyBytes = res.body;
+    final lowerHeaders = res.headerMap.map(
+      (k, v) => MapEntry(k.toLowerCase(), v),
+    );
+
+    final contentType = lowerHeaders['content-type'];
+    final responseHeaders = contentType == null
+        ? <String, String>{}
+        : {'content-type': contentType};
+
+    var response = HttpResponse(
+      res.statusCode,
+      bodyBytes,
+      headers: responseHeaders,
+    );
+
+    final effectiveTtl = _getEffectiveCacheDuration(
+      lowerHeaders,
+      cacheDuration,
+    );
+
+    if (effectiveTtl > Duration.zero &&
+        _cache != null &&
+        _cache!.cacheConfig.enableCaching &&
+        isCacheable &&
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        bodyBytes.isNotEmpty) {
+      Uint8List bytesToCache = bodyBytes;
+      bool shouldCache = true;
+
+      if (cacheInterceptor != null) {
+        final intercepted = cacheInterceptor(response.body);
+        if (intercepted == null) {
+          shouldCache = false;
+        } else {
+          bytesToCache = Uint8List.fromList(utf8.encode(intercepted));
+          // Modify response to match what we cache
+          response = HttpResponse(
+            res.statusCode,
+            bytesToCache,
+            headers: responseHeaders,
+          );
+        }
+      }
+
+      if (shouldCache) {
+        final isCloudflareBlock =
+            (lowerHeaders['server']?.contains('cloudflare') == true) &&
+            (lowerHeaders['content-type']?.contains('text/html') == true) &&
+            (utf8
+                    .decode(bytesToCache, allowMalformed: true)
+                    .contains('Cloudflare') ||
+                utf8
+                    .decode(bytesToCache, allowMalformed: true)
+                    .contains('Attention Required'));
+
+        final isInvalidM3u8 =
+            url.split('?').first.endsWith('.m3u8') &&
+            !utf8
+                .decode(bytesToCache, allowMalformed: true)
+                .trimLeft()
+                .startsWith('#EXTM3U');
+
+        if (!isCloudflareBlock && !isInvalidM3u8) {
+          await _cache!.put(
+            CacheEntry()
+              ..key = key
+              ..bodyBytes = bytesToCache
+              ..etag = lowerHeaders[HttpHeaders.etagHeader]
+              ..lastModified = lowerHeaders[HttpHeaders.lastModifiedHeader],
+            effectiveTtl,
+            suppressLogs: suppressLogs,
+          );
+        } else {
+          _log.w('Prevented caching of invalid/block page for $url');
+        }
+      }
+    }
+    return response;
+  }
+
+  Future<HttpResponse> get(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Duration? cacheDuration = Duration.zero,
+    bool suppressLogs = false,
+    bool forceRefresh = false,
+    String? Function(String)? cacheInterceptor,
+  }) {
+    return _request(
+      'GET',
+      url,
+      headers: headers,
+      queryParameters: queryParameters,
+      cacheDuration: cacheDuration,
+      suppressLogs: suppressLogs,
+      forceRefresh: forceRefresh,
+      cacheInterceptor: cacheInterceptor,
+    );
+  }
+
+  Future<HttpResponse> post(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Object? body,
+    Duration? cacheDuration,
+    bool suppressLogs = false,
+    String? Function(String)? cacheInterceptor,
+  }) {
+    return _request(
+      'POST',
+      url,
+      headers: headers,
+      body: body,
+      queryParameters: queryParameters,
+      cacheDuration: cacheDuration,
+      suppressLogs: suppressLogs,
+      cacheInterceptor: cacheInterceptor,
+    );
+  }
+
+  Future<HttpResponse> put(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Object? body,
+    bool suppressLogs = false,
+  }) {
+    return _request(
+      'PUT',
+      url,
+      headers: headers,
+      body: body,
+      queryParameters: queryParameters,
+      suppressLogs: suppressLogs,
+    );
+  }
+
+  Future<HttpResponse> patch(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    Object? body,
+    bool suppressLogs = false,
+  }) {
+    return _request(
+      'PATCH',
+      url,
+      headers: headers,
+      body: body,
+      queryParameters: queryParameters,
+      suppressLogs: suppressLogs,
+    );
+  }
+
+  Future<HttpResponse> delete(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    bool suppressLogs = false,
+  }) {
+    return _request(
+      'DELETE',
+      url,
+      headers: headers,
+      queryParameters: queryParameters,
+      suppressLogs: suppressLogs,
+    );
+  }
+
+  Future<HttpResponse> head(
+    String url, {
+    Map<String, String>? headers,
+    Map<String, String>? queryParameters,
+    bool suppressLogs = false,
+  }) {
+    return _request(
+      'HEAD',
+      url,
+      headers: headers,
+      queryParameters: queryParameters,
+      suppressLogs: suppressLogs,
+    );
+  }
+}
+
+final httpClientProvider = Provider<HTTP>((ref) {
+  final cacheManager = ref.watch(cacheManagerProvider);
+  return HTTP(cacheManager: cacheManager);
+});

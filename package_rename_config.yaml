@@ -1,0 +1,51 @@
+package_rename_config-production:
+  android:
+    app_name: "AniFox"
+    package_name: "dev.itzfallenme.anifox"
+
+  ios:
+    app_name: "AniFox"
+    bundle_name: "AniFox"
+    package_name: "dev.itzfallenme.anifox"
+
+  macos:
+    app_name: "AniFox"
+    package_name: "dev.itzfallenme.anifox"
+    copyright_notice: "Copyright © 2026"
+
+  linux:
+    app_name: "AniFox"
+    package_name: "dev.itzfallenme.anifox"
+    exe_name: "anifox"
+
+  windows:
+    app_name: "AniFox"
+    organization: "itzfallenme"
+    copyright_notice: "Copyright © 2026"
+    exe_name: "anifox"
+
+package_rename_config-development:
+  android:
+    app_name: "AniFox Dev"
+    package_name: "dev.itzfallenme.anifox.dev"
+
+  ios:
+    app_name: "AniFox Dev"
+    bundle_name: "AniFox Dev"
+    package_name: "dev.itzfallenme.anifox.dev"
+
+  macos:
+    app_name: "AniFox Dev"
+    package_name: "dev.itzfallenme.anifox.dev"
+    copyright_notice: "Copyright © 2026"
+
+  linux:
+    app_name: "AniFox Dev"
+    package_name: "dev.itzfallenme.anifox.dev"
+    exe_name: "anifox-dev"
+
+  windows:
+    app_name: "AniFox Dev"
+    organization: "itzfallenme"
+    copyright_notice: "Copyright © 2026"
+    exe_name: "anifox-dev"

@@ -1,0 +1,122 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+.secrets
+ref
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/ephemeral/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+/hive_data/
+
+# FVM Version Cache
+.fvm/
+
+# Node (Unrelated to project but for personal fix automation)
+fixer.js
+read.js
+
+# env/keys
+.env
+.env.*
+!.env.example
+!**/.env.example
+keys.json
+
+# expression for github history cleaing
+expressions.txt
+
+# keystore
+android/key.properties
+android/app/keystore/*.jks
+**/local.properties
+
+# upload temp
+scripts/upload_temp.dart
+
+# installer
+dist
+
+# VS Code
+.vscode/
+
+# Debug
+.debug_cache
+
+# Gradle
+.gradle/
+**/.gradle/
+
+# Flutter / Dart
+.dart_tool/
+build/
+
+# Android
+android/.gradle/
+android/app/build/
+
+# Misc
+*.log
+
+*.zip
+*.flatpak
+*.AppImage
+*.patch
+.flatpak-builder/
+flatpak/bundle/
+flatpak/repo/
+flatpak/build-dir/
+
+**/node_modules/
+**/.next/
+**/out/
+**/.vitepress/cache
+
+scratch
+
+# OpenCode/session exports
+freebuff-chat-*.md
+
+# Nix build results
+result
+result-*

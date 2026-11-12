@@ -1,0 +1,259 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:anifox/core/router/app_navigator.dart';
+import 'package:anifox/core/services/notification_service.dart';
+import 'package:anifox/modules/updater/models/github_release.dart';
+import 'package:anifox/modules/updater/ui/android_update_widget.dart';
+import 'package:anifox/modules/updater/ui/linux_update_widget.dart';
+import 'package:anifox/modules/updater/ui/update_ui.dart';
+import 'package:anifox/modules/updater/ui/windows_update_widget.dart';
+import 'package:anifox/modules/welcome/onboarding_provider.dart';
+import 'package:anifox/modules/preferences/ui/widgets/settings_ui_components.dart';
+import 'package:anifox/common/widgets/app_scaffold.dart';
+
+class DebugSettingsScreen extends ConsumerWidget {
+  const DebugSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppScaffold(
+      title: 'Debug Settings',
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 50),
+        children: [
+          SettingsSection(
+            title: 'Web & Webview Debug',
+            children: [
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Media Player Debug',
+            children: [
+              SettingsActionTile(
+                icon: Icons.subtitles_outlined,
+                title: 'Subtitle Renderer',
+                subtitle: 'Stress-test subtitle parser and active cue overlay',
+                onTap: () {
+                  context.push('/settings/debug/subtitles');
+                },
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'Tracker Debug',
+            children: [
+              SettingsActionTile(
+                icon: Icons.person_search_outlined,
+                title: 'Tracker Bio Renderer',
+                subtitle: 'Test Markdown rendering for tracker profiles',
+                onTap: () {
+                  context.push('/settings/debug/tracker-bio');
+                },
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'App State & Onboarding',
+            children: [
+              SettingsActionTile(
+                icon: Icons.restart_alt_rounded,
+                title: 'Reset Onboarding Status',
+                subtitle: 'Mark onboarding as incomplete and launch screen',
+                onTap: () {
+                  ref.read(onboardingProvider.notifier).resetOnboarding();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Onboarding status reset!'),
+                      action: SnackBarAction(
+                        label: 'Launch Now',
+                        onPressed: () => context.goOnboarding(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'UI Feedback',
+            children: [
+              SettingsActionTile(
+                icon: Icons.notifications_active_outlined,
+                title: 'Trigger Snackbar',
+                subtitle: 'Show a floating snackbar with an action',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Debug Snackbar Triggered!'),
+                      action: SnackBarAction(
+                        label: 'Dismiss',
+                        onPressed: () {},
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'System Notifications',
+            children: [
+              SettingsActionTile(
+                icon: Icons.notification_important_outlined,
+                title: 'Immediate Notification',
+                subtitle: 'Send a notification that appears now',
+                onTap: () {
+                  NotificationService.instance.show(
+                    id: 999,
+                    title: 'Immediate Test',
+                    body: 'This notification was triggered manually.',
+                  );
+                },
+              ),
+              if (Platform.isAndroid) ...[
+                SettingsActionTile(
+                  icon: Icons.timer_outlined,
+                  title: 'Scheduled Notification (5s)',
+                  subtitle: 'Send a notification in 5 seconds',
+                  onTap: () async {
+                    final success = await NotificationService.instance.schedule(
+                      id: 1000,
+                      title: 'Scheduled Test',
+                      body: 'This notification was scheduled 5 seconds ago.',
+                      scheduleTime: DateTime.now().add(
+                        const Duration(seconds: 5),
+                      ),
+                    );
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? 'Notification scheduled for 5s from now'
+                                : 'Failed to schedule notification',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                SettingsActionTile(
+                  icon: Icons.notifications_off_outlined,
+                  title: 'Cancel Scheduled',
+                  subtitle: 'Cancel the 5s test notification',
+                  onTap: () {
+                    NotificationService.instance.cancel(1000);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Canceled scheduled test notification'),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+          SettingsSection(
+            title: 'Updater UI Previews (Debug)',
+            children: [
+              SettingsActionTile(
+                icon: Icons.window_rounded,
+                title: 'Preview Windows Updater UI',
+                subtitle:
+                    'Simulate Windows in-app installer download, progress, and auto-launch',
+                onTap: () {
+                  WindowsUpdateWidget.show(
+                    context,
+                    release: _mockRelease,
+                    isPreview: true,
+                  );
+                },
+              ),
+              SettingsActionTile(
+                icon: Icons.terminal_rounded,
+                title: 'Preview Linux Updater UI',
+                subtitle:
+                    'Simulate Linux 1-click update, download progress, and restart',
+                onTap: () {
+                  LinuxUpdateWidget.show(
+                    context,
+                    release: _mockRelease,
+                    autoStart: false,
+                    isPreview: true,
+                  );
+                },
+              ),
+              SettingsActionTile(
+                icon: Icons.install_mobile_rounded,
+                title: 'Preview Android Updater UI',
+                subtitle: 'Open Android APK download and install sheet',
+                onTap: () {
+                  AndroidUpdateWidget.show(context, release: _mockRelease);
+                },
+              ),
+              SettingsActionTile(
+                icon: Icons.system_update_rounded,
+                title: 'Preview Update Available Sheet',
+                subtitle:
+                    'Open the full release announcement sheet with markdown changelog',
+                onTap: () {
+                  UpdateUI.showReleaseSheet(
+                    context,
+                    release: _mockRelease,
+                    onDismiss: () {},
+                    onDownload: () {},
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static final _mockRelease = GitHubRelease(
+    id: 999999,
+    tagName: 'v2.2.0-preview',
+    name: 'AniFox v2.2.0 (Preview Release)',
+    body:
+        '### What\'s New in v2.2.0\n'
+        '- **Windows In-App Updater**: Direct .exe download and auto-launch\n'
+        '- **Linux Live Terminal**: Real-time installation logs and 1-click restart\n'
+        '- **Performance**: Optimized startup time and embedded streaming\n'
+        '- **Bug Fixes**: Clean uninstallation and cache purging',
+    prerelease: true,
+    draft: false,
+    publishedAt: DateTime(2026, 9, 8),
+    htmlUrl: 'https://github.com/itzfallenme/AniFox/releases',
+    assets: const [
+      ReleaseAsset(
+        name: 'AniFox-x86_64-2.2.0-Installer.exe',
+        downloadUrl:
+            'https://github.com/itzfallenme/AniFox/releases/download/v2.2.0/AniFox-x86_64-2.2.0-Installer.exe',
+        size: 50855936,
+      ),
+      ReleaseAsset(
+        name: 'AniFox-linux.zip',
+        downloadUrl:
+            'https://github.com/itzfallenme/AniFox/releases/download/v2.2.0/AniFox-linux.zip',
+        size: 54525952,
+      ),
+      ReleaseAsset(
+        name: 'AniFox-arm64-v8a-release.apk',
+        downloadUrl:
+            'https://github.com/itzfallenme/AniFox/releases/download/v2.2.0/AniFox-arm64-v8a-release.apk',
+        size: 33554432,
+      ),
+    ],
+  );
+}

@@ -1,0 +1,437 @@
+import 'package:anifox/common/state/content_prefs_provider.dart';
+
+class AnilistTrackerQueries {
+  static const String search = '''
+    query(\$search: String, \$type: MediaType) {
+      Page(page: 1, perPage: 15) {
+        media(search: \$search, type: \$type) {
+          id
+          title {
+            english
+            romaji
+          }
+          format
+          coverImage {
+            large
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String updateEntry = '''
+    mutation(\$mediaId: Int, \$status: MediaListStatus, \$progress: Int, \$scoreRaw: Int) {
+      SaveMediaListEntry(
+        mediaId: \$mediaId,
+        status: \$status,
+        progress: \$progress,
+        scoreRaw: \$scoreRaw
+      ) {
+        id
+      }
+    }
+  ''';
+
+  static const String viewerProfile = '''
+    query {
+      Viewer {
+        id
+        name
+        about
+        siteUrl
+        bannerImage
+        avatar { large }
+        statistics {
+          anime {
+            count
+            episodesWatched
+            minutesWatched
+            meanScore
+            statuses { status count }
+          }
+          manga {
+            count
+            chaptersRead
+            meanScore
+            statuses { status count }
+          }
+        }
+        favourites {
+          anime(page: 1, perPage: 10) {
+            nodes { coverImage { large } }
+          }
+          manga(page: 1, perPage: 10) {
+            nodes { coverImage { large } }
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String mediaListItem = '''
+    query(\$userId: Int, \$mediaId: Int) {
+      MediaList(userId: \$userId, mediaId: \$mediaId) {
+        id
+        status
+        progress
+        score
+      }
+    }
+  ''';
+
+  static const String userLibrary = '''
+    query(
+      \$userId: Int,
+      \$status: MediaListStatus,
+      \$page: Int,
+      \$type: MediaType,
+    ) {
+      Page(page: \$page, perPage: 50) {
+        pageInfo {
+          hasNextPage
+        }
+        mediaList(
+          userId: \$userId,
+          status: \$status,
+          type: \$type,
+          sort: [UPDATED_TIME_DESC],
+        ) {
+          progress
+          score(format: POINT_10_DECIMAL)
+          media {
+            id
+            idMal
+            type
+            format
+            title { english romaji native }
+            coverImage { large }
+            bannerImage
+            description(asHtml: false)
+            genres
+            averageScore
+            seasonYear
+            status
+            episodes
+            chapters
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String deleteEntry = '''
+    mutation (\$id: Int) {
+      DeleteMediaListEntry(id: \$id) {
+        deleted
+    }
+    }
+  ''';
+
+  static String trending(AdultContentMode mode) {
+    String adultFilter = '';
+    if (mode == AdultContentMode.safe) adultFilter = ', isAdult: false';
+    if (mode == AdultContentMode.adultOnly) adultFilter = ', isAdult: true';
+
+    return '''
+    query(\$page: Int = 1, \$type: MediaType) {
+      Page(page: \$page, perPage: 50) {
+        pageInfo {
+          hasNextPage
+        }
+        media(sort: TRENDING_DESC, type: \$type $adultFilter) {
+          id
+          nextAiringEpisode {
+            episode
+            airingAt
+          }
+          title {
+            romaji
+            english
+            native
+          }
+          format
+          coverImage {
+            large
+          }
+          bannerImage
+          description(asHtml: false)
+          status
+          averageScore
+          episodes
+          genres
+          seasonYear
+          season
+          startDate {
+            year
+          }
+          trailer {
+            id
+            site
+          }
+        }
+      }
+    }
+  ''';
+  }
+
+  static String metadataSearch(AdultContentMode mode) {
+    String adultFilter = '';
+    if (mode == AdultContentMode.safe) adultFilter = 'isAdult: false';
+    if (mode == AdultContentMode.adultOnly) adultFilter = 'isAdult: true';
+
+    return '''
+    query(
+      \$search: String,
+      \$page: Int = 1,
+      \$type: MediaType!,
+      \$genre_in: [String],
+      \$tag_in: [String],
+      \$status_in: [MediaStatus],
+      \$format_in: [MediaFormat],
+      \$sort: [MediaSort] = [SEARCH_MATCH],
+    ) {
+      Page(page: \$page, perPage: 50) {
+        pageInfo {
+          hasNextPage
+        }
+        media(
+          search: \$search
+          type: \$type
+          genre_in: \$genre_in
+          tag_in: \$tag_in
+          status_in: \$status_in
+          format_in: \$format_in
+          $adultFilter
+          sort: \$sort
+        ) {
+          id
+          idMal
+          title {
+            romaji
+            english
+          }
+          format
+          coverImage {
+            large
+          }
+          nextAiringEpisode {
+            episode
+            airingAt
+          }
+          bannerImage
+          description(asHtml: false)
+          status
+          averageScore
+          episodes
+          genres
+          seasonYear
+          season
+          startDate {
+            year
+          }
+          trailer {
+            id
+            site
+          }
+        }
+      }
+    }
+  ''';
+  }
+
+  static const String details = '''
+    query(\$id: Int!, \$type: MediaType!) {
+      Media(id: \$id, type: \$type) {
+        id
+        idMal
+        type
+        title {
+          romaji
+          english
+          native
+        }
+        synonyms
+        format
+        source
+        duration
+        chapters
+        volumes
+        popularity
+        favourites
+        coverImage {
+          large
+        }
+        nextAiringEpisode {
+          episode
+          airingAt
+        }
+        bannerImage
+        description(asHtml: false)
+        status
+        averageScore
+        episodes
+        genres
+        seasonYear
+        season
+        startDate {
+          year
+        }
+        trailer {
+          id
+          site
+        }
+        tags {
+          id
+          name
+          category
+        }
+        studios(isMain: true) {
+          nodes {
+            id
+            name
+          }
+        }
+        externalLinks {
+          id
+          url
+          site
+          icon
+        }
+        characters(role: MAIN, sort: [ROLE, RELEVANCE]) {
+          edges {
+            role
+            node {
+              id
+              name {
+                full
+              }
+              image {
+                large
+              }
+            }
+            voiceActors(language: JAPANESE, sort: [RELEVANCE]) {
+              id
+              name {
+                full
+              }
+              image {
+                large
+              }
+            }
+          }
+        }
+        relations {
+          edges {
+            relationType(version: 2)
+            node {
+              id
+              type
+              format
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+              }
+              bannerImage
+              status
+              averageScore
+              episodes
+            }
+          }
+        }
+
+        recommendations(sort: RATING_DESC, perPage: 15) {
+          nodes {
+            mediaRecommendation {
+              id
+              type
+              format
+              title {
+                romaji
+                english
+                native
+              }
+              coverImage {
+                large
+              }
+              bannerImage
+              status
+              averageScore
+              episodes
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static String get genres => '''
+    query {
+      GenreCollection
+    }
+  ''';
+
+  static String get tags => '''
+    query {
+      MediaTagCollection {
+        name
+      }
+    }
+  ''';
+
+  static const String characters = '''
+    query(\$id: Int, \$page: Int, \$perPage: Int) {
+      Media(id: \$id) {
+        characters(page: \$page, perPage: \$perPage, sort: [ROLE, RELEVANCE]) {
+          pageInfo {
+            hasNextPage
+            currentPage
+          }
+          edges {
+            role
+            node {
+              id
+              name {
+                full
+                native
+              }
+              image {
+                large
+              }
+              description
+            }
+            voiceActors(language: JAPANESE, sort: [RELEVANCE]) {
+              id
+              name {
+                full
+                native
+              }
+              image {
+                large
+              }
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String characterDetails = '''
+    query(\$id: Int) {
+      Character(id: \$id) {
+        id
+        name {
+          full
+          native
+        }
+        image {
+          large
+        }
+        description
+      }
+    }
+  ''';
+}

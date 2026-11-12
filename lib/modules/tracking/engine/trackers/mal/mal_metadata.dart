@@ -1,0 +1,656 @@
+import 'package:anifox/modules/browse/models/models/search_filter_options.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_filter_options.dart';
+import 'dart:developer';
+import 'dart:io';
+import 'package:anifox/core/network/http_client.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_category.dart';
+import 'package:anifox/common/state/content_prefs_provider.dart';
+import 'package:anifox/core/utils/env.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/streaming/models/paginated_result.dart';
+import 'package:anifox/modules/tracking/engine/base_tracker.dart';
+import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_credentials.dart';
+
+class MalException implements Exception {
+  final String message;
+  MalException(this.message);
+  @override
+  String toString() => message;
+}
+
+mixin MalMetadata on BaseTracker implements RemoteTracker {
+  HTTP get http;
+
+  TrackerCredentials? get customCredentials => null;
+
+  static const String _baseUrl = 'https://api.myanimelist.net/v2';
+  static String get defaultClientId => Platform.isWindows || Platform.isLinux
+      ? Env.MAL_CLIENT_ID_LIST.last
+      : Env.MAL_CLIENT_ID_LIST.first;
+
+  String get clientId {
+    final custom = customCredentials?.clientId.trim();
+    if (custom != null && custom.isNotEmpty) {
+      return custom;
+    }
+    return defaultClientId;
+  }
+
+  static const String _fields =
+      'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,status,genres,created_at,updated_at,media_type,nsfw,my_list_status,num_episodes,start_season,broadcast,source,average_episode_duration,rating,pictures,background,related_anime,related_manga,recommendations,studios,statistics';
+
+  @override
+  List<TrackerCategory> get supportedCategories => [
+    TrackerCategory.trending,
+    TrackerCategory.popular,
+    TrackerCategory.topRated,
+    TrackerCategory.upcoming,
+  ];
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getCategoryItems(
+    TrackerCategory category, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final String rankingType;
+    switch (category) {
+      case TrackerCategory.popular:
+      case TrackerCategory.popularThisSeason:
+        rankingType = 'bypopularity';
+        break;
+      case TrackerCategory.topRated:
+        rankingType = 'all';
+        break;
+      case TrackerCategory.upcoming:
+        rankingType = type == MediaType.ANIME ? 'upcoming' : 'bypopularity';
+        break;
+      case TrackerCategory.trending:
+      default:
+        rankingType = type == MediaType.ANIME ? 'airing' : 'bypopularity';
+        break;
+    }
+
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi(
+      'CATEGORY_${category.name.toUpperCase()}',
+      () async {
+        final limit = 50;
+        final offset = (page - 1) * limit;
+        final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+        final response = await http.get(
+          '$_baseUrl/$endpoint/ranking',
+          queryParameters: {
+            'ranking_type': rankingType,
+            'limit': limit.toString(),
+            'offset': offset.toString(),
+            'fields': _fields,
+          },
+          headers: {'X-MAL-CLIENT-ID': clientId},
+          cacheDuration: cacheDuration ?? const Duration(hours: 1),
+        );
+
+        final data = _validateAndParseResponse(
+          response.json,
+          'getCategoryItems',
+        );
+        final rawList = data['data'] as List? ?? [];
+        final paging = data['paging'] as Map? ?? {};
+        final next = paging['next'] as String?;
+
+        final hasNextPage = next != null && next.isNotEmpty;
+
+        final items = rawList.whereType<Map>().map((item) {
+          final node = item['node'] as Map? ?? {};
+          return _mapToUnified(node, type, requestId);
+        }).toList();
+
+        return PaginatedResult(items: items, hasNextPage: hasNextPage);
+      },
+      fallback: (error, stackTrace) {
+        return PaginatedResult(items: [], hasNextPage: false);
+      },
+    );
+  }
+
+  Map<String, dynamic> _validateAndParseResponse(
+    dynamic body,
+    String operation,
+  ) {
+    if (body is! Map) {
+      log(
+        'Invalid response type: ${body.runtimeType}',
+        name: 'MalTracker.$operation',
+        error: body,
+      );
+      throw MalException('Invalid response format');
+    }
+
+    final errorVal = body['error']?.toString();
+    final messageVal = body['message']?.toString();
+
+    if (errorVal != null && errorVal.isNotEmpty) {
+      log(
+        'API Error: ${messageVal ?? errorVal}',
+        name: 'MalTracker.$operation',
+        error: body,
+      );
+      throw MalException('API Error: ${messageVal ?? errorVal}');
+    }
+
+    if (body['errors'] != null) {
+      log(
+        'API Errors: ${body['errors']}',
+        name: 'MalTracker.$operation',
+        error: body,
+      );
+      throw MalException('API Error: ${body['errors']}');
+    }
+
+    return Map<String, dynamic>.from(body);
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getTrending({
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('TRENDING | ${type.displayName}', () async {
+      final limit = 50;
+      final offset = (page - 1) * limit;
+      final rankingType = type == MediaType.ANIME ? 'airing' : 'bypopularity';
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final response = await http.get(
+        '$_baseUrl/$endpoint/ranking',
+        queryParameters: {
+          'ranking_type': rankingType,
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+          'fields': _fields,
+        },
+        headers: {'X-MAL-CLIENT-ID': clientId},
+        cacheDuration: cacheDuration ?? const Duration(hours: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getTrending');
+      final rawList = data['data'] as List? ?? [];
+      final paging = data['paging'] as Map? ?? {};
+      final next = paging['next'] as String?;
+
+      final hasNextPage = next != null && next.isNotEmpty;
+
+      final items = rawList.whereType<Map>().map((item) {
+        final node = item['node'] as Map? ?? {};
+        return _mapToUnified(node, type, requestId);
+      }).toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> search(
+    String query, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    List<String>? genres,
+    List<String>? tags,
+    SearchSort sort = SearchSort.popularity,
+    SearchStatusFilter status = SearchStatusFilter.all,
+    SearchFormatFilter format = SearchFormatFilter.all,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('SEARCH_METADATA', () async {
+      final limit = 50;
+      final offset = (page - 1) * limit;
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final response = await http.get(
+        '$_baseUrl/$endpoint',
+        queryParameters: {
+          'q': query,
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+          'fields': _fields,
+          'nsfw': adultMode == AdultContentMode.safe ? 'false' : 'true',
+        },
+        headers: {'X-MAL-CLIENT-ID': clientId},
+        cacheDuration: cacheDuration,
+      );
+
+      final data = _validateAndParseResponse(response.json, 'search');
+      final rawList = data['data'] as List? ?? [];
+      final paging = data['paging'] as Map? ?? {};
+      final next = paging['next'] as String?;
+
+      final hasNextPage = next != null && next.isNotEmpty;
+
+      final items = rawList.whereType<Map>().map((item) {
+        final node = item['node'] as Map? ?? {};
+        return _mapToUnified(node, type, requestId);
+      }).toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<UnifiedMedia> getDetails(String providerId, MediaType type) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('DETAILS', () async {
+      final id = int.tryParse(providerId);
+      if (id == null) {
+        log('Invalid providerId: $providerId', name: 'MalTracker.getDetails');
+        throw MalException('Invalid providerId: $providerId');
+      }
+
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final response = await http.get(
+        '$_baseUrl/$endpoint/$id',
+        queryParameters: {'fields': _fields},
+        headers: {'X-MAL-CLIENT-ID': clientId},
+        cacheDuration: const Duration(days: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getDetails');
+
+      return _mapToUnified(data, type, requestId);
+    });
+  }
+
+  @override
+  Future<TrackerFilterOptions> fetchFilterOptions([MediaType? type]) async {
+    return TrackerFilterOptions(
+      genres: await fetchGenres(),
+      tags: const [],
+      sorts: const [],
+      statuses: const [],
+      formats: const [],
+    );
+  }
+
+  @override
+  Future<List<String>> fetchGenres() async {
+    return [
+      'Action',
+      'Adventure',
+      'Comedy',
+      'Drama',
+      'Fantasy',
+      'Romance',
+      'Sci-Fi',
+      'Slice of Life',
+      'Sports',
+      'Thriller',
+      'Mystery',
+      'Supernatural',
+      'Horror',
+      'Mecha',
+      'Psychological',
+    ];
+  }
+
+  @override
+  Future<List<String>> fetchTags() async {
+    return [];
+  }
+
+  UnifiedMedia _mapToUnified(
+    Map<dynamic, dynamic> json,
+    MediaType type,
+    int requestId, {
+    String? relationType,
+  }) {
+    try {
+      final titleJson = json['title'] as String? ?? '';
+      final mainPicture = json['main_picture'] as Map? ?? {};
+      final altTitles = json['alternative_titles'] as Map?;
+
+      final title = MediaTitle(
+        english: altTitles?['en'] as String?,
+        romaji: titleJson,
+        native: altTitles?['ja'] as String?,
+      );
+
+      String status = 'Unknown';
+      switch (json['status']) {
+        case 'currently_airing':
+        case 'currently_publishing':
+          status = 'Ongoing';
+          break;
+        case 'finished_airing':
+        case 'finished':
+          status = 'Completed';
+          break;
+        case 'not_yet_aired':
+        case 'not_yet_published':
+          status = 'Upcoming';
+          break;
+      }
+
+      final genres = (json['genres'] as List?)
+          ?.map((e) => (e as Map?)?['name'] as String?)
+          .whereType<String>()
+          .toList();
+
+      final episodes = json['num_episodes'] as int?;
+      final cover =
+          mainPicture['large'] as String? ?? mainPicture['medium'] as String?;
+      final synopsis = json['synopsis'] as String?;
+      final format = json['media_type']?.toString().toUpperCase();
+
+      final relatedAnime = json['related_anime'] as List?;
+      final relatedManga = json['related_manga'] as List?;
+      final allRelations = [...?relatedAnime, ...?relatedManga];
+
+      final relations = allRelations
+          .map((e) {
+            final node = e['node'];
+            if (node == null) return null;
+            final relTypeFormatted =
+                e['relation_type_formatted']?.toString() ??
+                e['relation_type']?.toString();
+            final nodeType =
+                (e['relation_type'] == 'related_manga' ||
+                    relatedManga?.contains(e) == true)
+                ? MediaType.MANGA
+                : MediaType.ANIME;
+            return _mapToUnified(
+              node,
+              nodeType,
+              requestId,
+              relationType: relTypeFormatted,
+            );
+          })
+          .whereType<UnifiedMedia>()
+          .toList();
+
+      final recommendationsRaw = json['recommendations'] as List?;
+      final recommendations = recommendationsRaw
+          ?.map((e) {
+            final node = e['node'];
+            if (node == null) return null;
+            return _mapToUnified(node, type, requestId);
+          })
+          .whereType<UnifiedMedia>()
+          .toList();
+
+      DateTime? airingAt;
+      int? nextEpisode;
+
+      if (status == 'Ongoing' && json['broadcast'] is Map) {
+        final broadcast = json['broadcast'] as Map;
+        final dayString = broadcast['day_of_the_week']
+            ?.toString()
+            .toLowerCase()
+            .trim();
+        final timeString = broadcast['start_time']?.toString().trim();
+
+        final Map<String, int> weekdayMap = {
+          'monday': DateTime.monday,
+          'tuesday': DateTime.tuesday,
+          'wednesday': DateTime.wednesday,
+          'thursday': DateTime.thursday,
+          'friday': DateTime.friday,
+          'saturday': DateTime.saturday,
+          'sunday': DateTime.sunday,
+        };
+
+        final targetWeekday = weekdayMap[dayString];
+        if (targetWeekday != null &&
+            timeString != null &&
+            timeString.contains(':')) {
+          final parts = timeString.split(':');
+          final hour = int.tryParse(parts[0]);
+          final minute = int.tryParse(parts[1]);
+
+          if (hour != null && minute != null) {
+            final nowUtc = DateTime.now().toUtc();
+            final nowJst = nowUtc.add(const Duration(hours: 9));
+
+            // Candidate airing time today in JST
+            final candidateJst = DateTime(
+              nowJst.year,
+              nowJst.month,
+              nowJst.day,
+              hour,
+              minute,
+            );
+            var daysDiff = targetWeekday - nowJst.weekday;
+            if (daysDiff < 0 ||
+                (daysDiff == 0 && nowJst.isAfter(candidateJst))) {
+              daysDiff += 7;
+            }
+
+            final airingTimeJst = candidateJst.add(Duration(days: daysDiff));
+            airingAt = airingTimeJst
+                .subtract(const Duration(hours: 9))
+                .toLocal();
+
+            // Calculate next episode number based on weeks elapsed since start_date
+            final startDateStr = json['start_date'] as String?;
+            if (startDateStr != null) {
+              final startDate = DateTime.tryParse(startDateStr);
+              if (startDate != null) {
+                final diffDays = airingTimeJst.difference(startDate).inDays;
+                if (diffDays >= 0) {
+                  final calculatedEp = (diffDays / 7).floor() + 1;
+                  if (episodes == null || calculatedEp <= episodes) {
+                    nextEpisode = calculatedEp;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      final scoreVal = (json['mean'] as num?)?.toDouble();
+      final seasonStr = (json['start_season'] is Map)
+          ? json['start_season']['year']?.toString()
+          : (json['start_date']?.toString().split('-').first);
+
+      final studios = (json['studios'] as List?)
+          ?.map((s) => (s as Map)['name']?.toString() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      final synonyms = (altTitles?['synonyms'] as List?)
+          ?.map((s) => s.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+
+      final chapters = (json['num_chapters'] as num?)?.toInt();
+      final volumes = (json['num_volumes'] as num?)?.toInt();
+      final duration = (json['average_episode_duration'] as num?) != null
+          ? ((json['average_episode_duration'] as num) / 60).round()
+          : null;
+
+      final year = (json['start_season'] is Map)
+          ? (json['start_season']['year'] as num?)?.toInt()
+          : int.tryParse(json['start_date']?.toString().split('-').first ?? '');
+
+      final malId = json['id']?.toString();
+
+      return UnifiedMedia(
+        id: malId ?? '',
+        idMal: malId,
+        url: malId != null
+            ? 'https://myanimelist.net/${type.name.toLowerCase()}/$malId'
+            : null,
+        externalIds: MediaExternalIds(mal: malId),
+        type: type,
+        providerId: malId ?? '',
+        title: title,
+        format: format,
+        score: scoreVal,
+        season: seasonStr,
+        year: year,
+        cover: cover,
+        banner: null,
+        description: synopsis,
+        status: status,
+        episodes: episodes,
+        chapters: chapters,
+        volumes: volumes,
+        duration: duration,
+        source: json['source']?.toString(),
+        popularity: (json['popularity'] as num?)?.toInt(),
+        favourites: (json['num_list_users'] as num?)?.toInt(),
+        studios: studios,
+        synonyms: synonyms,
+        airingAt: airingAt,
+        nextEpisode: nextEpisode,
+        relationType: relationType,
+        relations: relations.isNotEmpty ? relations : null,
+        recommendations: recommendations?.isNotEmpty == true
+            ? recommendations
+            : null,
+        genres: genres,
+      );
+    } catch (e, stackTrace) {
+      log(
+        'Error mapping UnifiedMedia',
+        name: 'MalTracker._mapToUnified',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  @override
+  Future<PaginatedResult<MediaCharacter>> getCharacters(
+    String providerId, {
+    int page = 1,
+    int perPage = 25,
+    MediaType type = MediaType.ANIME,
+  }) async {
+    return executeApi(
+      'GET_MAL_CHARACTERS',
+      () async {
+        final endpointType = type == MediaType.ANIME ? 'anime' : 'manga';
+        final endpoint =
+            'https://api.jikan.moe/v4/$endpointType/$providerId/characters';
+        final response = await http.get(
+          endpoint,
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final jsonMap = response.json as Map?;
+        final dataList = (jsonMap?['data'] as List?)?.whereType<Map>() ?? [];
+
+        final items = <MediaCharacter>[];
+        for (final item in dataList) {
+          final charObj = item['character'] as Map? ?? {};
+          final role = item['role']?.toString();
+          final voiceActors =
+              (item['voice_actors'] as List?)?.whereType<Map>() ?? [];
+          final jaVA = voiceActors.firstWhere(
+            (va) => va['language']?.toString().toLowerCase() == 'japanese',
+            orElse: () => voiceActors.firstOrNull ?? {},
+          );
+          final vaPerson = jaVA['person'] as Map? ?? {};
+
+          items.add(
+            MediaCharacter(
+              id: charObj['mal_id']?.toString() ?? '',
+              name: charObj['name']?.toString() ?? 'Unknown',
+              nativeName: charObj['name_kanji']?.toString(),
+              role: role,
+              image: (charObj['images'] as Map?)?['jpg']?['image_url']
+                  ?.toString(),
+              voiceActorName: vaPerson['name']?.toString(),
+              voiceActorImage:
+                  (vaPerson['images'] as Map?)?['jpg']?['image_url']
+                      ?.toString(),
+            ),
+          );
+        }
+
+        final startIndex = (page - 1) * perPage;
+        if (startIndex >= items.length) {
+          return PaginatedResult(items: [], hasNextPage: false);
+        }
+        final pagedItems = items.skip(startIndex).take(perPage).toList();
+        final hasNextPage = startIndex + perPage < items.length;
+
+        return PaginatedResult(items: pagedItems, hasNextPage: hasNextPage);
+      },
+      fallback: (error, stackTrace) {
+        log(
+          'Error fetching MAL characters',
+          name: 'MalTracker.getCharacters',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return PaginatedResult(items: [], hasNextPage: false);
+      },
+    );
+  }
+
+  @override
+  Future<MediaCharacter?> getCharacterDetails(String characterId) async {
+    final numericId = int.tryParse(characterId);
+    if (numericId == null) return null;
+
+    return executeApi(
+      'GET_MAL_CHARACTER_DETAILS',
+      () async {
+        final endpoint = 'https://api.jikan.moe/v4/characters/$numericId';
+        final response = await http.get(
+          endpoint,
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final jsonMap = response.json as Map?;
+        final charData = jsonMap?['data'] as Map?;
+        if (charData == null) return null;
+
+        final about = charData['about']?.toString();
+
+        return MediaCharacter(
+          id: charData['mal_id']?.toString() ?? characterId,
+          name: charData['name']?.toString() ?? 'Unknown',
+          nativeName: charData['name_kanji']?.toString(),
+          image: (charData['images'] as Map?)?['jpg']?['image_url']?.toString(),
+          description: _cleanBio(about),
+        );
+      },
+      fallback: (error, stackTrace) {
+        log(
+          'Error fetching MAL character details',
+          name: 'MalTracker.getCharacterDetails',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return null;
+      },
+    );
+  }
+
+  String? _cleanBio(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    var s = text;
+    s = s.replaceAll('~!', '').replaceAll('!~', '');
+    s = s.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    s = s.replaceAll(RegExp(r'<[^>]*>'), '');
+    s = s.replaceAll(RegExp(r'\n+'), '\n\n');
+    return s.trim();
+  }
+}

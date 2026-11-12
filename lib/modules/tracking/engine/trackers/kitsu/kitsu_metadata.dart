@@ -1,0 +1,777 @@
+import 'package:anifox/modules/browse/models/models/search_filter_options.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_filter_options.dart';
+import 'dart:developer';
+import 'package:anifox/core/network/http_client.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_category.dart';
+import 'package:anifox/common/state/content_prefs_provider.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/streaming/models/paginated_result.dart';
+import 'package:anifox/modules/tracking/engine/base_tracker.dart';
+import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
+
+class KitsuException implements Exception {
+  final String message;
+  KitsuException(this.message);
+  @override
+  String toString() => message;
+}
+
+mixin KitsuMetadata on BaseTracker implements RemoteTracker {
+  HTTP get http;
+
+  @override
+  List<TrackerCategory> get supportedCategories => [
+    TrackerCategory.trending,
+    TrackerCategory.popular,
+    TrackerCategory.topRated,
+  ];
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getCategoryItems(
+    TrackerCategory category, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final String sortOption;
+    switch (category) {
+      case TrackerCategory.popular:
+      case TrackerCategory.popularThisSeason:
+        sortOption = '-userCount';
+        break;
+      case TrackerCategory.topRated:
+        sortOption = '-averageRating';
+        break;
+      case TrackerCategory.recentlyUpdated:
+        sortOption = '-updatedAt';
+        break;
+      case TrackerCategory.upcoming:
+        sortOption = '-userCount';
+        break;
+      case TrackerCategory.trending:
+        sortOption = '-userCount';
+        break;
+    }
+
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi(
+      'CATEGORY_${category.name.toUpperCase()}',
+      () async {
+        final limit = 20;
+        final offset = (page - 1) * limit;
+        final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+        final queryParams = <String, String>{
+          'sort': sortOption,
+          'page[limit]': limit.toString(),
+          'page[offset]': offset.toString(),
+          'include': 'categories,genres',
+        };
+
+        if (category == TrackerCategory.upcoming) {
+          queryParams['filter[status]'] = 'upcoming';
+        }
+
+        final response = await http.get(
+          'https://kitsu.io/api/edge/$endpoint',
+          queryParameters: queryParams,
+          cacheDuration: cacheDuration ?? const Duration(hours: 1),
+        );
+
+        final data = _validateAndParseResponse(
+          response.json,
+          'getCategoryItems',
+        );
+        final rawList = data['data'] as List? ?? [];
+        final includedMap = _buildIncludedMap(data['included']);
+        final links = data['links'] as Map? ?? {};
+        final next = links['next'] as String?;
+
+        final hasNextPage = next != null && next.isNotEmpty;
+
+        final items = rawList
+            .whereType<Map>()
+            .map((item) {
+              try {
+                return _mapToUnified(
+                  item,
+                  type,
+                  requestId,
+                  includedMap: includedMap,
+                );
+              } catch (_) {
+                return null;
+              }
+            })
+            .whereType<UnifiedMedia>()
+            .toList();
+
+        return PaginatedResult(items: items, hasNextPage: hasNextPage);
+      },
+      fallback: (error, stackTrace) {
+        return PaginatedResult(items: [], hasNextPage: false);
+      },
+    );
+  }
+
+  Map<String, dynamic> _validateAndParseResponse(
+    dynamic body,
+    String operation,
+  ) {
+    if (body is! Map) {
+      log(
+        'Invalid response type: ${body.runtimeType}',
+        name: 'KitsuTracker.$operation',
+        error: body,
+      );
+      throw KitsuException('Invalid response format');
+    }
+
+    if (body['errors'] != null) {
+      log(
+        'API Errors: ${body['errors']}',
+        name: 'KitsuTracker.$operation',
+        error: body,
+      );
+      throw KitsuException('API Error: ${body['errors']}');
+    }
+
+    return Map<String, dynamic>.from(body);
+  }
+
+  Map<String, Map<dynamic, dynamic>> _buildIncludedMap(dynamic included) {
+    final map = <String, Map<dynamic, dynamic>>{};
+    if (included is List) {
+      for (final item in included.whereType<Map>()) {
+        final id = item['id']?.toString();
+        final type = item['type']?.toString();
+        if (id != null && type != null) {
+          map['$type:$id'] = item;
+        }
+      }
+    }
+    return map;
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> getTrending({
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('TRENDING | ${type.displayName}', () async {
+      final limit = 20;
+      final offset = (page - 1) * limit;
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final response = await http.get(
+        'https://kitsu.io/api/edge/$endpoint',
+        queryParameters: {
+          'sort': '-userCount',
+          'page[limit]': limit.toString(),
+          'page[offset]': offset.toString(),
+          'include': 'categories,genres',
+        },
+        cacheDuration: cacheDuration ?? const Duration(hours: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getTrending');
+      final rawList = data['data'] as List? ?? [];
+      final includedMap = _buildIncludedMap(data['included']);
+      final links = data['links'] as Map? ?? {};
+      final next = links['next'] as String?;
+
+      final hasNextPage = next != null && next.isNotEmpty;
+
+      final items = rawList
+          .whereType<Map>()
+          .map((item) {
+            try {
+              return _mapToUnified(
+                item,
+                type,
+                requestId,
+                includedMap: includedMap,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<UnifiedMedia>()
+          .toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<PaginatedResult<UnifiedMedia>> search(
+    String query, {
+    int page = 1,
+    MediaType type = MediaType.ANIME,
+    List<String>? genres,
+    List<String>? tags,
+    SearchSort sort = SearchSort.popularity,
+    SearchStatusFilter status = SearchStatusFilter.all,
+    SearchFormatFilter format = SearchFormatFilter.all,
+    Duration? cacheDuration,
+    AdultContentMode adultMode = AdultContentMode.safe,
+  }) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('SEARCH_METADATA', () async {
+      final limit = 20;
+      final offset = (page - 1) * limit;
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final queryParams = <String, String>{
+        'page[limit]': limit.toString(),
+        'page[offset]': offset.toString(),
+        'include': 'categories,genres',
+      };
+      if (query.trim().isNotEmpty) {
+        queryParams['filter[text]'] = query.trim();
+      } else {
+        queryParams['sort'] = sort == SearchSort.score
+            ? '-averageRating'
+            : '-userCount';
+      }
+
+      final categoryFilters =
+          <String>[if (genres != null) ...genres, if (tags != null) ...tags]
+              .map((g) => g.toLowerCase().trim().replaceAll(' ', '-'))
+              .where((g) => g.isNotEmpty)
+              .toSet()
+              .toList();
+
+      if (categoryFilters.isNotEmpty) {
+        queryParams['filter[categories]'] = categoryFilters.join(',');
+      }
+
+      List<String>? statusIn;
+      switch (status) {
+        case SearchStatusFilter.releasing:
+          statusIn = ['current'];
+          break;
+        case SearchStatusFilter.finished:
+          statusIn = ['finished'];
+          break;
+        case SearchStatusFilter.notYetReleased:
+          statusIn = ['upcoming'];
+          break;
+        case SearchStatusFilter.all:
+          statusIn = null;
+          break;
+      }
+
+      if (statusIn != null && statusIn.isNotEmpty) {
+        final mappedStatuses = statusIn
+            .map((s) {
+              final lower = s.toLowerCase();
+              if (lower == 'not_yet_released' || lower == 'upcoming') {
+                return 'upcoming';
+              }
+              if (lower == 'releasing' ||
+                  lower == 'ongoing' ||
+                  lower == 'current') {
+                return 'current';
+              }
+              if (lower == 'finished' || lower == 'completed') {
+                return 'finished';
+              }
+              return lower;
+            })
+            .join(',');
+        queryParams['filter[status]'] = mappedStatuses;
+      }
+
+      final response = await http.get(
+        'https://kitsu.io/api/edge/$endpoint',
+        queryParameters: queryParams,
+        cacheDuration: cacheDuration,
+      );
+
+      final data = _validateAndParseResponse(response.json, 'search');
+      final rawList = data['data'] as List? ?? [];
+      final includedMap = _buildIncludedMap(data['included']);
+      final links = data['links'] as Map? ?? {};
+      final next = links['next'] as String?;
+
+      final hasNextPage = next != null && next.isNotEmpty;
+
+      final items = rawList
+          .whereType<Map>()
+          .map((item) {
+            try {
+              return _mapToUnified(
+                item,
+                type,
+                requestId,
+                includedMap: includedMap,
+              );
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<UnifiedMedia>()
+          .toList();
+
+      return PaginatedResult(items: items, hasNextPage: hasNextPage);
+    });
+  }
+
+  @override
+  Future<UnifiedMedia> getDetails(String providerId, MediaType type) {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+
+    return executeApi('DETAILS', () async {
+      final id = int.tryParse(providerId);
+      if (id == null) {
+        log('Invalid providerId: $providerId', name: 'KitsuTracker.getDetails');
+        throw KitsuException('Invalid providerId: $providerId');
+      }
+
+      final endpoint = type == MediaType.ANIME ? 'anime' : 'manga';
+
+      final response = await http.get(
+        'https://kitsu.io/api/edge/$endpoint/$id',
+        queryParameters: {
+          'include':
+              'categories,genres,mediaRelationships.destination,mappings',
+        },
+        cacheDuration: const Duration(days: 1),
+      );
+
+      final data = _validateAndParseResponse(response.json, 'getDetails');
+      final item = data['data'] as Map? ?? {};
+      final includedMap = _buildIncludedMap(data['included']);
+
+      return _mapToUnified(item, type, requestId, includedMap: includedMap);
+    });
+  }
+
+  @override
+  Future<TrackerFilterOptions> fetchFilterOptions([MediaType? type]) async {
+    final genres = await fetchGenres();
+    return TrackerFilterOptions(
+      genres: genres,
+      tags: const [],
+      sorts: const [SearchSort.popularity, SearchSort.score],
+      statuses: SearchStatusFilter.values,
+      formats: const [],
+    );
+  }
+
+  @override
+  Future<List<String>> fetchGenres() async {
+    return [
+      'Action',
+      'Adventure',
+      'Comedy',
+      'Drama',
+      'Fantasy',
+      'Romance',
+      'Sci-Fi',
+      'Slice of Life',
+      'Sports',
+      'Thriller',
+      'Mystery',
+      'Supernatural',
+      'Horror',
+      'Mecha',
+      'Psychological',
+      'Isekai',
+      'Mahou Shoujo',
+      'Music',
+    ];
+  }
+
+  @override
+  Future<List<String>> fetchTags() async {
+    return [];
+  }
+
+  UnifiedMedia _mapToUnified(
+    Map<dynamic, dynamic> json,
+    MediaType type,
+    int requestId, {
+    String? relationType,
+    Map<String, Map<dynamic, dynamic>>? includedMap,
+  }) {
+    try {
+      final attr = json['attributes'] as Map? ?? {};
+      final titles = attr['titles'] as Map? ?? {};
+      final canonicalTitle =
+          attr['canonicalTitle']?.toString() ??
+          titles['en_jp']?.toString() ??
+          titles['en']?.toString() ??
+          titles['ja_jp']?.toString() ??
+          'Unknown Title';
+
+      final title = MediaTitle(
+        english: titles['en']?.toString() ?? attr['canonicalTitle']?.toString(),
+        romaji: titles['en_jp']?.toString() ?? canonicalTitle,
+        native: titles['ja_jp']?.toString(),
+      );
+
+      String status = 'Unknown';
+      switch (attr['status']?.toString().toLowerCase()) {
+        case 'current':
+          status = 'Ongoing';
+          break;
+        case 'finished':
+          status = 'Completed';
+          break;
+        case 'upcoming':
+        case 'tba':
+        case 'unreleased':
+          status = 'Upcoming';
+          break;
+      }
+
+      final episodes =
+          attr['episodeCount'] as int? ?? attr['chapterCount'] as int?;
+      final posterImage = attr['posterImage'] as Map? ?? {};
+      final cover =
+          posterImage['large']?.toString() ??
+          posterImage['medium']?.toString() ??
+          posterImage['original']?.toString() ??
+          '';
+      final coverImage = attr['coverImage'] as Map? ?? {};
+      final banner =
+          coverImage['original']?.toString() ??
+          coverImage['large']?.toString() ??
+          coverImage['small']?.toString();
+
+      final synopsis =
+          attr['synopsis']?.toString() ?? attr['description']?.toString();
+      final format = attr['subtype']?.toString().toUpperCase();
+
+      final avgRatingStr = attr['averageRating']?.toString();
+      double? rating;
+      if (avgRatingStr != null) {
+        final parsed = double.tryParse(avgRatingStr);
+        if (parsed != null && parsed > 0) {
+          rating = parsed / 10.0;
+        }
+      } else if (attr['ratingTwenty'] != null) {
+        final r20 = (attr['ratingTwenty'] as num).toDouble();
+        if (r20 > 0) rating = r20 / 2.0;
+      }
+
+      final nsfw = attr['nsfw'] as bool? ?? false;
+      final ageRating = attr['ageRating']?.toString().toUpperCase();
+      final isAdult = nsfw || ageRating == 'R18' || ageRating == 'R18+';
+
+      String? season;
+      DateTime? airingAt;
+      final startDateStr = attr['startDate']?.toString();
+      if (startDateStr != null) {
+        final startDate = DateTime.tryParse(startDateStr);
+        if (startDate != null && type == MediaType.ANIME) {
+          if (startDate.month >= 1 && startDate.month <= 3) {
+            season = 'WINTER ${startDate.year}';
+          } else if (startDate.month >= 4 && startDate.month <= 6) {
+            season = 'SPRING ${startDate.year}';
+          } else if (startDate.month >= 7 && startDate.month <= 9) {
+            season = 'SUMMER ${startDate.year}';
+          } else {
+            season = 'FALL ${startDate.year}';
+          }
+        }
+      }
+
+      final nextReleaseStr = attr['nextRelease']?.toString();
+      if (nextReleaseStr != null) {
+        airingAt = DateTime.tryParse(nextReleaseStr)?.toLocal();
+      }
+
+      final genresList = <String>[];
+      final tagsList = <MediaTag>[];
+      final relationsList = <UnifiedMedia>[];
+      String? idMal;
+
+      if (includedMap != null) {
+        final rels = json['relationships'] as Map? ?? {};
+
+        // Extract Categories & Genres
+        final catData = (rels['categories'] as Map?)?['data'] as List?;
+        if (catData != null) {
+          for (final c in catData.whereType<Map>()) {
+            final cId = c['id']?.toString();
+            if (cId == null) continue;
+            final catNode = includedMap['categories:$cId'];
+            if (catNode == null) continue;
+            final catTitle = (catNode['attributes'] as Map?)?['title']
+                ?.toString();
+            if (catTitle != null &&
+                catTitle.isNotEmpty &&
+                !genresList.contains(catTitle)) {
+              genresList.add(catTitle);
+              tagsList.add(
+                MediaTag(id: cId, name: catTitle, category: 'Category'),
+              );
+            }
+          }
+        }
+
+        final genData = (rels['genres'] as Map?)?['data'] as List?;
+        if (genData != null) {
+          for (final g in genData.whereType<Map>()) {
+            final gId = g['id']?.toString();
+            if (gId == null) continue;
+            final genNode = includedMap['genres:$gId'];
+            if (genNode == null) continue;
+            final genTitle =
+                (genNode['attributes'] as Map?)?['name']?.toString() ??
+                (genNode['attributes'] as Map?)?['title']?.toString();
+            if (genTitle != null &&
+                genTitle.isNotEmpty &&
+                !genresList.contains(genTitle)) {
+              genresList.add(genTitle);
+              tagsList.add(
+                MediaTag(id: gId, name: genTitle, category: 'Genre'),
+              );
+            }
+          }
+        }
+
+        // Extract Media Relationships
+        final relData = (rels['mediaRelationships'] as Map?)?['data'] as List?;
+        if (relData != null) {
+          for (final r in relData.whereType<Map>()) {
+            final rId = r['id']?.toString();
+            if (rId == null) continue;
+            final relNode = includedMap['mediaRelationships:$rId'];
+            if (relNode == null) continue;
+            final relAttr = relNode['attributes'] as Map? ?? {};
+            final role = relAttr['role']?.toString();
+
+            final destData =
+                (relNode['relationships'] as Map?)?['destination']?['data']
+                    as Map?;
+            if (destData == null) continue;
+            final destId = destData['id']?.toString();
+            final destTypeStr = destData['type']?.toString();
+            if (destId == null || destTypeStr == null) continue;
+            final destNode = includedMap['$destTypeStr:$destId'];
+            if (destNode == null) continue;
+
+            final destMediaType = destTypeStr == 'manga'
+                ? MediaType.MANGA
+                : MediaType.ANIME;
+            relationsList.add(
+              _mapToUnified(
+                destNode,
+                destMediaType,
+                requestId,
+                relationType: role,
+                includedMap: includedMap,
+              ),
+            );
+          }
+        }
+
+        // Extract MAL ID from mappings if present
+        final mapData = (rels['mappings'] as Map?)?['data'] as List?;
+        if (mapData != null) {
+          for (final m in mapData.whereType<Map>()) {
+            final mId = m['id']?.toString();
+            if (mId == null) continue;
+            final mapNode = includedMap['mappings:$mId'];
+            if (mapNode == null) continue;
+            final mapAttr = mapNode['attributes'] as Map? ?? {};
+            final extSite = mapAttr['externalSite']?.toString().toLowerCase();
+            if (extSite != null && extSite.contains('myanimelist')) {
+              idMal = mapAttr['externalId']?.toString();
+              if (idMal != null && idMal.isNotEmpty) break;
+            }
+          }
+        }
+      }
+
+      final kitsuId = json['id']?.toString() ?? '';
+      final int? year = startDateStr != null
+          ? DateTime.tryParse(startDateStr)?.year
+          : null;
+      final String? ytId = attr['youtubeVideoId']?.toString();
+      final String? trailer = (ytId != null && ytId.isNotEmpty)
+          ? 'https://www.youtube.com/watch?v=$ytId'
+          : null;
+
+      return UnifiedMedia(
+        id: kitsuId,
+        providerId: kitsuId,
+        idMal: idMal,
+        url: kitsuId.isNotEmpty
+            ? 'https://kitsu.io/${type.name.toLowerCase()}/$kitsuId'
+            : null,
+        externalIds: MediaExternalIds(kitsu: kitsuId, mal: idMal),
+        title: title,
+        type: type,
+        cover: cover,
+        banner: banner,
+        description: synopsis,
+        status: status,
+        format: format ?? (type == MediaType.ANIME ? 'TV' : 'MANGA'),
+        episodes: episodes,
+        score: rating,
+        isAdult: isAdult,
+        season: season,
+        year: year,
+        trailer: trailer,
+        airingAt: airingAt,
+        relationType: relationType,
+        relations: relationsList.isNotEmpty ? relationsList : null,
+        genres: genresList.isNotEmpty ? genresList : null,
+        tags: tagsList.isNotEmpty ? tagsList : null,
+      );
+    } catch (e, stackTrace) {
+      log(
+        'Error mapping UnifiedMedia',
+        name: 'KitsuTracker._mapToUnified',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  @override
+  Future<PaginatedResult<MediaCharacter>> getCharacters(
+    String providerId, {
+    int page = 1,
+    int perPage = 25,
+    MediaType type = MediaType.ANIME,
+  }) async {
+    return executeApi(
+      'GET_KITSU_CHARACTERS',
+      () async {
+        final offset = (page - 1) * perPage;
+        final endpointType = type == MediaType.ANIME ? 'anime' : 'manga';
+        final response = await http.get(
+          'https://kitsu.io/api/edge/$endpointType/$providerId/characters',
+          queryParameters: {
+            'include': 'character',
+            'page[limit]': perPage.toString(),
+            'page[offset]': offset.toString(),
+          },
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final jsonMap = response.json as Map?;
+        final rawList = (jsonMap?['data'] as List?)?.whereType<Map>() ?? [];
+        final includedMap = _buildIncludedMap(jsonMap?['included']);
+        final links = jsonMap?['links'] as Map? ?? {};
+        final next = links['next'] as String?;
+        final hasNextPage = next != null && next.isNotEmpty;
+
+        final items = <MediaCharacter>[];
+        for (final item in rawList) {
+          final role = (item['attributes'] as Map?)?['role']?.toString();
+          final charRel =
+              (item['relationships'] as Map?)?['character']?['data'] as Map?;
+          final charId = charRel?['id']?.toString();
+
+          Map? charData;
+          if (charId != null) {
+            charData = includedMap['character:$charId'];
+          }
+
+          if (charData != null) {
+            final attrs = charData['attributes'] as Map? ?? {};
+            final name =
+                attrs['canonicalName']?.toString() ??
+                attrs['name']?.toString() ??
+                'Unknown';
+            final imageObj = attrs['image'] as Map?;
+            final image =
+                imageObj?['original']?.toString() ??
+                imageObj?['medium']?.toString();
+            final desc = attrs['description']?.toString();
+
+            items.add(
+              MediaCharacter(
+                id: charData['id']?.toString() ?? '',
+                name: name,
+                role: role,
+                image: image,
+                description: _cleanBio(desc),
+              ),
+            );
+          }
+        }
+
+        return PaginatedResult(items: items, hasNextPage: hasNextPage);
+      },
+      fallback: (error, stackTrace) {
+        log(
+          'Error fetching Kitsu characters',
+          name: 'KitsuTracker.getCharacters',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return PaginatedResult(items: [], hasNextPage: false);
+      },
+    );
+  }
+
+  @override
+  Future<MediaCharacter?> getCharacterDetails(String characterId) async {
+    return executeApi(
+      'GET_KITSU_CHARACTER_DETAILS',
+      () async {
+        final response = await http.get(
+          'https://kitsu.io/api/edge/characters/$characterId',
+          cacheDuration: const Duration(days: 7),
+        );
+
+        final jsonMap = response.json as Map?;
+        final charData = jsonMap?['data'] as Map?;
+        if (charData == null) return null;
+
+        final attrs = charData['attributes'] as Map? ?? {};
+        final name =
+            attrs['canonicalName']?.toString() ??
+            attrs['name']?.toString() ??
+            'Unknown';
+        final imageObj = attrs['image'] as Map?;
+        final image =
+            imageObj?['original']?.toString() ??
+            imageObj?['medium']?.toString();
+        final desc = attrs['description']?.toString();
+
+        return MediaCharacter(
+          id: charData['id']?.toString() ?? characterId,
+          name: name,
+          image: image,
+          description: _cleanBio(desc),
+        );
+      },
+      fallback: (error, stackTrace) {
+        log(
+          'Error fetching Kitsu character details',
+          name: 'KitsuTracker.getCharacterDetails',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return null;
+      },
+    );
+  }
+
+  String? _cleanBio(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    var s = text;
+    s = s.replaceAll('~!', '').replaceAll('!~', '');
+    s = s.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    s = s.replaceAll(RegExp(r'<[^>]*>'), '');
+    s = s.replaceAll(RegExp(r'\n+'), '\n\n');
+    return s.trim();
+  }
+}

@@ -1,0 +1,113 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/modules/browse/models/media_args.dart';
+import 'package:anifox/modules/browse/state/episodes_provider.dart';
+import 'package:anifox/modules/playback/engine/video_engine.dart';
+import 'package:anifox/modules/playback/ui/widgets/player_controls.dart';
+import 'package:anifox/modules/playback/state/player_controller.dart';
+
+class CenterControls extends ConsumerStatefulWidget {
+  final bool showControls;
+  final PlayerState playerState;
+  final PlayerController controller;
+  final String mediaTitle;
+  final VideoEngine engine;
+
+  const CenterControls({
+    super.key,
+    required this.showControls,
+    required this.playerState,
+    required this.controller,
+    required this.mediaTitle,
+    required this.engine,
+  });
+
+  @override
+  ConsumerState<CenterControls> createState() => _CenterControlsState();
+}
+
+class _CenterControlsState extends ConsumerState<CenterControls> {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.playerState.error != null) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+
+    final media = widget.controller.media;
+    final episodes = media != null
+        ? ref.watch(
+                episodesListProvider(
+                  MediaArgs.fromMedia(media),
+                ).select((s) => s.value?.episodes),
+              ) ??
+              []
+        : [];
+    final isFirst = episodes.isEmpty
+        ? !widget.controller.hasPrevEpisode
+        : widget.playerState.activeEpisode?.number == episodes.first.number;
+    final isLast = episodes.isEmpty
+        ? !widget.controller.hasNextEpisode
+        : widget.playerState.activeEpisode?.number == episodes.last.number;
+
+    return ListenableBuilder(
+      listenable: widget.engine.statusNotifier,
+      builder: (context, _) {
+        final status = widget.engine.statusNotifier.value;
+        final isBuffering =
+            status == PlayerStatus.buffering || widget.playerState.isLoading;
+        final isPlaying = status == PlayerStatus.playing;
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            if (isBuffering)
+              Center(
+                child: CircularProgressIndicator(
+                  constraints: const BoxConstraints(
+                    minHeight: 80,
+                    minWidth: 80,
+                  ),
+                  strokeWidth: 5,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            IgnorePointer(
+              ignoring: !widget.showControls || isBuffering,
+              child: AnimatedOpacity(
+                curve: Curves.easeInOut,
+                opacity: (widget.showControls && !isBuffering) ? 1 : 0,
+                duration: Durations.medium2,
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PlayerEpisodeNavButton(
+                        isNext: false,
+                        isEnabled: !isFirst,
+                        onTap: () =>
+                            widget.controller.skipEpisode(forward: false),
+                      ),
+                      PlayerPlayPauseButton(
+                        isPlaying: isPlaying,
+                        onToggle: isPlaying
+                            ? widget.engine.pause
+                            : widget.engine.play,
+                      ),
+                      PlayerEpisodeNavButton(
+                        isNext: true,
+                        isEnabled: !isLast,
+                        onTap: () =>
+                            widget.controller.skipEpisode(forward: true),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

@@ -1,0 +1,478 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/core/utils/formatting.dart';
+import 'package:anifox/modules/playback/models/player_mode.dart';
+import 'package:anifox/modules/playback/engine/video_engine.dart';
+import 'package:anifox/modules/playback/ui/widgets/engine_settings_x.dart';
+import 'package:anifox/modules/playback/ui/widgets/keyboard_shortcuts_sheet.dart';
+import 'package:anifox/modules/playback/ui/widgets/media_kit/video_adjustments.dart';
+import 'package:anifox/modules/playback/ui/widgets/player_controls.dart';
+import 'package:anifox/modules/playback/state/player_controller.dart';
+import 'package:anifox/modules/playback/state/player_prefs_provider.dart';
+import 'package:anifox/modules/preferences/ui/widgets/settings_ui_components.dart';
+import 'package:anifox/modules/preferences/ui/widgets/subtitle_settings_sheet.dart';
+import 'package:anifox/common/models/video_stream.dart';
+import 'package:anifox/common/widgets/app_bottom_sheet.dart';
+
+class TopControls extends ConsumerWidget {
+  final bool showControls;
+  final PlayerMode mode;
+  final VideoEngine engine;
+  final PlayerState playerState;
+  final PlayerController controller;
+  final VoidCallback onBack;
+
+  const TopControls({
+    super.key,
+    required this.showControls,
+    required this.mode,
+    required this.engine,
+    required this.playerState,
+    required this.controller,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mediaQuery = MediaQuery.of(context);
+    final isCompact = mediaQuery.size.width < 600;
+
+    final animeTitle = mode is PlayerModeOnline
+        ? (mode as PlayerModeOnline).media.title.getPreferedTitle
+        : (mode as PlayerModeOffline).title ?? 'Local Media';
+
+    final episodeNumber = playerState.activeEpisode?.number;
+    final formattedEp = formatEpisodeNumber(episodeNumber);
+    final episodeTitle = playerState.activeEpisode?.title;
+
+    final String subtitleText;
+    if (episodeTitle != null && episodeTitle.isNotEmpty) {
+      subtitleText = formattedEp != null
+          ? 'Episode $formattedEp • $episodeTitle'
+          : episodeTitle;
+    } else if (formattedEp != null) {
+      subtitleText = 'Episode $formattedEp';
+    } else {
+      subtitleText = mode is PlayerModeOffline ? 'Offline File' : 'Episode 1';
+    }
+
+    final titleColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          animeTitle,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 4.0,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitleText,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.75),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            shadows: const [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 4.0,
+                color: Colors.black87,
+              ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+
+    final showQuality =
+        mode is PlayerModeOnline && playerState.qualities.length > 1;
+
+    final actionButtons = <Widget>[
+      if (showQuality) ...[
+        PlayerQualityButton(
+          qualityText: playerState.activeQuality?.resolution ?? 'Auto',
+          onTap: () {
+            AppBottomSheet.showSelector<VideoStream>(
+              context: context,
+              title: 'Select Quality',
+              items: playerState.qualities,
+              selectedValue: playerState.activeQuality,
+              itemLabel: (s) => s.displayQuality,
+              onChanged: (v) {
+                controller.changeQuality(v);
+              },
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
+      if (!isCompact) ...[
+        PlayerIconButton(
+          icon: switch (ref.watch(playerPrefsProvider.select((s) => s.fit))) {
+            BoxFit.contain => Icons.fit_screen_rounded,
+            BoxFit.cover => Icons.aspect_ratio_rounded,
+            _ => Icons.fullscreen_exit_rounded,
+          },
+          size: 22,
+          padding: const EdgeInsets.all(8.0),
+          tooltip: 'Aspect Ratio',
+          onTap: () {
+            ref.read(playerPrefsProvider.notifier).cycleFit();
+            final newFit = ref.read(playerPrefsProvider).fit;
+            final label = switch (newFit) {
+              BoxFit.contain => 'Fit Screen (Contain)',
+              BoxFit.cover => 'Fill Screen (Cover)',
+              _ => 'Stretch (Fill)',
+            };
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Video Fit: $label'),
+                duration: const Duration(milliseconds: 1200),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 4),
+        PlayerIconButton(
+          icon: Icons.camera_alt_outlined,
+          size: 22,
+          padding: const EdgeInsets.all(8.0),
+          tooltip: 'Screenshot',
+          onTap: () async {
+            final result = await ref
+                .read(playerControllerProvider.notifier)
+                .takeAndShareScreenshot();
+            if (context.mounted && result.message != 'Save cancelled') {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(result.message),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          },
+        ),
+        const SizedBox(width: 4),
+      ],
+      PlayerIconButton(
+        icon: Icons.settings_outlined,
+        size: 22,
+        padding: const EdgeInsets.all(8.0),
+        tooltip: 'Player Settings',
+        onTap: () => _showUnifiedSettingsSheet(context, ref, isCompact),
+      ),
+    ];
+
+    return AnimatedPositioned(
+      duration: Durations.medium2,
+      curve: Curves.fastEaseInToSlowEaseOut,
+      top: showControls ? 0 : -100,
+      left: 0,
+      right: 0,
+      child: AnimatedOpacity(
+        duration: Durations.short4,
+        opacity: showControls ? 1 : 0,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.85),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                bottom: 24,
+                top: 8,
+                left: 14,
+                right: 14,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  PlayerIconButton(
+                    icon: Icons.arrow_back_ios_new_outlined,
+                    size: 24,
+                    padding: const EdgeInsets.all(8.0),
+                    tooltip: 'Back',
+                    onTap: onBack,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: titleColumn),
+                  const SizedBox(width: 12),
+                  Row(mainAxisSize: MainAxisSize.min, children: actionButtons),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUnifiedSettingsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    bool isCompact,
+  ) {
+    final theme = Theme.of(context);
+    final currentFit = ref.read(playerPrefsProvider).fit;
+    final fitLabel = switch (currentFit) {
+      BoxFit.contain => 'Fit Screen (Contain)',
+      BoxFit.cover => 'Fill Screen (Cover)',
+      _ => 'Stretch (Fill)',
+    };
+
+    final currentSpeed = playerState.playbackSpeed;
+    final speedLabel = currentSpeed == 1.0
+        ? 'Normal (1.0x)'
+        : '${currentSpeed}x';
+
+    final activeQualityText = playerState.activeQuality?.resolution ?? 'Auto';
+    final hasMultipleQualities =
+        mode is PlayerModeOnline && playerState.qualities.length > 1;
+
+    final engineSettingsView = engine.buildSettingsView(context);
+    final hasEngineSettings = engineSettingsView != null;
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Player Settings',
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsSection(
+              title: 'Playback',
+              children: [
+                SettingsActionTile(
+                  icon: Icons.speed_rounded,
+                  title: 'Playback Speed',
+                  subtitle: speedLabel,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        speedLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    AppBottomSheet.showSelector<double>(
+                      context: context,
+                      title: 'Playback Speed',
+                      items: const [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
+                      selectedValue: currentSpeed,
+                      itemLabel: (speed) =>
+                          speed == 1.0 ? 'Normal (1.0x)' : '${speed}x',
+                      onChanged: (speed) {
+                        controller.changeSpeed(speed);
+                      },
+                    );
+                  },
+                ),
+                if (hasMultipleQualities)
+                  SettingsActionTile(
+                    icon: Icons.high_quality_rounded,
+                    title: 'Video Quality',
+                    subtitle: activeQualityText,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          activeQualityText.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      AppBottomSheet.showSelector<VideoStream>(
+                        context: context,
+                        title: 'Select Quality',
+                        items: playerState.qualities,
+                        selectedValue: playerState.activeQuality,
+                        itemLabel: (s) => s.displayQuality,
+                        onChanged: (v) {
+                          controller.changeQuality(v);
+                        },
+                      );
+                    },
+                  ),
+                SettingsActionTile(
+                  icon: Icons.aspect_ratio_rounded,
+                  title: 'Video Aspect Ratio',
+                  subtitle: fitLabel,
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    ref.read(playerPrefsProvider.notifier).cycleFit();
+                    final newFit = ref.read(playerPrefsProvider).fit;
+                    final label = switch (newFit) {
+                      BoxFit.contain => 'Fit Screen (Contain)',
+                      BoxFit.cover => 'Fill Screen (Cover)',
+                      _ => 'Stretch (Fill)',
+                    };
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Video Fit: $label'),
+                        duration: const Duration(milliseconds: 1200),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            SettingsSection(
+              title: 'Customization',
+              children: [
+                if (hasEngineSettings)
+                  SettingsNavTile(
+                    icon: Icons.tune_rounded,
+                    title: 'Color Adjustments',
+                    subtitle: 'Brightness, contrast, saturation, hue',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      VideoAdjustmentsOverlay.show(context);
+                    },
+                  ),
+                SettingsNavTile(
+                  icon: Icons.subtitles_outlined,
+                  title: 'Subtitle Customization',
+                  subtitle: 'Font, colors, size, and background',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      constraints: const BoxConstraints(
+                        maxWidth: double.infinity,
+                      ),
+                      builder: (context) => const SubtitleSettingsSheet(),
+                    );
+                  },
+                ),
+                SettingsNavTile(
+                  icon: Icons.keyboard_alt_outlined,
+                  title: 'Keyboard Shortcuts',
+                  subtitle: 'View shortcuts and hotkey bindings',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    KeyboardShortcutsSheet.show(context);
+                  },
+                ),
+              ],
+            ),
+            if (hasEngineSettings)
+              Theme(
+                data: theme.copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+                  title: Text(
+                    'ADVANCED ENGINE',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  children: [engineSettingsView],
+                ),
+              ),
+            if (isCompact)
+              SettingsSection(
+                title: 'Quick Actions',
+                children: [
+                  SettingsActionTile(
+                    icon: Icons.camera_alt_outlined,
+                    title: 'Take Screenshot',
+                    subtitle: 'Capture and share current frame',
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final result = await ref
+                          .read(playerControllerProvider.notifier)
+                          .takeAndShareScreenshot();
+                      if (context.mounted &&
+                          result.message != 'Save cancelled') {
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result.message),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

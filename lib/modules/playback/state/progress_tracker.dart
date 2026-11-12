@@ -1,0 +1,217 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:anifox/modules/history/models/models/history_entry.dart';
+
+import 'package:anifox/modules/history/state/history_provider.dart';
+import 'package:anifox/modules/playback/engine/video_engine.dart';
+import 'package:anifox/modules/tracking/engine/sync_engine.dart';
+import 'package:anifox/common/models/unified_episode.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/common/models/video_server.dart';
+import 'package:anifox/common/state/security_prefs_provider.dart';
+import 'package:anifox/streaming/models/stream_source.dart';
+
+// Holds current media info passed to ProgressTracker on each save tick.
+class ProgressContext {
+  final UnifiedMedia? media;
+  final UnifiedEpisode? activeEpisode;
+  final VideoServer? activeServer;
+  final StreamSource? sourceInfo;
+  final VideoEngine engine;
+
+  const ProgressContext({
+    this.media,
+    this.activeEpisode,
+    this.activeServer,
+    this.sourceInfo,
+    required this.engine,
+  });
+}
+
+// Handles periodic watch history saves and thumbnail generation.
+class ProgressTracker {
+  final Ref _ref;
+
+  Timer? _progressTimer;
+  bool _isSavingPeriodicProgress = false;
+  ScreenshotController? _screenshotController;
+
+  ProgressContext Function()? _contextProvider;
+
+  // Cache thumbnail and refresh every 2 mins to avoid heavy screenshot captures
+  String? _cachedThumbnail;
+  DateTime? _lastThumbnailTime;
+  bool _initialCaptureDone = false;
+  static const _thumbnailRefreshInterval = Duration(minutes: 2);
+
+  ProgressTracker(this._ref);
+
+  void setScreenshotController(ScreenshotController controller) {
+    _screenshotController = controller;
+  }
+
+  // Save progress every 5 seconds using context from the provider callback.
+  void start(ProgressContext Function() contextProvider) {
+    _contextProvider = contextProvider;
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => unawaited(_savePeriodicProgress()),
+    );
+  }
+
+  Future<void> _savePeriodicProgress() async {
+    if (_isSavingPeriodicProgress) return;
+    _isSavingPeriodicProgress = true;
+    try {
+      await _saveCurrentProgress();
+    } finally {
+      _isSavingPeriodicProgress = false;
+    }
+  }
+
+  void cancel() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
+
+  void resetThumbnail() {
+    _cachedThumbnail = null;
+    _lastThumbnailTime = null;
+    _initialCaptureDone = false;
+  }
+
+  // Quickly updates history and syncs tracking before player closes without thumbnail capture delay.
+  Future<void> saveExitProgress({
+    required UnifiedMedia? media,
+    required UnifiedEpisode? activeEpisode,
+    required VideoServer? activeServer,
+    required StreamSource? sourceInfo,
+    required VideoEngine engine,
+  }) async {
+    await _saveCurrentProgress(
+      skipCapture: true,
+      ctx: ProgressContext(
+        media: media,
+        activeEpisode: activeEpisode,
+        activeServer: activeServer,
+        sourceInfo: sourceInfo,
+        engine: engine,
+      ),
+    );
+  }
+
+  // Captures one final thumbnail and updates history before player closes.
+  Future<void> captureExitThumbnail({
+    required UnifiedMedia? media,
+    required UnifiedEpisode? activeEpisode,
+    required VideoServer? activeServer,
+    required StreamSource? sourceInfo,
+    required VideoEngine engine,
+  }) async {
+    await _captureThumbnail();
+    await _saveCurrentProgress(
+      skipCapture: true,
+      ctx: ProgressContext(
+        media: media,
+        activeEpisode: activeEpisode,
+        activeServer: activeServer,
+        sourceInfo: sourceInfo,
+        engine: engine,
+      ),
+    );
+  }
+
+  Future<void> _saveCurrentProgress({
+    bool skipCapture = false,
+    ProgressContext? ctx,
+  }) async {
+    if (!_ref.mounted) {
+      cancel();
+      return;
+    }
+
+    // Use provided context or fetch from the controller
+    final context = ctx ?? _contextProvider?.call();
+    if (context == null) return;
+
+    final media = context.media;
+    final activeEpisode = context.activeEpisode;
+    final activeServer = context.activeServer;
+    final sourceInfo = context.sourceInfo;
+
+    if (activeServer == null || media == null) return;
+    if (_ref.read(securityPrefsProvider).incognitoMode) return;
+
+    final engine = context.engine;
+    final position = engine.currentPosition;
+    final duration = engine.currentDuration;
+
+    // Don't save if the player hasn't started playing yet
+    if (position == Duration.zero || duration == Duration.zero) return;
+
+    // Capture thumbnail only when enough time has elapsed
+    if (!skipCapture && _shouldCaptureThumbnail) {
+      await _captureThumbnail();
+      _initialCaptureDone = true;
+    }
+
+    final thumbnail = _cachedThumbnail ?? '';
+
+    final entry = HistoryEntry()
+      ..mediaType = MediaType.ANIME.id
+      ..itemNumber = activeEpisode?.number ?? 1
+      ..mediaId = media.id
+      ..mediaIdMal = media.idMal
+      ..externalIds = media.externalIds
+      ..mediaTitle = media.title.getPreferedTitle
+      ..itemTitle = activeEpisode?.title
+      ..cover = media.cover
+      ..banner = media.banner
+      ..thumbnailUrl = thumbnail.isNotEmpty
+          ? thumbnail
+          : activeEpisode?.thumbnailUrl
+      ..progress = position.inMilliseconds
+      ..total = duration.inMilliseconds
+      ..sourceId = sourceInfo?.id ?? media.sourceId
+      ..sourceName = sourceInfo?.name ?? media.sourceName
+      ..providerId = media.providerId != media.id ? media.providerId : null
+      ..lastUpdated = DateTime.now();
+
+    await _ref.read(historyRepositoryProvider).saveProgress(entry);
+
+    // Also sync to tracking services (MAL, AniList, etc.)
+    if (activeEpisode != null) {
+      await _ref
+          .read(syncEngineProvider)
+          .processPlayback(
+            media: media,
+            episodeNumber: activeEpisode.number,
+            position: position,
+            duration: duration,
+          );
+    }
+  }
+
+  bool get _shouldCaptureThumbnail {
+    if (!_initialCaptureDone) return true;
+    if (_lastThumbnailTime == null) return true;
+    return DateTime.now().difference(_lastThumbnailTime!) >=
+        _thumbnailRefreshInterval;
+  }
+
+  Future<String?> _captureThumbnail() async {
+    if (_screenshotController == null) return _cachedThumbnail;
+    try {
+      final image = await _screenshotController!.capture(pixelRatio: 0.25);
+      if (image != null) {
+        _cachedThumbnail = base64Encode(image);
+        _lastThumbnailTime = DateTime.now();
+      }
+    } catch (_) {}
+    return _cachedThumbnail;
+  }
+}

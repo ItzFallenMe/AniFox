@@ -1,0 +1,667 @@
+import 'package:anifox/common/widgets/smart_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+
+import 'package:anifox/core/router/app_navigator.dart';
+import 'package:anifox/modules/tracking/state/tracker_auth_provider.dart';
+import 'package:anifox/modules/browse/ui/widgets/tabs/about_tab.dart';
+import 'package:anifox/modules/browse/ui/widgets/tabs/episodes_tab.dart';
+import 'package:anifox/modules/browse/state/details_provider.dart';
+import 'package:anifox/modules/playback/models/player_mode.dart';
+import 'package:anifox/modules/reader/models/reader_mode.dart';
+import 'package:anifox/modules/tracking/models/isar_tracker_link.dart';
+import 'package:anifox/modules/tracking/models/models/tracked_list_item.dart';
+import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
+import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
+import 'package:anifox/modules/tracking/engine/tracking_service.dart';
+import 'package:anifox/modules/tracking/ui/widgets/edit_tracker_sheet.dart';
+import 'package:anifox/modules/tracking/ui/widgets/tracker_manager_sheet.dart';
+import 'package:anifox/modules/tracking/state/media_tracking_provider.dart';
+import 'package:anifox/modules/tracking/state/tracker_link_provider.dart';
+import 'package:anifox/modules/tracking/state/tracker_registry.dart';
+import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/common/state/theme_prefs_provider.dart';
+import 'package:anifox/common/state/ui_prefs_provider.dart';
+import 'package:anifox/modules/tv/ui/screens/tv_details_screen.dart';
+import 'package:anifox/common/widgets/app_icon_button.dart';
+import 'package:anifox/common/widgets/app_scaffold.dart';
+
+class DetailsScreen extends ConsumerStatefulWidget {
+  final String tag;
+  final MediaType mediaType;
+  final UnifiedMedia media;
+  final int initialTabIndex;
+  final Object? autoPlayMode;
+
+  const DetailsScreen({
+    super.key,
+    required this.tag,
+    required this.mediaType,
+    required this.media,
+    this.initialTabIndex = 0,
+    this.autoPlayMode,
+  });
+
+  @override
+  ConsumerState<DetailsScreen> createState() => _DetailsScreenState();
+}
+
+class _DetailsScreenState extends ConsumerState<DetailsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  late final FocusNode _keyboardFocusNode;
+  late final ProviderContainer _container;
+
+  @override
+  void initState() {
+    super.initState();
+    _container = ProviderScope.containerOf(context, listen: false);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 1),
+    );
+    _keyboardFocusNode = FocusNode();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      autoLinkTrackers(ref: ref, media: widget.media, isMounted: () => mounted);
+      if (!mounted) return;
+      if (widget.autoPlayMode is PlayerMode) {
+        context.pushPlayer(widget.autoPlayMode as PlayerMode);
+      } else if (widget.autoPlayMode is ReaderModeOnline) {
+        context.pushReader(widget.autoPlayMode as ReaderModeOnline);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    cleanupUnusedTrackerLinks(container: _container, media: widget.media);
+    _tabController.dispose();
+    _keyboardFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final useNewUi = ref.watch(uiPrefsProvider.select((p) => p.useNewUi));
+    if (useNewUi) {
+      return TvDetailsScreen(media: widget.media, tag: widget.tag);
+    }
+
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final colorScheme = theme.colorScheme;
+    final detailsArgs = DetailsArgs(
+      widget.media.id,
+      widget.mediaType,
+      sourceId: widget.media.sourceId,
+      trackerId: widget.media.providerId,
+    );
+
+    final detailsState = ref.watch(detailsProvider(detailsArgs));
+
+    ref.listen(detailsProvider(detailsArgs), (prev, next) {
+    });
+
+    final uiRoundness = ref.watch(
+      themePrefsProvider.select((s) => s.uiRoundness),
+    );
+
+    final displayMedia =
+        detailsState.value?.merge(widget.media) ?? widget.media;
+
+    return AppScaffold(
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                automaticallyImplyLeading: false,
+                expandedHeight: 350.0,
+                leading: AppIconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new),
+                  onPressed: () => context.pop(),
+                ),
+                actions: [
+                  AppIconButton(
+                    tooltip: 'Share',
+                    backgroundColor: theme.colorScheme.secondaryContainer,
+                    foregroundColor: theme.colorScheme.onSecondaryContainer,
+                    radius: uiRoundness,
+                    icon: const Icon(Icons.share, size: 18),
+                    onPressed: () {
+                      final providerId = displayMedia.providerId ?? 'anilist';
+                      final id = displayMedia.id;
+                      final type = widget.mediaType == MediaType.ANIME
+                          ? 'anime'
+                          : 'manga';
+                      String url;
+                      if (providerId == 'myanimelist' || providerId == 'mal') {
+                        url = 'https://myanimelist.net/$type/$id';
+                      } else if (providerId == 'kitsu') {
+                        url = 'https://kitsu.io/$type/$id';
+                      } else {
+                        url = 'https://anilist.co/$type/$id';
+                      }
+                      SharePlus.instance.share(
+                        ShareParams(uri: Uri.parse(url)),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 5),
+                  _TrackerAppBarButton(
+                    media: displayMedia,
+                    uiRoundness: uiRoundness,
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: EdgeInsets.zero,
+                  background: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ShaderMask(
+                          shaderCallback: (Rect bounds) {
+                            return LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white,
+                                Colors.white,
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.3, 1.0],
+                            ).createShader(bounds);
+                          },
+                          blendMode: BlendMode.dstIn,
+                          child: SmartImage(
+                            imageUrl:
+                                displayMedia.banner ?? displayMedia.cover ?? '',
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            errorWidget: (_, __, ___) =>
+                                const Center(child: Icon(Icons.error)),
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Container(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          margin: const EdgeInsets.only(top: 10),
+                          alignment: Alignment.bottomLeft,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(10.0),
+                                child: SizedBox(
+                                  width: 112,
+                                  child: AspectRatio(
+                                    aspectRatio: 2 / 3,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        uiRoundness,
+                                      ),
+                                      child: Hero(
+                                        tag: widget.tag,
+                                        child: SmartImage(
+                                          imageUrl:
+                                              widget.media.cover ??
+                                              displayMedia.cover ??
+                                              '',
+
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                color: colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                          errorWidget: (_, __, ___) =>
+                                              const Icon(Icons.error),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: 10.0,
+                                    right: 10.0,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayMedia.title.getPreferedTitle,
+                                        style: textTheme.titleLarge,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (displayMedia.title.native != null ||
+                                          displayMedia.title.romaji != null)
+                                        Text(
+                                          displayMedia.title.native ??
+                                              displayMedia.title.romaji ??
+                                              '',
+                                          style: textTheme.labelLarge?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 4.0,
+                                        runSpacing: 4.0,
+                                        alignment: WrapAlignment.start,
+                                        children: [
+                                          if (displayMedia.score != null &&
+                                              displayMedia.score! > 0)
+                                            Chip(
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      uiRoundness,
+                                                    ),
+                                              ),
+                                              side: BorderSide.none,
+                                              color: WidgetStatePropertyAll(
+                                                colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              avatar: Icon(
+                                                Icons.star_rounded,
+                                                size: 14,
+                                                color: colorScheme.primary,
+                                              ),
+                                              label: Text(
+                                                displayMedia.score!
+                                                    .toStringAsFixed(1),
+                                                style: textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                          if (displayMedia.format != null &&
+                                              displayMedia.format!.isNotEmpty)
+                                            Chip(
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      uiRoundness,
+                                                    ),
+                                              ),
+                                              side: BorderSide.none,
+                                              color: WidgetStatePropertyAll(
+                                                colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              avatar: Icon(
+                                                Icons.tv_rounded,
+                                                size: 14,
+                                                color: colorScheme.primary,
+                                              ),
+                                              label: Text(
+                                                displayMedia.format!,
+                                                style: textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                          if (displayMedia.status != null &&
+                                              displayMedia.status!.isNotEmpty)
+                                            Chip(
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      uiRoundness,
+                                                    ),
+                                              ),
+                                              side: BorderSide.none,
+                                              color: WidgetStatePropertyAll(
+                                                colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              avatar: Icon(
+                                                Icons
+                                                    .fiber_manual_record_rounded,
+                                                size: 14,
+                                                color:
+                                                    displayMedia.status!
+                                                            .toLowerCase() ==
+                                                        'releasing'
+                                                    ? Colors.greenAccent
+                                                    : colorScheme.primary,
+                                              ),
+                                              label: Text(
+                                                displayMedia.status!
+                                                    .toUpperCase()
+                                                    .replaceAll('_', ' '),
+                                                style: textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                          Chip(
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    uiRoundness,
+                                                  ),
+                                            ),
+                                            side: BorderSide.none,
+                                            color: WidgetStatePropertyAll(
+                                              colorScheme
+                                                  .surfaceContainerHighest,
+                                            ),
+                                            avatar: Icon(
+                                              displayMedia.type ==
+                                                      MediaType.MANGA
+                                                  ? Icons.menu_book_rounded
+                                                  : Icons.video_library_rounded,
+                                              size: 14,
+                                              color: colorScheme.primary,
+                                            ),
+                                            label: Text(
+                                              displayMedia.type ==
+                                                      MediaType.MANGA
+                                                  ? '${displayMedia.chapters ?? '?'} chs'
+                                                  : '${displayMedia.episodes ?? '?'} eps',
+                                              style: textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ),
+                                          if (displayMedia.season != null &&
+                                              displayMedia.season!.isNotEmpty)
+                                            Chip(
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      uiRoundness,
+                                                    ),
+                                              ),
+                                              side: BorderSide.none,
+                                              color: WidgetStatePropertyAll(
+                                                colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              avatar: Icon(
+                                                Icons.calendar_today_rounded,
+                                                size: 14,
+                                                color: colorScheme.primary,
+                                              ),
+                                              label: Text(
+                                                displayMedia.season!,
+                                                style: textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                AboutTabWidget(
+                  media: displayMedia,
+                  onEpisodesTabRequested: () => _tabController.animateTo(1),
+                  uiRoundness: uiRoundness,
+                ),
+                EpisodesTabWidget(media: displayMedia),
+              ],
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: KeyboardListener(
+          focusNode: _keyboardFocusNode,
+          autofocus: true,
+          onKeyEvent: (event) {
+            if (event is! KeyDownEvent) {
+              return;
+            }
+
+            switch (event.logicalKey) {
+              case LogicalKeyboardKey.digit1:
+                _tabController.animateTo(0);
+                break;
+              case LogicalKeyboardKey.digit2:
+                _tabController.animateTo(1);
+                break;
+            }
+          },
+          child: TabBar(
+            dividerHeight: 0,
+            controller: _tabController,
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            textScaler: const TextScaler.linear(1.15),
+            tabs: [
+              const Tab(text: 'About'),
+              Tab(
+                text: widget.mediaType == MediaType.MANGA
+                    ? 'Chapters'
+                    : 'Episodes',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackerAppBarButton extends ConsumerWidget {
+  final UnifiedMedia media;
+  final double uiRoundness;
+
+  const _TrackerAppBarButton({required this.media, required this.uiRoundness});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    final activeTrackers = ref.watch(activeTrackersProvider(media.type));
+
+    if (activeTrackers.isEmpty) return const SizedBox.shrink();
+
+    final trackerLinksAsync = ref.watch(trackerLinkProvider(media.id));
+    final tracker = ref.watch(primaryTrackerProvider);
+
+    final trackingState = ref.watch(
+      mediaTrackingProvider(TrackingQuery(tracker.type, media)),
+    );
+
+    return _buildUI(
+      context,
+      ref,
+      theme,
+      tracker,
+      trackingState,
+      trackerLinksAsync,
+      uiRoundness,
+    );
+  }
+
+  Widget _buildUI(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+    TrackingService tracker,
+    AsyncValue<TrackedListItem?> trackingState,
+    AsyncValue<Map<TrackerType, TrackerMapping>> trackerLinksAsync,
+    double uiRoundness,
+  ) {
+    return trackingState.when(
+      loading: () => _buildButton(
+        theme,
+        label: 'Loading...',
+        icon: Icons.hourglass_empty,
+        isEnabled: false,
+        uiRoundness: uiRoundness,
+      ),
+      error: (err, stack) => _buildButton(
+        theme,
+        label: 'Sync Error',
+        icon: Icons.sync_problem,
+        onPressed: () => _openManager(context),
+        uiRoundness: uiRoundness,
+      ),
+      data: (listItem) {
+        final links = trackerLinksAsync.value ?? {};
+        final isTrackerLinked = tracker.type == TrackerType.local
+            ? true
+            : links.containsKey(tracker.type);
+        final isAuthenticated = tracker.type.isAuthenticated(ref);
+
+        String label = 'Add Tracker';
+        IconData icon = Icons.add;
+
+        if (!isAuthenticated) {
+          label = 'Login to ${tracker.type.displayName}';
+          icon = Icons.login;
+        } else if (isTrackerLinked || tracker.type == TrackerType.local) {
+          if (listItem != null) {
+            label =
+                '${media.type == MediaType.MANGA ? "Ch" : "Ep"} ${listItem.progress.toInt()} • ${listItem.status.getLabelForMedia(media.type)}';
+            icon = Icons.bookmark_added;
+          } else {
+            label = 'Add to ${tracker.type.displayName}';
+            icon = Icons.add_to_photos;
+          }
+        } else if (links.isNotEmpty) {
+          label = 'Manage Trackers';
+          icon = Icons.bookmarks;
+        }
+
+        return _buildButton(
+          theme,
+          label: label,
+          icon: icon,
+          onPressed: () {
+            if (tracker is RemoteTracker && !isAuthenticated) {
+              ref.read(authTokensProvider.notifier).login(tracker);
+              return;
+            }
+            _openManager(context);
+          },
+          onLongPress: (isTrackerLinked && listItem != null)
+              ? () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => EditTrackerSheet(
+                    media: media,
+                    initialItem: listItem,
+                    tracker: tracker,
+                  ),
+                )
+              : null,
+          uiRoundness: uiRoundness,
+        );
+      },
+    );
+  }
+
+  Widget _buildButton(
+    ThemeData theme, {
+    required String label,
+    required IconData icon,
+    required double uiRoundness,
+    bool isEnabled = true,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+  }) {
+    return TextButton.icon(
+      style: TextButton.styleFrom(
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(
+            left: Radius.circular(uiRoundness),
+          ),
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: isEnabled ? onPressed : null,
+      onLongPress: isEnabled ? onLongPress : null,
+      icon: Icon(icon, size: 18, color: theme.colorScheme.onPrimary),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.onPrimary,
+        ),
+      ),
+    );
+  }
+
+  void _openManager(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => TrackerManagerSheet(media: media),
+    );
+  }
+}

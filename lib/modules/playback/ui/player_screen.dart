@@ -1,0 +1,525 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:window_manager/window_manager.dart';
+
+import 'package:anifox/modules/browse/ui/widgets/episodes_panel/episode_list_panel.dart';
+import 'package:anifox/modules/playback/models/player_mode.dart';
+import 'package:anifox/modules/playback/ui/embed_player_screen.dart';
+import 'package:anifox/modules/playback/engine/video_engine.dart';
+import 'package:anifox/modules/playback/ui/widgets/custom_subtitle_overlay.dart';
+import 'package:anifox/modules/playback/ui/widgets/gesture_overlay.dart';
+import 'package:anifox/modules/playback/ui/widgets/keyboard_shortcuts_sheet.dart';
+import 'package:anifox/modules/playback/ui/widgets/player_controls.dart';
+import 'package:anifox/modules/playback/ui/widgets/player_keyboard_listener.dart';
+import 'package:anifox/modules/playback/state/player_controller.dart';
+import 'package:anifox/modules/playback/state/player_prefs_provider.dart';
+import 'package:anifox/common/widgets/app_bottom_sheet.dart';
+
+// Main video player screen.
+class PlayerScreen extends ConsumerStatefulWidget {
+  final PlayerMode mode;
+
+  const PlayerScreen({super.key, required this.mode});
+
+  @override
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  final ScreenshotController _screenshotController = ScreenshotController();
+
+  bool _showControls = false;
+  bool _lockControls = false;
+  bool _showLockedIcon = false;
+  Timer? _controlsTimer;
+  Timer? _lockedIconTimer;
+
+  bool _isFullScreen = false;
+  bool _isEpisodePanelOpen = false;
+  Offset? _lastHoverPosition;
+
+  static const _controlsAutoHideDuration = Duration(seconds: 3);
+
+  String get _mediaTitle {
+    final mode = widget.mode;
+    if (mode is PlayerModeOnline) return mode.media.title.getPreferedTitle;
+    return (mode as PlayerModeOffline).title ?? 'Local Media';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      WakelockPlus.enable();
+    } catch (_) {}
+    _initSystemUI();
+    _initDesktopWindowState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.mode is PlayerModeOffline) {
+        ref
+            .read(playerControllerProvider.notifier)
+            .initialize(
+              widget.mode,
+              screenshotController: _screenshotController,
+            );
+      }
+      _showControlsTemporarily();
+      if (ref.read(playerPrefsProvider).showShortcutsSheetOnStart && mounted) {
+        KeyboardShortcutsSheet.show(context);
+      }
+    });
+  }
+
+  void _initSystemUI() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+      overlays: [],
+    );
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  void _initDesktopWindowState() {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.isFullScreen().then((isFull) {
+        if (mounted) setState(() => _isFullScreen = isFull);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      WakelockPlus.disable();
+    } catch (_) {}
+    _controlsTimer?.cancel();
+    _lockedIconTimer?.cancel();
+    _disposeSystemUI();
+
+    super.dispose();
+  }
+
+  void _disposeSystemUI() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: SystemUiOverlay.values,
+    );
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.isFullScreen().then((isFull) async {
+        if (isFull) {
+          await windowManager.setFullScreen(false);
+          if (Platform.isWindows) {
+            await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+          }
+        }
+      });
+    }
+  }
+
+  void _startLockedIconTimer() {
+    _lockedIconTimer?.cancel();
+    _lockedIconTimer = Timer(const Duration(milliseconds: 2500), () {
+      if (mounted) setState(() => _showLockedIcon = false);
+    });
+  }
+
+  void _showLockedIconTemporarily() {
+    if (!_lockControls) return;
+    if (!_showLockedIcon && mounted) setState(() => _showLockedIcon = true);
+    _startLockedIconTimer();
+  }
+
+  void _toggleLockedIcon() {
+    if (!_lockControls) return;
+    if (_showLockedIcon) {
+      _lockedIconTimer?.cancel();
+      if (mounted) setState(() => _showLockedIcon = false);
+    } else {
+      _showLockedIconTemporarily();
+    }
+  }
+
+  void _lockScreen() {
+    _controlsTimer?.cancel();
+    setState(() {
+      _lockControls = true;
+      _showControls = false;
+      _showLockedIcon = true;
+    });
+    _startLockedIconTimer();
+  }
+
+  void _unlockScreen() {
+    _lockedIconTimer?.cancel();
+    setState(() {
+      _lockControls = false;
+      _showLockedIcon = false;
+    });
+    _showControlsTemporarily();
+  }
+
+  void _showControlsTemporarily() {
+    if (_lockControls) return;
+    _controlsTimer?.cancel();
+    if (!_showControls && mounted) setState(() => _showControls = true);
+    _controlsTimer = Timer(_controlsAutoHideDuration, () {
+      if (mounted) setState(() => _showControls = false);
+    });
+  }
+
+  void _toggleControls() {
+    if (_lockControls) return;
+    if (_showControls) {
+      _controlsTimer?.cancel();
+      setState(() => _showControls = false);
+    } else {
+      _showControlsTemporarily();
+    }
+  }
+
+  void _hideControls() {
+    if (_showControls) {
+      _controlsTimer?.cancel();
+      if (mounted) setState(() => _showControls = false);
+    }
+  }
+
+  Future<void> _toggleFullScreen() async {
+    if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) return;
+
+    final isFull = await windowManager.isFullScreen();
+    if (isFull) {
+      await windowManager.setFullScreen(false);
+      if (Platform.isWindows) {
+        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
+      }
+      if (mounted) setState(() => _isFullScreen = false);
+    } else {
+      if (Platform.isWindows) {
+        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+      }
+      await windowManager.setFullScreen(true);
+      if (mounted) setState(() => _isFullScreen = true);
+    }
+  }
+
+  void _onMouseHover(PointerHoverEvent event) {
+    if (_lockControls) return;
+    if (event.kind == PointerDeviceKind.touch) return;
+    if (_lastHoverPosition == event.position) return;
+    _lastHoverPosition = event.position;
+    _showControlsTemporarily();
+  }
+
+  void _toggleEpisodePanel() {
+    if (widget.mode is! PlayerModeOnline) return;
+    if (_isEpisodePanelOpen) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _isEpisodePanelOpen = true;
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Episodes',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) => Align(
+        alignment: Alignment.centerRight,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.38,
+          height: double.infinity,
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: Consumer(
+              builder: (context, ref, child) {
+                final currentEpisode = ref.watch(
+                  playerControllerProvider.select((s) => s.activeEpisode),
+                );
+                if (currentEpisode == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return EpisodeListPanel(
+                  media: (widget.mode as PlayerModeOnline).media,
+                  currentEpisodeNumber: currentEpisode.number,
+                  onEpisodeTap: (episode, sourceInfo) {
+                    Navigator.of(context).pop();
+                    ref
+                        .read(playerControllerProvider.notifier)
+                        .loadEpisode(episode);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+      transitionBuilder: (_, anim, __, child) => SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+    ).then((_) {
+      if (mounted) setState(() => _isEpisodePanelOpen = false);
+    });
+  }
+
+  bool _isExiting = false;
+
+  Future<void> _handlePop(
+    bool didPop,
+    VideoEngine engine,
+    PlayerController controller,
+  ) async {
+    if (_lockControls) {
+      _unlockScreen();
+      return;
+    }
+    if (didPop || _isExiting) return;
+    _isExiting = true;
+    try {
+      engine.pause();
+    } catch (_) {}
+    await controller.saveExitProgress();
+    if (mounted) {
+      context.pop();
+    }
+  }
+
+  Widget _buildVideoLayer(VideoEngine engine, PlayerState playerState) {
+    return Center(
+      child: Offstage(
+        offstage: playerState.isLoading,
+        child: Screenshot(
+          controller: _screenshotController,
+          child: engine.buildVideoView(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLockedOverlay() {
+    return Positioned.fill(
+      child: AnimatedOpacity(
+        opacity: _showLockedIcon ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 250),
+        child: IgnorePointer(
+          ignoring: !_showLockedIcon,
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 32),
+                child: IconButton.filled(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.55),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  icon: const Icon(Icons.lock_outline_rounded, size: 26),
+                  tooltip: 'Unlock',
+                  onPressed: _unlockScreen,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.mode;
+    if (mode is PlayerModeOnline) {
+      return EmbedPlayerScreen(mode: mode);
+    }
+
+    final playerState = ref.watch(playerControllerProvider);
+    final controller = ref.read(playerControllerProvider.notifier);
+    final engine = controller.engine;
+
+    ref.listen(playerControllerProvider.select((s) => s.error), (prev, next) {
+      if (next != null && next != prev && mounted) {
+        AppBottomSheet.show(
+          context: context,
+          title: 'Playback Error',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.redAccent,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Failed to load media stream',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Text(
+                  next,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'We recommend trying a different streaming host or another episode.',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text(
+                        'Dismiss',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  if (widget.mode is PlayerModeOnline) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _toggleEpisodePanel();
+                        },
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(Icons.playlist_play_rounded),
+                        label: const Text('Change Source / Episode'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) =>
+          _handlePop(didPop, engine, controller),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: PlayerKeyboardListener(
+          engine: engine,
+          controller: controller,
+          onUserInteraction: _showControlsTemporarily,
+          onToggleFullScreen: _toggleFullScreen,
+          onToggleEpisodePanel: _toggleEpisodePanel,
+          onShowShortcutsGuide: () => KeyboardShortcutsSheet.show(context),
+          onExit: () {
+            if (_isEpisodePanelOpen) {
+              Navigator.of(context).pop();
+            } else if (_isFullScreen) {
+              _toggleFullScreen();
+            } else {
+              _handlePop(false, engine, controller);
+            }
+          },
+          child: MouseRegion(
+            cursor: _lockControls
+                ? (_showLockedIcon
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.none)
+                : (_showControls
+                      ? SystemMouseCursors.basic
+                      : SystemMouseCursors.none),
+            onHover: _onMouseHover,
+            child: Stack(
+              children: [
+                _buildVideoLayer(engine, playerState),
+                if (playerState.activeSubtitle != null)
+                  CustomSubtitleOverlay(engine: engine),
+                Positioned.fill(
+                  child: PlayerGestureOverlay(
+                    onToggleControls: _toggleControls,
+                    onHideControls: _hideControls,
+                    onRightClick: _toggleEpisodePanel,
+                    onSeek: engine.seekRelative,
+                    onSetSpeed: engine.setSpeed,
+                    isLocked: _lockControls,
+                    onToggleLockedIcon: _toggleLockedIcon,
+                  ),
+                ),
+                if (_lockControls)
+                  _buildLockedOverlay()
+                else
+                  PlayerControlsOverlay(
+                    showControls: _showControls,
+                    engine: engine,
+                    playerState: playerState,
+                    controller: controller,
+                    mode: widget.mode,
+                    mediaTitle: _mediaTitle,
+                    isFullScreen: _isFullScreen,
+                    onBack: () => _handlePop(false, engine, controller),
+                    onToggleFullScreen: _toggleFullScreen,
+                    onShowEpisodePanel: _toggleEpisodePanel,
+                    onToggleLockControls: _lockScreen,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
