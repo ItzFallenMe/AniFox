@@ -390,6 +390,7 @@
 
 /* Scrollable mobile watch page instead of a full-screen overlay. */
 
+.watch-mobile-bar,
 .watch-mobile-info {
   display: none;
 }
@@ -405,15 +406,93 @@
     background: #0a0a0d;
   }
 
+  .watch-mobile-bar {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    gap: 10px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: #0a0a0d;
+  }
+
+  .watch-mobile-back {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+  }
+
+  .watch-mobile-back svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .watch-mobile-bar-title {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .watch-mobile-server {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
   .vp-root {
     position: relative;
     inset: auto;
     width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-    max-height: 56svh;
+    height: 56.25vw;
+    min-height: 210px;
+    max-height: 62svh;
     overflow: hidden;
     background: #000;
+  }
+
+  /* Player chrome lives in the bar above the video, so the host player keeps
+     the whole stage and every touch. */
+  .vp-top {
+    display: none !important;
+  }
+
+  .vp-video,
+  .vp-frame {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .vp-panel:not(.is-open),
+  .vp-eps:not(.is-open) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .vp-panel.is-open,
+  .vp-eps.is-open {
+    pointer-events: auto;
   }
 
   .vp-top {
@@ -725,5 +804,208 @@
   .rank-num {
     padding-left: 16px;
     font-size: 140px;
+  }
+}
+
+/* Watch page: a player stage with details underneath on every screen size. */
+
+.watch-root {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: 100svh;
+  overflow: visible;
+  padding: 0 0 calc(40px + env(safe-area-inset-bottom));
+  background: #0a0a0d;
+}
+
+.watch-mobile-bar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px clamp(14px, 4vw, 40px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 13, 0.92);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.watch-mobile-back {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+}
+
+.watch-mobile-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.watch-mobile-bar-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-mobile-server {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.vp-root {
+  position: relative;
+  inset: auto;
+  width: min(100% - 32px, 1280px);
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: 16 / 9;
+  margin: 18px auto 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #000;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+/* Move all chrome into the bar above the stage so the host player owns the
+   whole frame and receives every touch and click. */
+.vp-top {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 3;
+  display: flex !important;
+  height: auto !important;
+  padding: 0 !important;
+  background: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+.vp-top .vp-titles,
+.vp-top .vp-back,
+.vp-top .vp-step,
+.vp-top .vp-trigger {
+  display: none !important;
+}
+
+.vp-top .vp-top-actions {
+  display: block;
+  margin: 0;
+}
+
+.vp-top .vp-trigger-wrap {
+  position: static;
+  display: block;
+  pointer-events: auto;
+}
+
+.vp-top .vp-panel {
+  position: fixed !important;
+  z-index: 95;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  width: min(92vw, 540px);
+  max-height: 82svh;
+  transform: translate(-50%, -50%);
+}
+
+.vp-panel:not(.is-open),
+.vp-eps:not(.is-open) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.vp-panel.is-open {
+  pointer-events: auto;
+}
+
+.vp-eps {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 96;
+}
+
+.vp-eps.is-open {
+  display: flex !important;
+  pointer-events: auto;
+}
+
+.watch-mobile-info {
+  display: block;
+  width: min(100% - 32px, 1280px);
+  max-width: none;
+  margin: 0 auto;
+  padding: 26px 2px 10px;
+}
+
+.watch-mobile-info h1 {
+  font-family: var(--font-inter), sans-serif;
+  font-size: clamp(26px, 3.2vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.watch-mobile-overview {
+  max-width: 78ch;
+  font-size: 14px;
+  -webkit-line-clamp: 4;
+}
+
+@media (max-width: 899px) {
+  .watch-root {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .watch-mobile-bar {
+    min-height: 52px;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+
+  .vp-root {
+    width: 100%;
+    max-height: 62svh;
+    margin-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .vp-top .vp-panel {
+    top: auto !important;
+    bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    transform: none;
+    width: auto;
+    right: 12px !important;
+  }
+
+  .vp-eps {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
 }

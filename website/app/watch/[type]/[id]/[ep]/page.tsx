@@ -156,6 +156,34 @@ function WatchContent() {
       className="watch-root"
       data-theme="aurora"
     >
+      <div className="watch-mobile-bar">
+        <Link
+          className="watch-mobile-back"
+          href={titleHref(type === "anime" ? { type, id: data.anilistId ?? id } : { type, id })}
+          aria-label="Back to details"
+        >
+          <ChevronLeftIcon />
+        </Link>
+        <div className="watch-mobile-bar-title">{data.title}</div>
+        {episodes.length > 1 ? (
+          <button
+            type="button"
+            className="watch-mobile-server"
+            onClick={() => setPanel("episodes")}
+          >
+            Episodes
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="watch-mobile-server"
+          onClick={() => setPanel("servers")}
+          aria-label={`Streaming server: ${serverById(server).name}`}
+        >
+          {serverById(server).name}
+        </button>
+      </div>
+
       <div
         className={`vp-root ${episodes.length ? "has-episodes" : ""} ${panel ? "has-panel" : ""}`}
         onClick={() => {
