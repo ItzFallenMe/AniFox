@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_all/webview_all.dart';
 
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
-import 'package:anifox/modules/downloads/data/download_api.dart';
-import 'package:anifox/modules/downloads/state/downloads_provider.dart';
+import 'package:anifox/modules/downloads/data/download_provider.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
 import 'package:anifox/modules/playback/models/player_mode.dart';
 import 'package:anifox/streaming/catalog.dart';
@@ -90,10 +90,15 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       );
   }
 
-  Future<void> _openDownloadSheet() async {
+  Future<void> _openDownloads() async {
     final messenger = ScaffoldMessenger.of(context);
+    final url = DownloadProvider.urlFor(
+      _media,
+      season: _season,
+      episode: _episodeNumber,
+    );
 
-    if (!DownloadApi.isConfigured) {
+    if (url == null) {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Downloads are not configured in this build.'),
@@ -102,103 +107,15 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       return;
     }
 
-    final List<DownloadOption> options;
-    try {
-      options = await DownloadApi().forMedia(
-        _media,
-        season: _season,
-        episode: _episodeNumber,
-      );
-    } on DownloadApiException catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text(error.message)));
-      return;
-    }
-
-    if (!mounted) return;
-    if (options.isEmpty) {
+    final opened = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('No downloads are available for this title yet.'),
-        ),
+        const SnackBar(content: Text('The download page could not be opened.')),
       );
-      return;
     }
-
-    final selected = await showModalBottomSheet<DownloadOption>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text(
-                'Download',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text(
-                'Choose a quality to keep offline.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final option in options)
-                    ListTile(
-                      leading: const Icon(Icons.download_rounded),
-                      title: Text(option.label),
-                      subtitle:
-                          option.detail.isEmpty ? null : Text(option.detail),
-                      onTap: () => Navigator.of(sheetContext).pop(option),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-
-    if (selected == null || !mounted) return;
-
-    try {
-      await ref
-          .read(downloadsProvider.notifier)
-          .start(
-            url: selected.url,
-            mediaTitle: _media.title.getPreferedTitle,
-            episodeLabel: _episodeNumber > 0 ? 'Episode $_episodeNumber' : '',
-            sourceName: selected.label,
-          );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('The download could not be started.')),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Download started.'),
-        action: SnackBarAction(
-          label: 'View',
-          onPressed: () => context.push('/downloads'),
-        ),
-      ),
-    );
   }
 
   Future<void> _loadSource(StreamSource source) async {
@@ -388,7 +305,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
           ),
           IconButton(
             tooltip: 'Download',
-            onPressed: _openDownloadSheet,
+            onPressed: _openDownloads,
             icon: const Icon(Icons.download_rounded, color: Colors.white),
           ),
           IconButton(

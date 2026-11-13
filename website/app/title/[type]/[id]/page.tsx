@@ -107,7 +107,15 @@ export default function TitlePage() {
                 <a href={`https://anilist.co/anime/${data.anilistId}`} target="_blank" rel="noreferrer" className="title-outbound-link">AniList ↗</a>
               ) : null}
             </div>
-            <DownloadOptions type={type} details={data} season={season} />
+            <DownloadOptions
+              type={type}
+              details={data}
+              season={season}
+              episodes={episodes.map((item) => ({
+                number: item.number,
+                label: item.title || `Episode ${item.number}`,
+              }))}
+            />
           </div>
         </div>
       </section>

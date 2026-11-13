@@ -71,17 +71,16 @@ flutter run --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 flutter build apk --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 ```
 
-Downloads use your own licensed provider. Point the app at it at build time;
-`DOWNLOAD_API_KEY` is optional and is sent as a bearer token:
+Downloads use your own licensed provider. Point the app at it at build time:
 
 ```bash
 flutter build apk --release \
-  --dart-define=DOWNLOAD_API_URL="https://your-download-api.example.com" \
-  --dart-define=DOWNLOAD_API_KEY="$DOWNLOAD_API_KEY"
+  --dart-define=DOWNLOAD_URL="https://downloads.example.com"
 ```
 
-The provider must expose `GET /downloads` with the query and response shape
-described in [`website/README.md`](website/README.md). Without these defines the
+AniFox builds the provider's `/movie/{tmdbId}`, `/tv/{tmdbId}/{season}/{episode}`
+or `/anime/{anilistId}/{episode}` page for the current title and opens it, so the
+provider authorises the request by allowed domain. Without the define the
 download button reports that downloads are not configured.
 
 Builds:
@@ -119,9 +118,9 @@ Set `TMDB_API_KEY` in `website/.env.local` for movie and TV metadata. The key is
 used only by the server-side TMDB proxy; there is no key-entry UI or browser
 storage. Anime metadata comes from AniList. Playback stays in the selected
 third-party embed iframe. Saving media for offline use is optional and goes
-through the operator's own licensed download provider (`DOWNLOAD_API_URL`), via
-the server-side `/api/download/*` proxy. The landing page shows the combined
-GitHub release-asset download count.
+through the operator's own licensed download provider
+(`NEXT_PUBLIC_DOWNLOAD_URL`), whose pages are embedded by allowed domain. The
+landing page shows the combined GitHub release-asset download count.
 
 The site deploys to Vercel or Cloudflare (through the OpenNext adapter, see
 [`website/README.md`](website/README.md)). Chromecast requires a custom receiver

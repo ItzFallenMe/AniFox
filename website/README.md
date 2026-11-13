@@ -91,9 +91,8 @@ NEXT_PUBLIC_CAST_RECEIVER_APP_ID=
 # Optional streaming source (listed first when set).
 NEXT_PUBLIC_STREAM_API_URL=
 
-# Optional licensed download provider (server-side only).
-DOWNLOAD_API_URL=
-DOWNLOAD_API_KEY=
+# Optional download provider (embedded, authorised by domain).
+NEXT_PUBLIC_DOWNLOAD_URL=
 ```
 
 ## Streaming source
@@ -110,27 +109,37 @@ embeddable player:
 
 ## Download provider
 
-AniFox does not ship a download source. Point `DOWNLOAD_API_URL` at a provider
-you are licensed to use; the key is sent server-side only.
+AniFox does not ship a download source. Point `NEXT_PUBLIC_DOWNLOAD_URL` at a
+provider you are licensed to use. Its pages are embedded from its own domain
+and it authorises the site by allowed domain — there is no API key or proxy.
+
+The provider must serve one page per title, using the same templates as the
+streaming source:
 
 ```
-GET {DOWNLOAD_API_URL}/downloads?type=movie|tv|anime&tmdbId=&anilistId=&malId=&season=&episode=
-Authorization: Bearer {DOWNLOAD_API_KEY}
+/movie/{tmdbId}
+/tv/{tmdbId}/{season}/{episode}
+/anime/{anilistId}/{episode}
 ```
 
-Expected response:
+Set the variable to the provider's origin only (no trailing slash). The title
+page then shows a download panel that loads the matching page in an iframe,
+with an episode picker for series. Because the request comes from the visitor's
+browser, add this site's domain to the provider's allowlist.
 
-```json
-{
-  "downloads": [
-    { "label": "1080p", "quality": "1080p", "size": "2.1 GB", "format": "mp4", "url": "https://..." }
-  ]
-}
+Example:
+
+```dotenv
+NEXT_PUBLIC_DOWNLOAD_URL=https://downloads.example.com
 ```
 
-Options render on the title page only when the provider is configured and
-returns results. Requests are proxied through `/api/download/downloads` with a
-parameter allowlist, so the key never reaches the browser.
+Example link: `https://downloads.example.com/movie/603`
+
+Example embed:
+
+```html
+<iframe src="https://downloads.example.com/movie/603" width="100%" height="900" frameborder="0"></iframe>
+```
 
 `.env.local` is git-ignored. Do not commit real keys — set them in your hosting
 provider's dashboard instead.

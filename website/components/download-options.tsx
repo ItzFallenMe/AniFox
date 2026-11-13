@@ -1,57 +1,96 @@
 "use client";
 
-import { useMemo } from "react";
-import { useAsync } from "@/lib/hooks";
-import { getDownloads } from "@/lib/downloads";
+import { useEffect, useMemo, useState } from "react";
+import { downloadUrl } from "@/lib/downloads";
 import type { MediaDetails, MediaType } from "@/lib/types";
+
+interface EpisodeChoice {
+  number: number;
+  label: string;
+}
 
 interface DownloadOptionsProps {
   type: MediaType;
   details: MediaDetails;
   season?: number;
+  episodes?: EpisodeChoice[];
 }
 
 /**
- * Renders download choices returned by the operator's download provider.
- * Renders nothing when no provider is configured or none are available.
+ * Embeds the operator's download provider page.
+ *
+ * The provider renders its own quality list and authorises the site by domain,
+ * so AniFox only supplies the route and lets the page run in an iframe.
  */
-export function DownloadOptions({ type, details, season = 1 }: DownloadOptionsProps) {
-  const query = useMemo(
-    () => ({
-      type,
-      tmdbId: details.tmdbId ?? null,
-      anilistId: details.anilistId ?? null,
-      malId: details.malId ?? null,
-      season: type === "tv" ? season : null,
-    }),
-    [type, details.tmdbId, details.anilistId, details.malId, season],
+export function DownloadOptions({ type, details, season = 1, episodes = [] }: DownloadOptionsProps) {
+  const [open, setOpen] = useState(false);
+  const [episode, setEpisode] = useState(1);
+
+  const firstEpisode = episodes[0]?.number ?? 1;
+
+  useEffect(() => {
+    setEpisode(firstEpisode);
+  }, [firstEpisode, season]);
+
+  const src = useMemo(
+    () =>
+      downloadUrl({
+        type,
+        tmdbId: details.tmdbId ?? null,
+        anilistId: details.anilistId ?? null,
+        season,
+        episode: type === "movie" ? null : episode,
+      }),
+    [type, details.tmdbId, details.anilistId, season, episode],
   );
 
-  const { data, loading } = useAsync(() => getDownloads(query), [query.type, query.tmdbId, query.anilistId, query.malId, query.season]);
-
-  if (loading || !data?.length) return null;
+  if (!src) return null;
 
   return (
-    <div className="download-options">
-      <span className="download-options-label">Download</span>
-      <div className="download-options-list">
-        {data.map((option, index) => (
-          <a
-            key={`${option.url}-${index}`}
-            href={option.url}
-            target="_blank"
-            rel="noreferrer"
-            download
-            className="download-option"
+    <section className={`downloads ${open ? "is-open" : ""}`} aria-label="Downloads">
+      <div className="downloads-head">
+        <div className="downloads-copy">
+          <span className="downloads-kicker">OFFLINE</span>
+          <h2>Download {type === "movie" ? "this movie" : "this episode"}</h2>
+          <p>Opens our download partner inside the page and keeps you on AniFox.</p>
+        </div>
+        <div className="downloads-controls">
+          {open && episodes.length > 1 ? (
+            <label className="downloads-episode">
+              <span className="sr-only">Episode to download</span>
+              <select value={episode} onChange={(event) => setEpisode(Number(event.target.value))}>
+                {episodes.map((item) => (
+                  <option key={item.number} value={item.number}>
+                    E{item.number} · {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            className="downloads-toggle"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
           >
-            <span className="download-option-quality">{option.quality ?? option.label}</span>
-            <span className="download-option-meta">
-              {[option.format, option.size].filter(Boolean).join(" · ") || option.label}
-            </span>
-            <span className="download-option-icon" aria-hidden="true">↓</span>
-          </a>
-        ))}
+            <span>{open ? "Hide downloads" : "Choose a download"}</span>
+            <span className="downloads-toggle-icon" aria-hidden="true">{open ? "−" : "↓"}</span>
+          </button>
+        </div>
       </div>
-    </div>
+
+      {open ? (
+        <div className="downloads-frame">
+          <iframe
+            key={src}
+            src={src}
+            title={`Download options for ${details.title}`}
+            loading="lazy"
+            allow="autoplay; fullscreen; encrypted-media"
+            referrerPolicy="origin"
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }

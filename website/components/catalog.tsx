@@ -81,6 +81,7 @@ export function Catalog({ kind }: { kind: Kind }) {
   }, [kind]);
 
   const header = headers[kind];
+  const numeral = kind === "movie" ? "01" : kind === "tv" ? "02" : "03";
   const featured = data?.rails.flatMap((rail) => rail.items).find((item) => item.backdrop);
 
   return (
@@ -96,9 +97,14 @@ export function Catalog({ kind }: { kind: Kind }) {
             {featured?.backdrop ? <img src={featured.backdrop} alt="" className="catalog-spotlight-art" /> : null}
             <div className="catalog-spotlight-shade" />
             <div className="catalog-spotlight-copy">
-              <span className="catalog-spotlight-kicker">ANI FOX COLLECTION · {kind.toUpperCase()}</span>
-              <h1>{header.title}</h1>
-              <p className="catalog-spotlight-subtitle">{header.subtitle}</p>
+              <div className="catalog-spotlight-head">
+                <span className="catalog-spotlight-numeral" aria-hidden="true">{numeral}</span>
+                <div className="catalog-spotlight-heading">
+                  <span className="catalog-spotlight-kicker">ANI FOX COLLECTION · {kind.toUpperCase()}</span>
+                  <h1>{header.title}</h1>
+                  <p className="catalog-spotlight-subtitle">{header.subtitle}</p>
+                </div>
+              </div>
               {featured ? (
                 <div className="catalog-featured-copy">
                   <span className="catalog-featured-label">FEATURED PICK</span>
@@ -116,7 +122,7 @@ export function Catalog({ kind }: { kind: Kind }) {
                 </div>
               ) : null}
             </div>
-            <span className="catalog-spotlight-index">DISCOVER <i /> {kind === "movie" ? "01" : kind === "tv" ? "02" : "03"}</span>
+            <span className="catalog-spotlight-index">DISCOVER <i /> {numeral}</span>
           </section>
 
           <div className="catalog-rails">
