@@ -25,7 +25,7 @@ function BackToTop() {
       type="button"
       aria-label="Back to top"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className={`fixed bottom-[calc(74px+env(safe-area-inset-bottom))] right-4 z-[45] flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#141419]/90 text-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition duration-300 ease-smooth hover:bg-[#1f1f26] hover:text-fox-soft active:scale-95 md:bottom-6 md:right-8 ${
+      className={`fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-4 z-[45] flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#141419]/90 text-white/80 shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition duration-300 ease-smooth hover:bg-[#1f1f26] hover:text-fox-soft active:scale-95 md:bottom-6 md:right-8 ${
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
       }`}
     >

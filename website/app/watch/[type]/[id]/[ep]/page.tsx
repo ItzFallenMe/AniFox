@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { CastButton } from "@/components/cast-button";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { ErrorNotice } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
 import { getAnimeDetails } from "@/lib/anilist";
@@ -383,6 +384,66 @@ function WatchContent() {
           </div>
         </div>
       </div>
+
+      <section className="watch-mobile-info" aria-label="Title details">
+        <div className="watch-mobile-head">
+          <div className="watch-mobile-copy">
+            <p className="watch-mobile-kicker">
+              {type === "movie" ? "MOVIE" : type === "tv" ? "TV SERIES" : "ANIME"}
+              {data.year ? ` · ${data.year}` : null}
+            </p>
+            <h1>{data.title}</h1>
+            <div className="watch-mobile-meta">
+              {data.score != null && data.score > 0 ? (
+                <span className="watch-mobile-score">★ {data.score.toFixed(1)}</span>
+              ) : null}
+              {data.runtime ? <span>{data.runtime} min</span> : null}
+              {data.genres?.slice(0, 2).map((genre) => <span key={genre}>{genre}</span>)}
+            </div>
+          </div>
+          <Link
+            className="watch-mobile-details"
+            href={titleHref(type === "anime" ? { type, id: data.anilistId ?? id } : { type, id })}
+          >
+            Details <span aria-hidden="true">›</span>
+          </Link>
+        </div>
+
+        <div className="watch-mobile-actions">
+          <button type="button" onClick={() => setPanel("servers")}>
+            <ServerIcon /> {serverById(server).name}
+          </button>
+          {episodes.length > 1 ? (
+            <button type="button" onClick={() => setPanel("episodes")}>
+              <ListIcon /> Episodes
+            </button>
+          ) : null}
+          <CastButton src={embedUrl} title={data.title} />
+        </div>
+
+        {data.overview ? <p className="watch-mobile-overview">{data.overview}</p> : null}
+
+        {episodes.length > 1 ? (
+          <div className="watch-mobile-chips" aria-label="Episodes">
+            {episodes.slice(0, 40).map((item) => {
+              const query = type === "tv" && season > 1 ? `?season=${season}` : "";
+              const current = item.number === episode;
+              return (
+                <Link
+                  key={item.number}
+                  href={`${watchBase}/${item.number}${query}`}
+                  aria-current={current ? "true" : undefined}
+                  className={current ? "is-current" : ""}
+                >
+                  E{item.number}
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
+
+      <MobileTabBar />
     </div>
   );
 }

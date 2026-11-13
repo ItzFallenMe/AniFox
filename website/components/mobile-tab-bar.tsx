@@ -6,7 +6,7 @@ import { AnimeIcon, HomeIcon, MangaIcon, MovieIcon, SearchIcon, TvIcon } from ".
 
 const tabs = [
   { href: "/home", label: "Home", Icon: HomeIcon },
-  { href: "/explore", label: "Explore", Icon: SearchIcon },
+  { href: "/explore", label: "Search", Icon: SearchIcon },
   { href: "/tv", label: "TV", Icon: TvIcon },
   { href: "/anime", label: "Anime", Icon: AnimeIcon },
   { href: "/movies", label: "Movies", Icon: MovieIcon },

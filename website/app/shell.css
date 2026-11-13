@@ -315,6 +315,305 @@
   }
 }
 
+/* Floating mobile navigation and scrollable mobile player. */
+
+@media (max-width: 899px) {
+  .mobile-tabs {
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 12px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(12, 12, 16, 0.86);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+  }
+
+  .mobile-tabs-inner {
+    max-width: none;
+    height: 56px;
+    gap: 2px;
+    padding: 4px;
+  }
+
+  .mobile-tab {
+    gap: 2px;
+    border-radius: 999px;
+    font-size: 8.5px;
+  }
+
+  .mobile-tab svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .mobile-tab.is-active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .mobile-tab.is-active::before {
+    display: none;
+  }
+
+  .app-main {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .app-footer {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .app-rail-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .app-rail-nav {
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .app-rail-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-rail-link:focus-visible,
+  .app-rail-utility:focus-visible,
+  .app-rail-app-link:focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.28);
+    outline-offset: -1px;
+  }
+}
+
+/* Scrollable mobile watch page instead of a full-screen overlay. */
+
+.watch-mobile-info {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  .watch-root {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    min-height: 100svh;
+    overflow: visible;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    background: #0a0a0d;
+  }
+
+  .vp-root {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: 56svh;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .vp-top {
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+    background: linear-gradient(180deg, rgba(3, 3, 5, 0.72), transparent);
+  }
+
+  .vp-titles {
+    display: none;
+  }
+
+  .vp-top-actions {
+    margin-left: auto;
+    gap: 6px;
+  }
+
+  .vp-top-actions .vp-step {
+    display: none;
+  }
+
+  .vp-top-actions .vp-trigger[aria-haspopup="dialog"] {
+    display: none;
+  }
+
+  .vp-back {
+    width: 34px;
+    height: 34px;
+  }
+
+  .vp-panel {
+    position: fixed !important;
+    z-index: 95;
+    top: auto !important;
+    right: 12px !important;
+    bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    left: 12px !important;
+    max-height: 62svh;
+  }
+
+  .vp-panel-box {
+    max-height: 62svh;
+    overflow: auto;
+  }
+
+  .vp-eps {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 96;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .watch-mobile-info {
+    display: block;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 22px 18px 10px;
+  }
+
+  .watch-mobile-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .watch-mobile-copy {
+    min-width: 0;
+  }
+
+  .watch-mobile-kicker {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+
+  .watch-mobile-info h1 {
+    margin: 6px 0 0;
+    color: #fff;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .watch-mobile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .watch-mobile-meta > span + span::before {
+    margin-right: 10px;
+    color: rgba(255, 255, 255, 0.25);
+    content: "·";
+  }
+
+  .watch-mobile-score {
+    color: #ffc27f;
+  }
+
+  .watch-mobile-score::before {
+    display: none;
+  }
+
+  .watch-mobile-details {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .watch-mobile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .watch-mobile-actions > button,
+  .watch-mobile-actions > a {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    gap: 7px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .watch-mobile-actions svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .watch-mobile-overview {
+    display: -webkit-box;
+    margin: 16px 0 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 13px;
+    line-height: 1.7;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+
+  .watch-mobile-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .watch-mobile-chips a {
+    display: inline-flex;
+    min-width: 44px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .watch-mobile-chips a.is-current {
+    background: #f9f9f9;
+    color: #000;
+  }
+}
+
 .rank-num {
   z-index: 10;
   margin-right: -10px;
@@ -331,6 +630,29 @@
   transform: scaleX(1.2);
   transform-origin: left;
   user-select: none;
+}
+
+.app-rail-link:hover,
+.app-rail-utility:hover,
+.app-rail-app-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app-rail-nav {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.app-rail-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.app-rail-link:focus-visible,
+.app-rail-utility:focus-visible,
+.app-rail-app-link:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.28);
+  outline-offset: -1px;
 }
 
 .stream-hero-skeleton {
