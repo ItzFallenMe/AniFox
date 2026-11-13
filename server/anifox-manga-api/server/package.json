@@ -1,0 +1,24 @@
+{
+  "name": "anifox-manga-server",
+  "version": "1.0.0",
+  "description": "AniFox manga API — search, details, chapters and page images.",
+  "license": "GPL-3.0",
+  "private": true,
+  "main": "app.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "nodemon": "^2.0.22",
+    "request-promise": "^4.2.6"
+  }
+}

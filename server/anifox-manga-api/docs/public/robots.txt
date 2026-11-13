@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://anifox-manga-api.vercel.app/sitemap-index.xml

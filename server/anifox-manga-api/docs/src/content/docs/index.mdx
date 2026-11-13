@@ -1,0 +1,35 @@
+---
+title: Welcome to AniFox Manga API API
+description: Welcome to AniFox Manga API API ( manga api )– your premier gateway to a vast repository of manga data. Seamlessly integrate and explore the world of manga with our user-friendly API. Access comprehensive documentation, contribute to our open-source GitHub repository, and kickstart your journey with easy-to-follow guides. Empower your projects with AniFox Manga API API and unlock endless possibilities for manga enthusiasts and developers alike.
+template: splash
+hero:
+  tagline: your go-to manga API for accessing a vast repository of manga data freely.
+  image:
+    file: ./houston.webp
+  actions:
+    - text: Read Docs
+      link: /introduction
+      icon: right-arrow
+      variant: primary
+    - text: Github repo
+      link: https://github.com/kiraaziz/AniFox Manga API-api
+      icon: github
+	  variant: secondary
+---
+export const prerender = true;
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## About
+<CardGrid>
+  <Card title="API Overview" icon="rocket">
+    Discover manga effortlessly with our API. Get a full list in one request and delve into single manga details easily.
+  </Card>
+
+  <Card title="Search Support" icon="pen">
+    Enable quick and efficient manga searches with advanced features, ensuring users find their favorites effortlessly.
+  </Card>
+
+  <Card title="Integration with Next.js" icon="document">
+    Seamlessly integrate our manga API with Next.js for dynamic and responsive web applications.
+  </Card>
+</CardGrid>
