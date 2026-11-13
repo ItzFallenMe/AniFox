@@ -1,0 +1,66 @@
+name: Bug report
+description: Something does not work as expected
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please search existing issues first and
+        remove any personal data or API keys from logs and screenshots.
+  - type: dropdown
+    id: client
+    attributes:
+      label: Client
+      options:
+        - Flutter app
+        - Web client (website/)
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Release version, or the commit you built from.
+      placeholder: "2.1.5+4 / a1b2c3d"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: OS and device or browser.
+      placeholder: "Android 14, Pixel 7 / Chrome 131 on Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the error text if there is one. Do not paste keys.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, logs, whether a custom stream or download provider is configured.
+    validations:
+      required: false

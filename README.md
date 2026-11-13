@@ -32,7 +32,6 @@ The repository has two clients and one optional service:
 | --- | --- | --- |
 | Flutter app | `lib/` | Flutter, Riverpod, Material 3 |
 | Web client and landing page | `website/` | Next.js, TypeScript, Tailwind |
-| Manga API (optional) | `server/anifox-manga-api/` | Vercel serverless |
 
 ## Highlights
 
@@ -164,9 +163,10 @@ contract, Chromecast setup and deploy commands.
 
 ## Manga API
 
-`server/anifox-manga-api/` is a standalone Vercel project. Set `DATAPROVIDER_URL`
-on the deployment to the upstream catalog host, then point clients at its public
-root URL. Deploy the API before enabling manga in the app or on the site.
+The manga catalog and reader need a separate manga API deployment; it is not
+bundled in this repository. Point clients at its public root URL with
+`MANGA_API_URL` (site and app) once it is running. Without it, the rest of
+AniFox works normally and the manga screens stay empty.
 
 ## Project structure
 
@@ -179,7 +179,6 @@ lib/
   streaming/   bundled embed hosts, URL building, metadata sources
   assets/      images and icons
 website/       Next.js landing page and web client
-server/        optional Vercel manga API
 ```
 
 ## CI and releases
@@ -215,6 +214,14 @@ git push origin v2.1.5
   Check the API URL first, then the site or app configuration.
 - **Chromecast button is disabled** — the web build has no
   `NEXT_PUBLIC_CAST_RECEIVER_APP_ID`, or the site is not served over HTTPS.
+
+## Community
+
+- [Contributing guide](CONTRIBUTING.md) — setup, checks and pull request rules
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) — report vulnerabilities privately
+- [Issues](https://github.com/ItzFallenMe/AniFox/issues) and
+  [discussions](https://github.com/ItzFallenMe/AniFox/discussions)
 
 ## Legal
 

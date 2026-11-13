@@ -5,6 +5,14 @@
   "description": "AniFox web client — anime, movies and TV streaming UI",
   "author": "ItzFallenMe",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ItzFallenMe/AniFox.git",
+    "directory": "website"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

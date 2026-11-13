@@ -2,6 +2,15 @@ name: anifox
 description: "AniFox — open-source anime, movie and TV streaming client."
 publish_to: "none"
 version: 2.1.5+4
+homepage: https://github.com/ItzFallenMe/AniFox
+repository: https://github.com/ItzFallenMe/AniFox
+issue_tracker: https://github.com/ItzFallenMe/AniFox/issues
+topics:
+  - flutter
+  - anime
+  - streaming
+  - movies
+  - tv
 
 environment:
   sdk: ^3.9.2

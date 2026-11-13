@@ -120,3 +120,6 @@ freebuff-chat-*.md
 # Nix build results
 result
 result-*
+
+# Nested local project, not part of this repository
+server/

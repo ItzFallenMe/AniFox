@@ -231,6 +231,11 @@ Created and maintained by [ItzFallenMe](https://github.com/ItzFallenMe).
 See [`/credits`](app/credits/page.tsx) and the
 [repository](https://github.com/ItzFallenMe/AniFox).
 
+## Contributing
+
+See the root [`CONTRIBUTING.md`](../CONTRIBUTING.md) for setup, checks and pull
+request rules. Security reports go through [`SECURITY.md`](../SECURITY.md).
+
 ## License
 
 GPL-3.0-or-later. See the repository root [`LICENSE`](../LICENSE).
