@@ -36,15 +36,17 @@ cd server
 vercel
 ```
 
-`vercel.json` routes every request to the Express app in `api/index.js`. Set
-`DATAPROVIDER_URL` in the project's environment variables to the upstream
-provider's root URL (defaults to `https://ww6.mangakakalot.tv`). Use the Vercel
-deployment's root URL as `MANGA_API_URL` in AniFox; do not add `/api` to that
-client setting.
+`vercel.json` routes every request to the Express app in `api/index.js`. Use the
+Vercel deployment's root URL as `MANGA_API_URL` in AniFox; do not add `/api` to
+that client setting.
 
-The API is a metadata and page-image proxy for the configured third-party
-provider. It does not store content. Provider availability and terms may change;
-deployers are responsible for choosing a lawful, reachable upstream service.
+Metadata and page images come from the public
+[MangaDex API](https://api.mangadex.org/docs/). No API key is required. Set
+`MANGADEX_API_URL` only when you need to route requests through your own proxy
+or a mirror; the default is `https://api.mangadex.org`.
+
+The API is a metadata and page-image proxy. It does not store content. Respect
+MangaDex's rate limits and terms when deploying it.
 
 ## License
 

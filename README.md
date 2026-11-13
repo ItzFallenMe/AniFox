@@ -180,9 +180,9 @@ cp .env.example .env
 npm run dev
 ```
 
-Deploy the `server` directory to Vercel and set `DATAPROVIDER_URL` there to the
-upstream provider's root URL (defaults to `https://ww6.mangakakalot.tv`). Then
-point the clients at the deployment:
+Metadata and page images come from the public [MangaDex API](https://api.mangadex.org/docs/);
+no API key is required. Deploy the `server` directory to Vercel, then point the
+clients at the deployment:
 
 | Client | Setting |
 | --- | --- |
@@ -190,8 +190,8 @@ point the clients at the deployment:
 | App | `--dart-define=MANGA_API_URL=https://your-manga-api.vercel.app` |
 
 Use the deployment root URL in both cases; do not append `/api`. A `502` from
-the API means the configured upstream provider could not be reached, so check
-`DATAPROVIDER_URL` and the provider's availability first.
+the API means MangaDex could not be reached, so retry or check
+`MANGADEX_API_URL` if you pointed it at a proxy.
 
 ## Project structure
 

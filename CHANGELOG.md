@@ -25,6 +25,8 @@ All notable changes to AniFox are recorded here. The format follows
 
 ### Fixed
 
+- Manga API uses the public MangaDex API after the old scraper provider went
+  offline, so catalog, search, chapters and reader pages work again.
 - Android CI installs the Rust toolchain and targets required by `rhttp`.
 - Download, server and episode panels stay hidden until opened, so they no
   longer intercept touches on the player.
