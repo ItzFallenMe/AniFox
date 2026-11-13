@@ -54,13 +54,13 @@ export default function StreamingHomePage() {
   const rails = useMemo<RailData[]>(() => {
     if (!data) return [];
     const list: RailData[] = [];
-    if (data.animeTrending.length) list.push({ title: "Trending Anime", items: data.animeTrending });
-    if (data.movies.length) list.push({ title: "Popular Movies", items: data.movies });
-    if (data.animePopular.length) list.push({ title: "Popular Anime", items: data.animePopular });
+    if (data.movies.length) list.push({ title: "New Movies", items: data.movies });
     if (data.tv.length) list.push({ title: "Popular TV Shows", items: data.tv });
+    if (data.animeTrending.length) list.push({ title: "Trending Anime", items: data.animeTrending });
     if (data.topMovies.length) list.push({ title: "Top Rated Movies", items: data.topMovies });
-    if (data.animeTop.length) list.push({ title: "Top Rated Anime", items: data.animeTop });
     if (data.upcoming.length) list.push({ title: "Upcoming Movies", items: data.upcoming });
+    if (data.animePopular.length) list.push({ title: "Popular Anime", items: data.animePopular });
+    if (data.animeTop.length) list.push({ title: "Top Rated Anime", items: data.animeTop });
     return list;
   }, [data]);
 

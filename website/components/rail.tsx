@@ -12,7 +12,7 @@ interface RailProps extends RailData {
   href?: string;
 }
 
-export function Rail({ title, items, wide = false, ranked = false, href = "/explore" }: RailProps) {
+export function Rail({ title, items, ranked = false, href = "/explore" }: RailProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -39,60 +39,65 @@ export function Rail({ title, items, wide = false, ranked = false, href = "/expl
   function scrollBy(direction: 1 | -1) {
     const node = scroller.current;
     if (!node) return;
-    node.scrollBy({ left: direction * node.clientWidth * 0.82, behavior: "smooth" });
+    node.scrollBy({ left: direction * node.clientWidth * 0.85, behavior: "smooth" });
   }
 
   if (!items.length) return null;
 
   return (
-    <section className={`media-rail px-6 pt-7 lg:px-16 ${ranked ? "media-rail-ranked" : ""}`}>
-      <div className="media-rail-heading mb-1 flex items-center justify-between gap-4">
-        <h2 className="media-rail-title truncate text-[17px] font-semibold tracking-[-0.01em] text-white lg:text-[19px]">
+    <section className="px-6 pt-8 lg:px-20">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h2 className="truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
           {title}
         </h2>
-        <div className="flex items-center gap-3">
-          <Link
-            href={href}
-            className="media-rail-more group/va flex shrink-0 items-center gap-1 py-1 text-[12px] font-medium tracking-[-0.01em] text-white/45 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
-          >
-            <span className="relative after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover/va:after:scale-x-100 group-focus-visible/va:after:scale-x-100">
-              View all
-            </span>
-            <ChevronRightIcon className="h-[13px] w-[13px] transition-transform duration-300 group-hover/va:translate-x-0.5 group-focus-visible/va:translate-x-0.5" />
-          </Link>
-          <div className="media-rail-arrows hidden md:flex">
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-1 md:flex">
             <button
               type="button"
               aria-label={`Scroll ${title} left`}
               onClick={() => scrollBy(-1)}
               disabled={atStart}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
             >
-              <ChevronLeftIcon />
+              <ChevronLeftIcon className="h-4 w-4" />
             </button>
             <button
               type="button"
               aria-label={`Scroll ${title} right`}
               onClick={() => scrollBy(1)}
               disabled={atEnd}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
             >
-              <ChevronRightIcon />
+              <ChevronRightIcon className="h-4 w-4" />
             </button>
           </div>
+          <Link
+            href={href}
+            className="group/va flex shrink-0 items-center gap-1.5 py-1 text-[13px] font-medium tracking-[-0.01em] text-white/50 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
+          >
+            <span className="relative after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover/va:after:scale-x-100 group-focus-visible/va:after:scale-x-100">
+              View all
+            </span>
+            <ChevronRightIcon className="h-[13px] w-[13px]" />
+          </Link>
         </div>
       </div>
 
-      <div
-        ref={scroller}
-        className={`stagger no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth ${wide ? "py-4" : "py-3"}`}
-      >
-        {items.map((media, cardIndex) => (
-          <MediaCard
-            key={media.key}
-            media={media}
-            wide={wide}
-            rank={ranked && cardIndex < 10 ? cardIndex + 1 : undefined}
-          />
-        ))}
+      <div className="group/row relative -mx-2">
+        <div
+          ref={scroller}
+          role="group"
+          aria-label={title}
+          className="no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth overscroll-x-contain px-2 pt-4"
+        >
+          {items.map((media, cardIndex) => (
+            <MediaCard
+              key={media.key}
+              media={media}
+              rank={ranked && cardIndex < 10 ? cardIndex + 1 : undefined}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

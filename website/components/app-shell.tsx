@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { TopNav } from "./top-nav";
 import { Sidebar } from "./sidebar";
 import { MobileTabBar } from "./mobile-tab-bar";
 import { ArrowUpIcon, GithubIcon } from "./icons";
@@ -89,7 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-frame flex min-h-screen flex-col overflow-x-clip bg-black text-white">
       <Sidebar />
-      <TopNav />
+      <Link href="/home" aria-label="AniFox home" className="mobile-brand md:hidden">
+        <Image src="/logo.png" alt="" width={48} height={48} priority />
+      </Link>
       <main key={pathname} className="app-main relative z-10 flex-1 animate-fade-in pb-10">
         {children}
       </main>

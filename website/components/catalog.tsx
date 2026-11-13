@@ -1,11 +1,9 @@
 "use client";
 
+import { Hero } from "./hero";
 import { Rail } from "./rail";
 import { PageSkeleton } from "./notice";
-import Link from "next/link";
-import { PlayIcon, StarIcon } from "./icons";
 import { useAsync } from "@/lib/hooks";
-import { titleHref, watchHref } from "@/lib/routes";
 import { getMovieList, getTvList } from "@/lib/tmdb";
 import { getPopularAnime, getTopRatedAnime, getTrendingAnime } from "@/lib/anilist";
 import type { Media, RailData } from "@/lib/types";
@@ -35,9 +33,9 @@ async function movieRails(): Promise<RailData[]> {
     getMovieList("upcoming").catch((): Media[] => []),
   ]);
   return [
-    { title: "Popular Movies", items: popular },
-    { title: "Top Rated Movies", items: top },
+    { title: "New Movies", items: popular },
     { title: "Now Playing", items: nowPlaying },
+    { title: "Top Rated Movies", items: top },
     { title: "Upcoming", items: upcoming },
   ].filter((rail) => rail.items.length > 0);
 }
@@ -51,8 +49,8 @@ async function tvRails(): Promise<RailData[]> {
   ]);
   return [
     { title: "Popular TV Shows", items: popular },
-    { title: "Top Rated TV Shows", items: top },
     { title: "Airing Today", items: airing },
+    { title: "Top Rated TV Shows", items: top },
     { title: "On The Air", items: onAir },
   ].filter((rail) => rail.items.length > 0);
 }
@@ -80,52 +78,32 @@ export function Catalog({ kind }: { kind: Kind }) {
     };
   }, [kind]);
 
-  const header = headers[kind];
-  const featured = data?.rails.flatMap((rail) => rail.items).find((item) => item.backdrop);
+  const rails = data?.rails ?? [];
+  const heroItems = rails
+    .flatMap((rail) => rail.items)
+    .filter((item, index, list) => item.backdrop && list.findIndex((entry) => entry.key === item.key) === index)
+    .slice(0, 8);
 
   return (
     <div className={`catalog-page catalog-page-${kind} pb-10`}>
       {loading ? (
         <>
-          <div className="catalog-spotlight-skeleton skeleton" />
+          <div className="skeleton h-[75vh] w-full opacity-30 md:aspect-video md:h-auto" />
           <PageSkeleton />
         </>
       ) : (
         <>
-          <section className="catalog-spotlight">
-            {featured?.backdrop ? <img src={featured.backdrop} alt="" className="catalog-spotlight-art" /> : null}
-            <div className="catalog-spotlight-shade" />
-            <div className="catalog-spotlight-copy">
-              <div className="catalog-spotlight-head">
-                <div className="catalog-spotlight-heading">
-                  <h1>{header.title}</h1>
-                  <p className="catalog-spotlight-subtitle">{header.subtitle}</p>
-                </div>
-              </div>
-              {featured ? (
-                <div className="catalog-featured-copy">
-                  <span className="catalog-featured-label">FEATURED PICK</span>
-                  <h2>{featured.title}</h2>
-                  <div className="catalog-featured-meta">
-                    {featured.score != null ? <span><StarIcon /> {featured.score.toFixed(1)}</span> : null}
-                    {featured.year ? <span>{featured.year}</span> : null}
-                    {featured.genres?.slice(0, 2).map((genre) => <span key={genre}>{genre}</span>)}
-                  </div>
-                  {featured.overview ? <p>{featured.overview}</p> : null}
-                  <div className="catalog-spotlight-actions">
-                    <Link href={watchHref(featured.type, featured.id, 1, 1)}><PlayIcon /> Watch now</Link>
-                    <Link href={titleHref(featured)}>More info <span>↗</span></Link>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
+          <Hero items={heroItems} />
           <div className="catalog-rails">
-            {(data?.rails ?? []).map((rail) => (
+            {rails.map((rail) => (
               <Rail key={rail.title} {...rail} />
             ))}
           </div>
+          {!rails.length ? (
+            <div className="px-6 py-24 text-center text-sm text-white/50">
+              Nothing to show for {headers[kind].title.toLowerCase()} yet.
+            </div>
+          ) : null}
         </>
       )}
     </div>

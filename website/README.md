@@ -35,8 +35,8 @@
   bar keeps the brand and search.
 - **Cinematic home** — a 16:9 hero billboard with slab-serif titles, a numbered
   **Trending Right Now** rail and horizontally scrollable poster rails.
-- **Editorial catalogs** — Movies, TV and Anime share one spotlight layout with
-  filterable rails and hover previews.
+- **Consistent catalogs** — Movies, TV and Anime open with the same billboard
+  and rail feed as the home page.
 - **Search** — combined AniList + TMDB results with type filters and URL state.
 - **Details** — cinematic title pages with synopsis, ratings, cast, seasons and
   episode lists.

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Alfa_Slab_One, Bebas_Neue, Inter } from "next/font/google";
+import { Bebas_Neue, Inter } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./player.css";
@@ -14,13 +14,6 @@ const bebas = Bebas_Neue({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-bebas",
-  display: "swap",
-});
-
-const alfa = Alfa_Slab_One({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-alfa",
   display: "swap",
 });
 
@@ -51,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${bebas.variable} ${alfa.variable}`}>
+    <html lang="en" className={`${inter.variable} ${bebas.variable}`}>
       <body className="bg-ink font-sans antialiased">
         <AppShell>{children}</AppShell>
       </body>
