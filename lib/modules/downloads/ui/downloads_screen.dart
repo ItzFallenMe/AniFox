@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 
+import 'package:anifox/modules/downloads/data/download_store.dart';
 import 'package:anifox/modules/downloads/models/download_task.dart';
 import 'package:anifox/modules/downloads/state/downloads_provider.dart';
 
@@ -15,7 +16,19 @@ class DownloadsScreen extends ConsumerWidget {
     final downloads = ref.watch(downloadsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Downloads')),
+      appBar: AppBar(
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Downloads'),
+            Text(
+              DownloadStore.folderLabel,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
       body: downloads.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(

@@ -54,9 +54,11 @@ class HorizontalSection<T> extends StatelessWidget {
         (title != null
             ? Text(
                 title!,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                  letterSpacing: -0.2,
+                ),
               )
             : const SizedBox.shrink());
 
@@ -75,7 +77,7 @@ class HorizontalSection<T> extends StatelessWidget {
           Padding(
             padding:
                 headerPadding ??
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                const EdgeInsets.fromLTRB(16, 10, 10, 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -94,10 +96,29 @@ class HorizontalSection<T> extends StatelessWidget {
                 ),
                 if (headerTrailing != null) headerTrailing!,
                 if (onMoreTap != null)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.arrow_forward_ios),
+                  TextButton(
                     onPressed: onMoreTap,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 36),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant,
+                      textStyle: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('View all'),
+                        SizedBox(width: 2),
+                        Icon(Icons.chevron_right_rounded, size: 16),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -113,7 +134,7 @@ class HorizontalSection<T> extends StatelessWidget {
                 clipBehavior: Clip.none,
                 scrollDirection: Axis.horizontal,
                 padding:
-                    listPadding ?? const EdgeInsets.symmetric(horizontal: 12),
+                    listPadding ?? const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: skeletonCount,
                 itemBuilder: (context, index) {
                   if (skeletonItemBuilder != null) {
@@ -158,7 +179,7 @@ class HorizontalSection<T> extends StatelessWidget {
                   clipBehavior: Clip.none,
                   scrollDirection: Axis.horizontal,
                   padding:
-                      listPadding ?? const EdgeInsets.symmetric(horizontal: 12),
+                      listPadding ?? const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     return Builder(

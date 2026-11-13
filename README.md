@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  A clean, ad-free anime, movie and TV streaming client for Android, iOS,
-  macOS, Windows, Linux and the web.
+  A clean, ad-free client for anime, movies, TV shows and manga — built with
+  Flutter for Android, iOS, macOS, Windows and Linux, plus a Next.js web client.
   <br />
   Built by <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.
 </p>
@@ -18,94 +18,127 @@
 </p>
 
 > **AniFox: Reimagined** — this branch is the rebuilt app. The `main` branch
-> still contains the earlier code and will be replaced once the rebuild is
-> complete.
+> still contains the earlier code and is replaced once the rebuild is complete.
 
-## Features
+## What AniFox is
 
-- **Metadata-first browsing** – discover anime, movies and TV shows using TMDB,
-  AniList and MyAnimeList metadata.
-- **Built-in stream hosts** – playback uses four bundled embed servers
-  (Vidly, VidBolt, Vidy, EmbedWave) without user-managed extensions.
-- **Library & tracking** – keep a local library and sync progress with AniList,
+AniFox is a front-end. It reads public metadata from TMDB, AniList and
+MyAnimeList, and plays media through third-party embed hosts. Nothing is hosted,
+uploaded or stored by this project, and no account is required.
+
+The repository has two clients and one optional service:
+
+| Part | Path | Stack |
+| --- | --- | --- |
+| Flutter app | `lib/` | Flutter, Riverpod, Material 3 |
+| Web client and landing page | `website/` | Next.js, TypeScript, Tailwind |
+| Manga API (optional) | `server/anifox-manga-api/` | Vercel serverless |
+
+## Highlights
+
+- **Metadata-first browsing** — trending, popular, top-rated and upcoming lists
+  for movies, TV and anime, with search across all three.
+- **Bundled stream hosts** — playback uses four built-in embed servers (Vidly,
+  VidBolt, Vidy, EmbedWave). No extensions to install.
+- **Library and tracking** — keep a local library and sync progress with AniList,
   MyAnimeList, Kitsu and Simkl.
-- **Continue watching** – pick up from where you left off.
-- **Offline downloads** – capture HLS/MP4 streams from the player, decrypt
-  AES-128 segments and keep episodes available offline.
-- **Personalisation** – multiple themes, dynamic colour, configurable home
-  layout, navigation styles, TV-friendly layout and an optional Liquid Glass
-  navigation surface (toggle it in Settings → UI).
-- **Local-first data** – library, history and settings stay on device; backups can
-  be exported and restored.
-- **Web client** — a bingr.one-inspired streaming UI with a floating top
-  navigation, ranked Top 10 rail, animated poster rails and Chromecast support.
+- **Continue watching** — resume an episode or film from the home rail.
+- **Downloads through your provider** — the provider page opens inside AniFox,
+  and the quality links it produces are saved to `AniFox/downloads` and playable
+  from Downloads.
+- **Personalisation** — colour schemes, dynamic colour, AMOLED black, home
+  layout, header and navigation styles, UI scale, card density and a TV layout.
+- **Local-first data** — library, history and settings stay on device and can be
+  exported or restored.
+- **Manga reader** — catalog, chapter list and a paged reader backed by the
+  optional AniFox Manga API.
+- **Chromecast on the web** — a custom receiver at `/cast` drives the player.
 - **No ads, no accounts required.**
-
-## Credits
-
-AniFox is created and maintained by
-[ItzFallenMe](https://github.com/ItzFallenMe). The web client also credits TMDB,
-AniList and MyAnimeList for metadata, and the third-party embed hosts that
-supply playback. A full credits page lives at `/credits` on the website.
 
 ## Getting started
 
 Requirements:
 
-- Flutter `3.41.x` or newer (the repo pins a version in `.fvmrc`)
+- Flutter `3.41.x` or newer (pinned in `.fvmrc`; `fvm flutter` works too)
 - Dart `3.9.x` or newer
-- Platform toolchains for the targets you want to build
+- Toolchains for the platforms you build
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Anime metadata and playback work without a TMDB key. Movie and TV playback may
-need a free TMDB API key for title matching. Pass it as a build-time define; do
-not commit it to the repository:
+Anime works without any keys. Movies and TV need a free TMDB API key for title
+matching. Pass it at build time — never commit it:
 
 ```bash
-export TMDB_API_KEY="your-tmdb-v3-key"
+export TMDB_API_KEY="your-tmdb-key"
 flutter run --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
-flutter build apk --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 ```
 
-Downloads use your own licensed provider. Point the app at it at build time:
+### Build-time configuration
+
+| Define | Required | Purpose |
+| --- | --- | --- |
+| `TMDB_API_KEY` | For movies and TV | TMDB metadata and ID matching |
+| `DOWNLOAD_URL` | Only for downloads | Base URL of your licensed download provider |
+| `MANGA_API_URL` | Only for manga | Root URL of the deployed AniFox Manga API |
 
 ```bash
 flutter build apk --release \
-  --dart-define=DOWNLOAD_URL="https://downloads.example.com"
+  --dart-define=TMDB_API_KEY="$TMDB_API_KEY" \
+  --dart-define=DOWNLOAD_URL="https://downloads.example.com" \
+  --dart-define=MANGA_API_URL="https://your-manga-api.vercel.app"
 ```
 
-AniFox builds the provider's `/movie/{tmdbId}`, `/tv/{tmdbId}/{season}/{episode}`
-or `/anime/{anilistId}/{episode}` page for the current title and opens it, so the
-provider authorises the request by allowed domain. Without the define the
-download button reports that downloads are not configured.
+Do not append `/api` to `MANGA_API_URL`.
 
-Builds:
+### DownloadsDownloads are provided by an operator you are licensed to use — AniFox ships no
+download source. Set `DOWNLOAD_URL` to that provider's origin. The app opens
+that page inside AniFox, intercepts the file links it produces and saves them
+to `AniFox/downloads`:
+
+| Platform | Folder |
+| --- | --- |
+| Windows, macOS, Linux | `Downloads/AniFox/downloads` |
+| Android | `AniFox/downloads` on shared storage when file access is granted; otherwise the app's private `AniFox/downloads` |
+| iOS | `AniFox/downloads` inside the app's documents |
+
+The provider page uses these routes:
+
+```
+/movie/{tmdbId}
+/tv/{tmdbId}/{season}/{episode}
+/anime/{anilistId}/{episode}
+```
+
+The provider authorises the request by allowed domain, so no API key is
+involved; add your app or site to the provider's allowlist. Without
+`DOWNLOAD_URL` the download button reports that downloads are not configured.
+
+### Builds
 
 ```bash
 flutter build apk --release        # Android
-flutter build ios --release        # iOS (macOS host required)
+flutter build appbundle --release  # Play Store bundle
+flutter build ios --release        # iOS (macOS host)
 flutter build macos --release      # macOS
 flutter build windows --release    # Windows
 flutter build linux --release      # Linux
 ```
 
-App display names, bundle identifiers and icons are configured in
-`package_rename_config.yaml` and `flutter_launcher_icons.yaml`. After changing the
-logo, run:
+Display names, bundle identifiers and icons live in `package_rename_config.yaml`
+and `flutter_launcher_icons.yaml`. After changing the logo:
 
 ```bash
 dart run flutter_launcher_icons
 ```
 
-## Web app
+## Web client
 
-`website/` contains the AniFox website and web client — Next.js, TypeScript and
-Tailwind. `/` is the app download landing page, `/home` opens the streaming app,
-and `/manga` opens the manga catalog and reader.
+`website/` contains the landing page at `/` and the streaming client at `/home`,
+plus catalogs, title pages, the player and the manga reader. It is a separate
+Next.js app with its own README.
 
 ```bash
 cd website
@@ -114,83 +147,86 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Set `TMDB_API_KEY` in `website/.env.local` for movie and TV metadata. The key is
-used only by the server-side TMDB proxy; there is no key-entry UI or browser
-storage. Anime metadata comes from AniList. Playback stays in the selected
-third-party embed iframe. Saving media for offline use is optional and goes
-through the operator's own licensed download provider
-(`NEXT_PUBLIC_DOWNLOAD_URL`), whose pages are embedded by allowed domain. The
-landing page shows the combined GitHub release-asset download count.
+Open <http://localhost:3000> for the landing page, <http://localhost:3000/home>
+for the client. Website environment variables:
 
-The site deploys to Vercel or Cloudflare (through the OpenNext adapter, see
-[`website/README.md`](website/README.md)). Chromecast requires a custom receiver
-application id — setup is documented there too.
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `TMDB_API_KEY` | For movies and TV | Server-side TMDB proxy only; never sent to the browser |
+| `NEXT_PUBLIC_STREAM_API_URL` | No | Extra embed source, listed first when set |
+| `NEXT_PUBLIC_DOWNLOAD_URL` | No | Download provider origin, embedded by allowed domain |
+| `NEXT_PUBLIC_CAST_RECEIVER_APP_ID` | For Cast | Custom receiver application id |
+| `MANGA_API_URL` | No | Manga API root URL (no `/api`) |
 
-To enable web manga, set `MANGA_API_URL` to the deployed AniFox Manga API URL in
-`website/.env.local` and in the website deployment's environment settings.
-See [website/README.md](website/README.md) for all routes and configuration.
+The site deploys to Vercel or Cloudflare through the OpenNext adapter. See
+[`website/README.md`](website/README.md) for routes, the download provider
+contract, Chromecast setup and deploy commands.
 
-## CI & releases
+## Manga API
 
-Two GitHub Actions workflows are included:
+`server/anifox-manga-api/` is a standalone Vercel project. Set `DATAPROVIDER_URL`
+on the deployment to the upstream catalog host, then point clients at its public
+root URL. Deploy the API before enabling manga in the app or on the site.
 
-- **Test APK** (`.github/workflows/test-apk.yml`) — runs `flutter analyze` and
-  uploads a debug APK on pushes and pull requests.
-- **Release APK** (`.github/workflows/release-apk.yml`) — triggered by a `v*`
-  tag, builds split-per-ABI release APKs and attaches them to a GitHub release.
+## Project structure
 
-Release builds are signed with the keystore provided through the
-`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
-`ANDROID_KEY_PASSWORD` repository secrets. Without them the build still
-completes and is debug-signed.
+```
+lib/
+  common/      shared models, widgets, cards and providers
+  core/        bootstrap, routing, networking, storage, theme, updates
+  modules/     browse, playback, library, history, tracking, downloads,
+               preferences, reader, tv, alerts, launch
+  streaming/   bundled embed hosts, URL building, metadata sources
+  assets/      images and icons
+website/       Next.js landing page and web client
+server/        optional Vercel manga API
+```
+
+## CI and releases
+
+- **Test APK** (`test-apk.yml`) — runs `flutter analyze` and uploads a debug APK
+  on pushes and pull requests.
+- **Release APK** (`release-apk.yml`) — on a `v*` tag, builds split-per-ABI
+  release APKs and attaches them to a GitHub release.
+
+Release signing uses the `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`
+repository secrets. Without them the build completes debug-signed.
 
 ```bash
 git tag v2.1.5
 git push origin v2.1.5
 ```
 
-## Manga API
+## Troubleshooting
 
-The optional `server/anifox-manga-api/server/` project is a standalone manga
-backend intended for Vercel. Set `DATAPROVIDER_URL` on the API deployment to the
-upstream catalog host. After deploying it, point the website and Flutter build
-at the API's public root URL (do not append `/api`):
-
-```bash
-flutter run --dart-define=MANGA_API_URL="https://your-manga-api.vercel.app"
-```
-
-The API URL is deliberately not hard-coded. Flutter uses it to search and match
-manga, load chapters and read page images; the website proxies catalog, title,
-and chapter requests through its server routes. Deploy the API before enabling
-these clients.
-
-## Project structure
-
-```
-lib/
-  common/      shared models, widgets and providers
-  core/        app bootstrap, routing, networking, storage, updates
-  modules/     feature modules (browse, playback, library, history, tracking,
-               preferences, welcome, launch, reader, tv)
-  streaming/   bundled embed hosts, URL building and metadata sources
-  assets/       images and app icons
-website/       Next.js web client
-server/        optional Vercel manga API
-```
+- **No movie or TV results** — `TMDB_API_KEY` is missing from the build. Rebuild
+  with the define; changing it at runtime has no effect.
+- **A title opens the wrong match** — anime is matched to TMDB by title and year.
+  Use the title page's AniList or MyAnimeList link to confirm the entry.
+- **The download button says downloads are not configured** — the build has no
+  `DOWNLOAD_URL`. Rebuild with your provider's origin.
+- **A download stays in the provider page** — the provider opened a format the
+  app does not intercept (for example a blob or a ZIP). Use a direct MP4, MKV or
+  HLS link, or download from the site instead.
+- **Downloads are not visible on Android** — grant file access when prompted.
+  Without it AniFox keeps files in its private `AniFox/downloads` folder.
+- **Manga is empty** — `MANGA_API_URL` is unset, or the API deployment failed.
+  Check the API URL first, then the site or app configuration.
+- **Chromecast button is disabled** — the web build has no
+  `NEXT_PUBLIC_CAST_RECEIVER_APP_ID`, or the site is not served over HTTPS.
 
 ## Legal
 
 AniFox does not host, upload or distribute any video or manga content. All media
 is streamed from third-party providers that are publicly available on the
-internet. AniFox is not affiliated with any of those providers, nor with TMDB,
-AniList, MyAnimeList or any other metadata service. Users are responsible for
-complying with the laws of their country.
+internet. AniFox is not affiliated with those providers, nor with TMDB, AniList,
+MyAnimeList or any other metadata service. Users are responsible for complying
+with the laws of their country, and downloads are only lawful with a licensed
+provider.
 
 ## License
 
 AniFox is free software licensed under the **GNU General Public License v3.0**.
-See [LICENSE](LICENSE) for the full text.
-
-This project is a derivative of the open-source
-[AnymeX](https://github.com/RyanYuuki/AnymeX) project and keeps the same license.
+See [LICENSE](LICENSE). This project is a derivative of
+[AnymeX](https://github.com/RyanYuuki/AnymeX) and keeps the same license.

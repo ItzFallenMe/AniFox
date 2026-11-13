@@ -1,26 +1,55 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:anifox/modules/downloads/models/download_task.dart';
 
-/// Persists download metadata as JSON in the app support directory.
+/// Persists download metadata as JSON next to the media files.
 ///
-/// Media files live next to the index file, so moving the folder keeps
-/// downloads playable.
+/// Files live in `AniFox/downloads`: the public Downloads folder on desktop,
+/// shared storage on Android when access is granted, and app documents
+/// elsewhere. Keeping one folder means moving it keeps downloads playable.
 class DownloadStore {
+  static const folderName = 'AniFox';
+  static const folderLabel = 'AniFox/downloads';
+
   Directory? _cachedDirectory;
 
   Future<Directory> directory() async {
     final cached = _cachedDirectory;
     if (cached != null) return cached;
-    final base = await getApplicationSupportDirectory();
-    final directory = Directory(p.join(base.path, 'downloads'));
+    final directory = await _resolveDirectory();
     await directory.create(recursive: true);
     _cachedDirectory = directory;
     return directory;
+  }
+
+  Future<Directory> _resolveDirectory() async {
+    if (!kIsWeb) {
+      if (Platform.isAndroid) {
+        final hasStorage =
+            await Permission.manageExternalStorage.isGranted ||
+            await Permission.storage.isGranted;
+        if (hasStorage) {
+          return Directory(
+            p.join('/storage/emulated/0', folderName, 'downloads'),
+          );
+        }
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        final downloads = await getDownloadsDirectory();
+        if (downloads != null) {
+          return Directory(p.join(downloads.path, folderName, 'downloads'));
+        }
+      }
+    }
+
+    final base = await getApplicationDocumentsDirectory();
+    return Directory(p.join(base.path, folderName, 'downloads'));
   }
 
   Future<File> _indexFile() async {

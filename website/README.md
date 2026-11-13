@@ -6,7 +6,7 @@
 
 <p align="center">
   The website and web client for <a href="https://github.com/ItzFallenMe/AniFox">AniFox</a> —
-  a bingr.one-inspired streaming front-end for anime, movies and TV.
+  a dark, editorial streaming front-end for anime, movies and TV.
   <br />
   Built with Next.js, React, TypeScript and Tailwind CSS.
 </p>
@@ -29,10 +29,14 @@
 
 ## What's inside
 
-- **Floating top navigation** — a glass navigation bar that hides on scroll,
-  with inline search and animated active states.
-- **Cinematic home** — rotating hero billboard, category shortcuts, a ranked
-  **Top 10** rail and horizontally scrollable poster rails with hover previews.
+- **Hover-expanding rail** — an icon rail on desktop that widens to labelled
+  navigation, with inline search in the top bar.
+- **Mobile tab bar** — a fixed bottom bar with safe-area spacing, while the top
+  bar keeps the brand and search.
+- **Cinematic home** — a 16:9 hero billboard with slab-serif titles, a numbered
+  **Trending Right Now** rail and horizontally scrollable poster rails.
+- **Editorial catalogs** — Movies, TV and Anime share one spotlight layout with
+  filterable rails and hover previews.
 - **Search** — combined AniList + TMDB results with type filters and URL state.
 - **Details** — cinematic title pages with synopsis, ratings, cast, seasons and
   episode lists.
@@ -43,6 +47,8 @@
   the stack.
 - **Download landing page** — platform download cards and live GitHub release
   download totals.
+- **Downloads** — title pages embed your licensed provider by allowed domain,
+  with an episode picker for series.
 
 ## Routes
 

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_all/webview_all.dart';
 
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
 import 'package:anifox/modules/downloads/data/download_provider.dart';
+import 'package:anifox/modules/downloads/ui/download_web_screen.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
 import 'package:anifox/modules/playback/models/player_mode.dart';
 import 'package:anifox/streaming/catalog.dart';
@@ -107,15 +107,15 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       return;
     }
 
-    final opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DownloadWebScreen(
+          pageUrl: url,
+          mediaTitle: _media.title.getPreferedTitle,
+          episodeLabel: _episodeNumber > 0 ? 'Episode $_episodeNumber' : '',
+        ),
+      ),
     );
-    if (!opened) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('The download page could not be opened.')),
-      );
-    }
   }
 
   Future<void> _loadSource(StreamSource source) async {
