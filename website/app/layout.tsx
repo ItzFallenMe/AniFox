@@ -3,6 +3,7 @@ import { Bebas_Neue, Inter } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 import "./player.css";
+import "./shell.css";
 
 const inter = Inter({
   subsets: ["latin"],

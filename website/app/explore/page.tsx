@@ -56,52 +56,63 @@ function ExploreContent() {
   }, [debouncedQuery]);
 
   const items = useMemo(() => applyFilter(data?.items ?? [], filter), [data, filter]);
+
   return (
-    <div className="explore-page animate-fade-in px-6 pb-16 pt-10 md:pt-12 lg:px-20">
-      <div className="explore-header">
-        <div className="explore-kicker"><span /> YOUR NEXT FAVORITE STARTS HERE</div>
-        <h1>Find your <em>story.</em></h1>
-        <p>Search across anime, movies and series — all in one place.</p>
+    <div className="animate-fade-in px-6 pb-20 pt-[76px] md:pt-8 lg:px-20">
+      <div className="flex h-14 items-center gap-3 rounded-2xl border border-white/[0.07] bg-[#0f1014] px-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)] transition-all duration-200 focus-within:border-white/20 focus-within:bg-[#15171d] md:px-5">
+        <SearchIcon className="h-5 w-5 shrink-0 text-white/40" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Movies, shows, anime and more…"
+          spellCheck={false}
+          aria-label="Search movies, TV shows and anime"
+          className="relative z-10 w-full bg-transparent text-[16px] font-medium tracking-[-0.01em] text-white outline-none placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            className="shrink-0 text-lg leading-none text-white/40 transition hover:text-white"
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
 
-        <div className="explore-searchbox">
-          <SearchIcon className="explore-search-icon" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search titles, people, genres…"
-            spellCheck={false}
-            aria-label="Search movies, TV shows and anime"
-          />
-          {query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button> : null}
-        </div>
-
-        <div className="explore-filters" role="group" aria-label="Filter results">
-          {filters.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setFilter(item.id)}
-              aria-pressed={filter === item.id}
-              className={`explore-filter ${filter === item.id ? "is-active" : ""}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+      <div className="no-scrollbar mt-4 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/[0.06] bg-white/[0.02] p-1" role="group" aria-label="Filter results">
+        {filters.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setFilter(item.id)}
+            aria-pressed={filter === item.id}
+            className={`relative z-10 flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium tracking-[-0.01em] outline-none transition-colors duration-200 ${
+              filter === item.id ? "bg-white text-black" : "text-white/50 hover:text-white"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {error ? <ErrorNotice message={error.message} /> : null}
 
-      <div className="explore-results">
+      <div className="mt-8">
         {loading && !items.length ? (
           <PageSkeleton />
         ) : items.length ? (
           <>
-            <div className="explore-results-heading">
-              <div><span>{debouncedQuery ? "SEARCH RESULTS" : "FRESH DISCOVERIES"}</span><h2>{debouncedQuery ? `Results for “${debouncedQuery}”` : "Trending now"}</h2></div>
-              <span>{items.length} titles</span>
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <h2 className="min-w-0 truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
+                {debouncedQuery ? `Results for “${debouncedQuery}”` : "Trending Right Now"}
+              </h2>
+              <span className="shrink-0 text-[11.5px] font-medium text-white/40">
+                {items.length} titles
+              </span>
             </div>
-            <div className="explore-grid stagger grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="stagger grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
               {items.map((media) => (
                 <MediaCard key={media.key} media={media} fluid />
               ))}

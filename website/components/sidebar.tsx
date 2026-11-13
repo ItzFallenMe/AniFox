@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { CSSProperties } from "react";
 import {
   AnimeIcon,
   GithubIcon,
@@ -15,7 +16,7 @@ import {
 
 const items = [
   { href: "/home", label: "Home", Icon: HomeIcon },
-  { href: "/explore", label: "Explore", Icon: SearchIcon },
+  { href: "/explore", label: "Search", Icon: SearchIcon },
   { href: "/tv", label: "TV Shows", Icon: TvIcon },
   { href: "/anime", label: "Anime", Icon: AnimeIcon },
   { href: "/movies", label: "Movies", Icon: MovieIcon },
@@ -42,13 +43,14 @@ export function Sidebar() {
       </Link>
 
       <nav className="app-rail-nav" aria-label="Main">
-        {items.map(({ href, label, Icon }) => {
+        {items.map(({ href, label, Icon }, index) => {
           const active = isActive(pathname, href);
           return (
             <Link
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
+              style={{ "--i": index } as CSSProperties}
               className={`app-rail-link ${active ? "is-active" : ""}`}
             >
               <span className="app-rail-marker" aria-hidden="true" />
