@@ -87,7 +87,7 @@ class EpisodesListNotifier extends AsyncNotifier<EpisodesListState> {
         final mangaSource = MangaApiSource.fromSource(matchState.sourceInfo);
         if (mangaSource == null) {
           throw const MangaApiException(
-            'Configure MANGA_API_URL to load manga chapters.',
+            'Configure ANIFOX_API_URL to load manga chapters.',
           );
         }
         final chapters = await mangaSource.getChapters(matched.id);

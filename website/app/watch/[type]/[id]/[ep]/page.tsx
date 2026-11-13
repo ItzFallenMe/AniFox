@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
-import { CastButton } from "@/components/cast-button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { ErrorNotice } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
@@ -190,23 +189,6 @@ function WatchContent() {
           <ChevronLeftIcon />
         </Link>
         <div className="watch-mobile-bar-title">{data.title}</div>
-        {episodes.length > 1 ? (
-          <button
-            type="button"
-            className="watch-mobile-server"
-            onClick={() => setPanel("episodes")}
-          >
-            Episodes
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="watch-mobile-server"
-          onClick={() => setPanel("servers")}
-          aria-label={`Streaming server: ${serverById(server).name}`}
-        >
-          {serverById(server).name}
-        </button>
       </div>
 
       <div
@@ -220,7 +202,7 @@ function WatchContent() {
             key={`${server}-${embedUrl}`}
             src={embedUrl}
             title={`${data.title} player`}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allow="autoplay; fullscreen *; encrypted-media; picture-in-picture"
             allowFullScreen
             referrerPolicy="origin"
             className="vp-video vp-frame"
@@ -271,7 +253,6 @@ function WatchContent() {
                 </Link>
               </div>
             ) : null}
-            <CastButton src={embedUrl} title={data.title} />
             <div className="vp-trigger-wrap" onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"
@@ -285,54 +266,6 @@ function WatchContent() {
                 <span className="vp-trigger-label">Server</span>
                 <span className="vp-trigger-value">{serverById(server).name}</span>
               </button>
-              <div
-                className={`vp-panel ${serverPanelOpen ? "is-open" : ""}`}
-                aria-hidden={!serverPanelOpen}
-                inert={!serverPanelOpen}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="vp-panel-box" role="menu" aria-label="Streaming servers">
-                  <div className="vp-panel-head">
-                    <span className="vp-panel-title">Streaming servers</span>
-                    <button
-                      type="button"
-                      className="vp-panel-close"
-                      onClick={() => setPanel(null)}
-                      aria-label="Close server list"
-                    >
-                      <CloseIcon />
-                    </button>
-                  </div>
-                  <div className="vp-panel-cols">
-                    <section className="vp-col">
-                      <div className="vp-col-title">Sources</div>
-                      <div className="vp-col-list" role="group" aria-label="Sources">
-                        {SERVERS.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            role="menuitemradio"
-                            aria-checked={item.id === server}
-                            onClick={() => chooseServer(item.id)}
-                            className={`vp-opt ${item.id === server ? "is-active" : ""}`}
-                          >
-                            <span className="vp-opt-check">
-                              <CheckIcon />
-                            </span>
-                            <span className="vp-opt-text">
-                              <span className="vp-opt-label">{item.name}</span>
-                              <span className="vp-opt-detail">{item.tagline}</span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                  <div className="vp-panel-foot">
-                    <span className="vp-note">Each source uses its own player and may show ads.</span>
-                  </div>
-                </div>
-              </div>
             </div>
             {episodes.length ? (
               <button
@@ -351,6 +284,55 @@ function WatchContent() {
                 <span className="vp-trigger-value">Episode {episode}</span>
               </button>
             ) : null}
+          </div>
+        </div>
+
+        <div
+          className={`vp-panel ${serverPanelOpen ? "is-open" : ""}`}
+          aria-hidden={!serverPanelOpen}
+          inert={!serverPanelOpen}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="vp-panel-box" role="menu" aria-label="Streaming servers">
+            <div className="vp-panel-head">
+              <span className="vp-panel-title">Streaming servers</span>
+              <button
+                type="button"
+                className="vp-panel-close"
+                onClick={() => setPanel(null)}
+                aria-label="Close server list"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="vp-panel-cols">
+              <section className="vp-col">
+                <div className="vp-col-title">Sources</div>
+                <div className="vp-col-list" role="group" aria-label="Sources">
+                  {SERVERS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={item.id === server}
+                      onClick={() => chooseServer(item.id)}
+                      className={`vp-opt ${item.id === server ? "is-active" : ""}`}
+                    >
+                      <span className="vp-opt-check">
+                        <CheckIcon />
+                      </span>
+                      <span className="vp-opt-text">
+                        <span className="vp-opt-label">{item.name}</span>
+                        <span className="vp-opt-detail">{item.tagline}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+            <div className="vp-panel-foot">
+              <span className="vp-note">Each source uses its own player and may show ads.</span>
+            </div>
           </div>
         </div>
 
@@ -470,7 +452,6 @@ function WatchContent() {
               <ListIcon /> Episodes
             </button>
           ) : null}
-          <CastButton src={embedUrl} title={data.title} />
         </div>
 
         {data.overview ? <p className="watch-mobile-overview">{data.overview}</p> : null}

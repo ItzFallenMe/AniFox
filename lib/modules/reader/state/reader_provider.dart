@@ -73,7 +73,7 @@ class ReaderNotifier extends Notifier<ReaderState> {
       final source = MangaApiSource.fromSource(mode.sourceInfo);
       if (source == null) {
         throw const MangaApiException(
-          'Manga reading is not configured. Build AniFox with MANGA_API_URL.',
+          'Manga reading is not configured. Build AniFox with ANIFOX_API_URL.',
         );
       }
 

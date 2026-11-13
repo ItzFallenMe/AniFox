@@ -36,6 +36,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Web fonts
+
+The web client bundles Inter and Outfit font files in `website/app/fonts/`.
+Inter is Copyright (c) 2016 The Inter Project Authors; Outfit is Copyright 2021
+The Outfit Project Authors. Both font families are licensed under the SIL Open
+Font License, Version 1.1. The complete license and copyright notices are in
+[`website/app/fonts/OFL.txt`](website/app/fonts/OFL.txt).
+
 AniFox-specific changes and the overall application are maintained by
 [ItzFallenMe](https://github.com/ItzFallenMe) and licensed as described in the
 root [`LICENSE`](LICENSE).

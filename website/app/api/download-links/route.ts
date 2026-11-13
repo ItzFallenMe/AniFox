@@ -1,4 +1,4 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,4096}$/;
 const MAX_LINKS = 100;

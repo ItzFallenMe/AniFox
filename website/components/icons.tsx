@@ -124,15 +124,6 @@ export function ArrowUpIcon(props: IconProps) {
   );
 }
 
-export function CastIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" {...base} {...props}>
-      <path d="M2 16.5a4.5 4.5 0 0 1 4.5 4.5M2 12a9 9 0 0 1 9 9M2 20.5h.01" />
-      <path d="M2 7V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
-    </svg>
-  );
-}
-
 export function GithubIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable={false} {...props}>

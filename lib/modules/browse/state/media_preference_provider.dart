@@ -159,7 +159,7 @@ class MediaPreferenceNotifier extends AsyncNotifier<MediaPreferenceState> {
       if (availableSources.isEmpty) {
         if (args.type == MediaType.MANGA) {
           throw StateError(
-            'Manga is not configured. Set MANGA_API_URL to enable manga browsing and reading.',
+            'Manga is not configured. Set ANIFOX_API_URL to enable manga browsing and reading.',
           );
         }
         throw StateError('no-sources');

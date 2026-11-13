@@ -53,7 +53,7 @@ class MangaApiSource extends MangaSource {
       kind: StreamSourceKind.builtin,
       mediaType: MediaType.MANGA,
       baseUrl: rawUrl.replaceFirst(RegExp(r'/+$'), ''),
-      tagline: 'AniFox API · manga search, chapters and pages',
+      tagline: 'MangaDex · Safe-rated titles only',
     );
   }
 
@@ -160,6 +160,7 @@ class MangaApiSource extends MangaSource {
       final chapterId = _readString(chapter['id']);
       final title = _readString(chapter['name']);
       if (chapterId == null || title == null) continue;
+      final languageCode = _readString(chapter['languageCode']);
 
       final numberMatch = _chapterNumberPattern.firstMatch(title);
       final parsedNumber = numberMatch == null
@@ -173,6 +174,7 @@ class MangaApiSource extends MangaSource {
           number: parsedNumber ?? (chapters.length - index).toDouble(),
           title: title,
           uploadDate: _readString(chapter['createdAt']),
+          languageCode: languageCode,
         ),
       );
     }
@@ -194,7 +196,6 @@ class MangaApiSource extends MangaSource {
         _endpoint(['api', 'manga', 'chapter', mangaId, sourceChapterId]),
       ),
     );
-
     return _asList(result['images'])
         .map((entry) {
           final image = _asMap(entry);
@@ -266,11 +267,14 @@ class MangaApiSource extends MangaSource {
     if (value.isEmpty) return value;
     if (value.startsWith('//')) return 'https:$value';
     final uri = Uri.tryParse(value);
-    if (uri == null) return '';
-    if (uri.hasScheme) {
-      return const {'http', 'https'}.contains(uri.scheme) ? value : '';
-    }
-    return Uri.parse(sourceInfo.baseUrl).resolveUri(uri).toString();
+    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return '';
+    final origin = Uri.parse(sourceInfo.baseUrl);
+    return origin
+        .replace(
+          path: '/api/image',
+          queryParameters: {'url': uri.toString()},
+        )
+        .toString();
   }
 
   int? _parseChapterCount(String? value) {

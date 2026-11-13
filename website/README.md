@@ -19,7 +19,6 @@
 - [Routes](#routes)
 - [Getting started](#getting-started)
 - [Environment](#environment)
-- [Chromecast](#chromecast)
 - [Scripts](#scripts)
 - [Deploy](#deploy)
 - [Project structure](#project-structure)
@@ -40,10 +39,9 @@
 - **Search** — combined AniList + TMDB results with type filters and URL state.
 - **Details** — cinematic title pages with synopsis, ratings, cast, seasons and
   episode lists.
-- **Watch** — iframe playback with four bundled servers, episode navigation and
-  **Chromecast** support.
-- **Manga** — MangaDex catalog plus connected MangaDex, MangaPill, Asura Scans,
-  ComicK and TCB Scans search and chapter reading through the shared `/api`.
+- **Watch** — iframe playback with four bundled servers and episode navigation.
+- **Manga** — MangaDex search and chapter reading through the shared `/api`,
+  restricted to titles MangaDex explicitly rates Safe.
 - **Credits** — `/credits` lists the author, repository, metadata providers and
   the stack.
 - **Download landing page** — platform download cards and live GitHub release
@@ -66,7 +64,6 @@
 | `/manga` | Manga catalog |
 | `/manga/[id]/[chapter]` | Manga reader |
 | `/credits` | Credits |
-| `/cast` | Custom Chromecast receiver |
 | `/api/tmdb/[...path]` | Server-side TMDB proxy |
 | `/api/manga/[...path]` | Shared manga source API used by web and Flutter |
 | `/api/stream` | Validated redirect to a bundled playback provider |
@@ -83,6 +80,7 @@ Requirements: **Node.js 22+** for Next.js and Cloudflare OpenNext tooling.
 ```bash
 cp .env.example .env
 npm install --prefix website
+npm install --prefix server/anifox-manga-api/server
 npm run web:dev
 ```
 
@@ -98,9 +96,11 @@ file. Copy it to `.env`; the website loads it for local development. Set
 call their own `/api` routes and need no API URL.
 
 Server-side values include `TMDB_API_KEY`, `MANGADEX_API_URL` (optional API
-mirror), and `DOWNLOAD_PROVIDER_URL`. `DISCORD_APPLICATION_ID` is public and is
-forwarded to Flutter desktop builds by `npm run flutter -- ...`. Never commit a
-populated `.env` file.
+mirror), and `DOWNLOAD_PROVIDER_URL`. The download provider is optional; only configure a
+provider you are authorized to use. `NEXT_PUBLIC_SITE_URL` sets the canonical
+website origin for metadata. `DISCORD_APPLICATION_ID` is public and is forwarded
+to Flutter desktop builds by `npm run flutter -- ...`. Never commit a populated
+`.env` file.
 
 ## Streaming source API
 
@@ -127,9 +127,10 @@ streaming source:
 ```
 
 Set the variable to an HTTPS provider origin. The web link-list adapter expects
-download cards linking to the provider's same-origin `/get?t=...` route, as
-Streamrip does. A different provider may need its own adapter or an official
-links API. The Flutter app continues to use the `/api/download` redirect.
+download cards linking to the provider's same-origin `/get?t=...` route. A
+different provider may need its own adapter or an official links API. The Flutter
+app uses `/api/download-links` and `/api/download-link` to show the same choices
+and save the selected media to its offline downloads.
 
 Example:
 
@@ -142,19 +143,6 @@ Example link-list request: `/api/download-links?type=movie&tmdbId=603`
 The populated root `.env` is git-ignored. For production, configure server-side
 values in the Cloudflare Workers environment/secrets panel; do not commit real
 keys.
-
-## Chromecast
-
-The player is a third-party iframe, so it cannot be sent to Google's Default
-Media Receiver. AniFox instead ships a custom receiver at `/cast` and talks to it
-over a private Cast namespace.
-
-1. Create a receiver at <https://cast.google.com/publish> using
-   `https://<your-domain>/cast` as the receiver URL.
-2. Set `NEXT_PUBLIC_CAST_RECEIVER_APP_ID` to the generated application id.
-3. Serve the site over HTTPS — Cast requires a secure origin.
-
-Without the variable the Cast button stays visible but disabled and explains why.
 
 ## Scripts
 
@@ -181,14 +169,15 @@ Flutter client uses the same Worker origin.
 ```bash
 cd website
 npm install
+npm install --prefix ../server/anifox-manga-api/server
 npx wrangler login
 npm run cloudflare:deploy
 ```
 
 `wrangler.jsonc` and `open-next.config.ts` are checked in. Configure
-`TMDB_API_KEY`, `DOWNLOAD_PROVIDER_URL`, and any needed public build values such
-as `NEXT_PUBLIC_CAST_RECEIVER_APP_ID` in the Worker environment. `ANIFOX_API_URL`
-is only needed by Flutter clients and should be the Worker site's root origin.
+`TMDB_API_KEY`, `DOWNLOAD_PROVIDER_URL` (if you use an authorized provider), and
+`NEXT_PUBLIC_SITE_URL` in the Worker environment. `ANIFOX_API_URL` is only needed
+by Flutter clients and should be the Worker site's root origin.
 
 ## Project structure
 
@@ -196,7 +185,6 @@ is only needed by Flutter clients and should be the Worker site's root origin.
 website/
 ├── app/                  # Next.js App Router pages and API routes
 │   ├── anime|movies|tv  # Catalog pages
-│   ├── cast/             # Chromecast receiver
 │   ├── credits/          # Credits page
 │   ├── explore/          # Search
 │   ├── home/              # Streaming home
@@ -204,16 +192,20 @@ website/
 │   ├── title/[type]/[id]  # Title details
 │   ├── watch/[type]/[id]/[ep]
 │   └── api/               # Shared manga, stream, download, TMDB and release routes
-├── components/            # Top nav, shell, hero, rails, cards, cast button
-├── lib/                   # TMDB, AniList, server-resolved providers, cast and hooks
+├── components/            # Top nav, shell, hero, rails and cards
+├── lib/                   # TMDB, AniList, server-resolved providers and hooks
 └── public/                # AniFox marks, banner and PWA assets
 ```
 
 ## Data sources & legal
 
-Metadata comes from TMDB (movies, TV) and AniList (anime). Manga connectors
-currently implemented in the monorepo include MangaDex, MangaPill, Asura Scans,
-ComicK and TCB Scans. AniFox does not host or store media. Playback and download
+Metadata comes from TMDB (movies, TV) and AniList (anime). MangaDex is the only
+source exposed by AniFox for manga. Catalog, search, title, and chapter routes
+accept only titles that MangaDex explicitly rates Safe.
+Images use the same-origin `/api/image` proxy for web and app clients. Only
+MangaDex-hosted chapters are offered, with language labels. Since MangaDex
+content is community-rated, this is not a parental-control guarantee.
+AniFox does not host or store media. Playback and download
 providers deliver their own pages and media. Source implementations adapted
 from MeManga are attributed in the root [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
 AniFox is not affiliated with TMDB, AniList, MyAnimeList, Discord or any provider.

@@ -88,7 +88,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     pathname === "/terms" ||
     pathname === "/credits" ||
     pathname.startsWith("/watch/") ||
-    pathname.startsWith("/cast") ||
     (routeSegments[0] === "manga" && routeSegments.length === 3)
   ) {
     return <>{children}</>;

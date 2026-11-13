@@ -67,6 +67,11 @@ class _ReaderPageViewState extends State<ReaderPageView> {
     }
   }
 
+  void _onPageChanged(int page) {
+    _zoomController.value = Matrix4.identity();
+    widget.onPageChanged(page);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scaleEnabled = _pointerCount >= 2 || _isCtrlPressed;
@@ -94,9 +99,9 @@ class _ReaderPageViewState extends State<ReaderPageView> {
           physics: const BouncingScrollPhysics(),
           controller: widget.controller,
           reverse: widget.direction == ReaderDirection.rtl,
-          allowImplicitScrolling: true,
+          allowImplicitScrolling: false,
           itemCount: widget.pages.length,
-          onPageChanged: widget.onPageChanged,
+          onPageChanged: _onPageChanged,
           itemBuilder: (context, index) {
             final page = widget.pages[index];
             return ReaderImage(

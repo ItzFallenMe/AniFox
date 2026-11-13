@@ -6,14 +6,25 @@ All notable changes to AniFox are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Web API routes now use the Node.js runtime supported by the OpenNext
+  Cloudflare Worker build.
+- Web and app CI install the shared manga adapter dependencies before building
+  the website or running adapter tests.
+
 ### Added
 
 - Open-source contributor guides, issue forms, pull request template, security
   policy and code of conduct.
 - Web checks workflow, Dependabot configuration and editor defaults.
+- Third-party font license notices and a single documented root environment
+  template for contributors.
 
 ### Changed
 
+- Removed Google Cast from the web player; bundled third-party iframe sources do
+  not expose media URLs for a practical non-Google TV casting path.
 - Web client rebuilt around the billboard and rail layout, with a hover-expand
   sidebar on desktop and floating tab navigation on mobile.
 - Watch pages now place a 16:9 player stage above the title details on every

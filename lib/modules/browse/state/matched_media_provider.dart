@@ -89,7 +89,7 @@ class MediaMatchNotifier extends AsyncNotifier<MatchedMediaState> {
       final source = MangaApiSource.fromSource(prefs.sourceInfo);
       if (source == null) {
         throw const MangaApiException(
-          'Configure MANGA_API_URL to enable the manga catalog and reader.',
+          'Configure ANIFOX_API_URL to enable the manga catalog and reader.',
         );
       }
 

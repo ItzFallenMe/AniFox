@@ -4,7 +4,7 @@
   "private": true,
   "description": "AniFox web client — anime, movies and TV streaming UI",
   "author": "ItzFallenMe",
-  "license": "GPL-3.0-or-later",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/ItzFallenMe/AniFox.git",

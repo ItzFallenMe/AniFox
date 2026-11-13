@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Version tag to create or release (for example v2.2.0)
+        description: Version tag to create or release (for example v1.0.0)
         required: true
         type: string
 
@@ -43,7 +43,7 @@ jobs:
         id: release
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tags must use vMAJOR.MINOR.PATCH (for example v2.2.0)."
+            echo "::error::Release tags must use vMAJOR.MINOR.PATCH (for example v1.0.0)."
             exit 1
           fi
 

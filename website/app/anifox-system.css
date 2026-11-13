@@ -402,13 +402,6 @@ select:focus-visible {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
 }
 
-.cast-receiver-idle p {
-  color: #fff;
-  font-family: var(--font-outfit), var(--font-inter), sans-serif;
-  font-weight: 800;
-  letter-spacing: -0.055em;
-}
-
 @media (max-width: 899px) {
   .app-footer {
     padding-bottom: calc(102px + env(safe-area-inset-bottom)) !important;

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
   CrunchyrollIcon,
-  GithubIcon,
   HomeIcon,
   MangaIcon,
   MovieIcon,
@@ -63,34 +62,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="app-rail-foot">
-        <Link href="/credits" className="app-rail-utility">
-          <span className="app-rail-icon">
-            <span className="app-rail-dot" aria-hidden="true" />
-          </span>
-          <span className="app-rail-label">Credits</span>
-        </Link>
-        <a
-          href="https://github.com/ItzFallenMe/AniFox"
-          target="_blank"
-          rel="noreferrer"
-          className="app-rail-utility"
-        >
-          <span className="app-rail-icon">
-            <GithubIcon />
-          </span>
-          <span className="app-rail-label">Source</span>
-        </a>
-        <Link href="/" className="app-rail-app-link">
-          <span className="app-rail-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" strokeLinecap="round" />
-            </svg>
-          </span>
-          <span className="app-rail-label">Get the app</span>
-        </Link>
-      </div>
     </aside>
   );
 }

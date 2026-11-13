@@ -51,13 +51,12 @@ The repository contains two clients and the manga API they share:
   layout, header and navigation styles, UI scale, card density and a TV layout.
 - **Local-first data** — library, history and settings stay on device and can be
   exported or restored.
-- **Manga reader** — MangaDex catalog and AniFox's implemented MangaDex,
-  MangaPill, Asura Scans, ComicK and TCB Scans connectors.
+- **Manga reader** — MangaDex catalog and chapter reader, restricted to titles
+  MangaDex explicitly rates Safe.
 - **Discord Rich Presence** — Android uses Discord's Social SDK RPC service;
   Windows, macOS and Linux use desktop RPC. Configure `DISCORD_APPLICATION_ID`
   in the root `.env`. iOS and web integrations are not implemented; see
   [Discord notes](docs/DISCORD_RICH_PRESENCE.md).
-- **Chromecast on the web** — a custom receiver at `/cast` drives the player.
 - **No AniFox account required.** Third-party playback providers may show their
   own ads and have their own availability and policies.
 
@@ -73,6 +72,7 @@ Requirements:
 ```bash
 cp .env.example .env
 npm install --prefix website
+npm install --prefix server/anifox-manga-api/server
 flutter pub get
 npm run web:dev
 ```
@@ -116,12 +116,11 @@ values such as `DOWNLOAD_PROVIDER_URL` are not embedded in the app.
 
 ### Downloads
 
-AniFox ships no download source. The root `.env.example` uses Streamrip for
-testing; replace `DOWNLOAD_PROVIDER_URL` with a provider you are authorized to
-use for production. Keep it in the root `.env` locally or as a server-side
-Cloudflare variable. Clients use the same-origin
-`/api/download` route, which redirects to the provider page. The app intercepts
-file links and saves them to `AniFox/downloads`:
+AniFox ships no download source. Set `DOWNLOAD_PROVIDER_URL` only to a provider
+you are authorized to use. Keep it in the root `.env` locally or as a server-side
+Cloudflare variable. Clients retrieve provider choices through the same-origin
+`/api/download-links` route. The website presents the choices; the app downloads
+the selected file into its offline library at `AniFox/downloads`:
 
 | Platform | Folder |
 | --- | --- |
@@ -129,7 +128,7 @@ file links and saves them to `AniFox/downloads`:
 | Android | `AniFox/downloads` on shared storage when file access is granted; otherwise the app's private `AniFox/downloads` |
 | iOS | `AniFox/downloads` inside the app's documents |
 
-The provider page uses these routes:
+The provider uses these title routes:
 
 ```
 /movie/{tmdbId}
@@ -172,6 +171,7 @@ the shared API routes used by both clients.
 
 ```bash
 npm install --prefix website
+npm install --prefix server/anifox-manga-api/server
 npm run web:dev
 ```
 
@@ -183,8 +183,9 @@ for the client. Website environment variables:
 | `TMDB_API_KEY` | For movies and TV | Server-side TMDB proxy; Flutter also receives a build define |
 | `DOWNLOAD_PROVIDER_URL` | For downloads | Server-side licensed provider origin |
 | `ANIFOX_API_URL` | Flutter app | Web deployment origin; website routes use their own origin |
+| `NEXT_PUBLIC_SITE_URL` | Optional | Canonical website origin for page metadata |
 | `DISCORD_APPLICATION_ID` | Optional | Public application ID for Android and desktop Rich Presence |
-| `NEXT_PUBLIC_CAST_RECEIVER_APP_ID` | For Cast | Custom receiver application id |
+| `MANGADEX_API_URL` | Optional | MangaDex API mirror |
 
 Deploy the website and shared API together to Cloudflare with OpenNext. See
 [`website/README.md`](website/README.md) for route and deployment details.
@@ -197,13 +198,17 @@ web and Flutter clients. Source adapters and tests live under
 than hosted as a separate Express service.
 
 ```bash
+npm ci --prefix server/anifox-manga-api/server
 npm run api:test
 ```
 
-Implemented manga sources are MangaDex, MangaPill, Asura Scans, ComicK and TCB
-Scans. Availability can change; AniFox does not claim every domain in
-[MeManga's source registry](https://github.com/meellm/MeManga/blob/4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8/docs/SUPPORTED_SOURCES.md)
-works in AniFox. Port attribution and license details are in
+Manga browsing and reading use MangaDex only. AniFox requests only its `safe`
+content rating and rejects titles with any other or missing rating when opening
+details or chapter pages. MangaDex-hosted chapters in any available language
+open in AniFox. Chapters hosted elsewhere are not offered. MangaDex is
+community-maintained, so its rating is not a parental-control guarantee; report
+anything mislabeled at the source.
+Port attribution and license details are in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 | Client | Setting |
@@ -211,8 +216,9 @@ works in AniFox. Port attribution and license details are in
 | Web | Same origin as the website; no separate API URL |
 | App | `ANIFOX_API_URL=https://your-cloudflare-site.example` in root `.env` |
 
-Use the website origin; do not append `/api`. A `502` means all selected manga
-providers failed; retry or check `MANGADEX_API_URL` when using a custom mirror.
+Use the website origin; do not append `/api`. MangaDex images are served through
+AniFox's same-origin `/api/image` proxy for consistent loading in web and app.
+Check `MANGADEX_API_URL` only when using a custom API mirror.
 
 ## Project structure
 
@@ -246,8 +252,8 @@ repository secrets before publishing. The iOS verification artifact is not
 installable; App Store distribution requires Apple signing/provisioning setup.
 
 ```bash
-git tag v2.1.5
-git push origin v2.1.5
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Troubleshooting
@@ -268,9 +274,6 @@ git push origin v2.1.5
 - **Discord presence is missing** — Android requires the Discord app installed
   and `DISCORD_APPLICATION_ID` configured; desktop builds also need the Discord
   desktop client running. Check [Discord notes](docs/DISCORD_RICH_PRESENCE.md).
-- **Chromecast button is disabled** — the web build has no
-  `NEXT_PUBLIC_CAST_RECEIVER_APP_ID`, or the site is not served over HTTPS.
-
 ## Community
 
 - [Contributing guide](CONTRIBUTING.md) — setup, checks and pull request rules

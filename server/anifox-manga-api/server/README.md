@@ -9,15 +9,11 @@ Cloudflare Workers hosts the website and API on one origin.
 
 | Source | Catalog | Search | Details | Chapters | Pages |
 | --- | --- | --- | --- | --- | --- |
-| MangaDex | Yes | Yes | Yes | Yes | Yes |
-| MangaPill | No | Yes | Yes | Yes | Yes |
-| Asura Scans | No | Yes | Yes | Yes | Yes |
-| ComicK | No | Yes | Yes | Yes | Yes |
-| TCB Scans | No | Yes | Yes | Yes | Yes |
+| MangaDex | Safe-rated only | Safe-rated only | Safe-rated only | Safe-rated only | Safe-rated only |
 
-Provider availability and page structure can change. The registry intentionally
-lists only adapters implemented in this repository; it does not claim every
-source in MeManga's catalog works in AniFox.
+Other adapter implementations remain in the source tree but are not advertised
+or reachable through AniFox's manga API. MangaDex is community-rated, so Safe
+filtering is not a parental-control guarantee.
 
 ## API routes
 
@@ -33,8 +29,11 @@ The canonical client routes are hosted by the web app:
 | `GET` | `/api/image?url=...` | Allow-listed manga image proxy |
 
 The API returns metadata and page-image URLs. It does not store manga content.
-Streaming and download provider pages use separate `/api/stream` and
-`/api/download` routes; those routes redirect and do not proxy media bytes.
+Only MangaDex-hosted chapter pages are returned, in any available language;
+externally hosted chapters are excluded. Manga images are served through the
+allow-listed `/api/image` proxy.
+Streaming and download provider pages use separate `/api/stream` and download
+routes; those routes redirect and do not proxy media bytes.
 
 ## Tests
 
@@ -61,5 +60,5 @@ copyright and license terms. AniFox is maintained by
 
 ## License
 
-AniFox's own code is GPL-3.0-or-later; third-party notices and license
+AniFox's own code is GPL-3.0-only; third-party notices and license
 attributions are included at the repository root.

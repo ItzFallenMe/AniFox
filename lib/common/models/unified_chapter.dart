@@ -5,6 +5,7 @@ class UnifiedChapter {
   final String? scanlator;
   final String? airDate;
   final String? uploadDate;
+  final String? languageCode;
 
   const UnifiedChapter({
     required this.id,
@@ -13,5 +14,6 @@ class UnifiedChapter {
     this.scanlator,
     this.airDate,
     this.uploadDate,
+    this.languageCode,
   });
 }

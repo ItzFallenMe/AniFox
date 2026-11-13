@@ -1,34 +1,9 @@
 const cheerio = require("cheerio")
+const { getHtml } = require("./source-utils")
 
 const BASE_URL = "https://mangapill.com"
 const ID_PREFIX = "mangapill-"
-const USER_AGENT = "AniFox/1.0 (+https://github.com/ItzFallenMe/AniFox)"
-const REQUEST_TIMEOUT_MS = 15_000
 const MAX_HTML_BYTES = 5 * 1024 * 1024
-
-async function request(url) {
-    const response = await fetch(url, {
-        headers: {
-            Accept: "text/html,application/xhtml+xml",
-            "User-Agent": USER_AGENT,
-        },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    })
-
-    if (!response.ok) {
-        throw new Error(`MangaPill responded with ${response.status}`)
-    }
-
-    const contentLength = Number(response.headers.get("content-length"))
-    if (Number.isFinite(contentLength) && contentLength > MAX_HTML_BYTES) {
-        throw new Error("MangaPill returned an oversized page")
-    }
-    const html = await response.text()
-    if (Buffer.byteLength(html) > MAX_HTML_BYTES) {
-        throw new Error("MangaPill returned an oversized page")
-    }
-    return html
-}
 
 function pathFromHref(href, prefix) {
     const url = new URL(href, BASE_URL)
@@ -236,19 +211,28 @@ async function search({ query }) {
     const url = new URL("/search", BASE_URL)
     url.searchParams.set("q", query)
     return {
-        mangaList: parseSearch(await request(url)),
+        mangaList: parseSearch(await getHtml(url, {
+            referer: `${BASE_URL}/`,
+            maxBytes: MAX_HTML_BYTES,
+        })),
     }
 }
 
 async function details(mangaId) {
     const path = pathFromId(mangaId, "/manga/")
-    const html = await request(new URL(path, BASE_URL))
+    const html = await getHtml(new URL(path, BASE_URL), {
+        referer: `${BASE_URL}/`,
+        maxBytes: MAX_HTML_BYTES,
+    })
     return parseDetails(html, path)
 }
 
 async function pages(chapterId) {
     const path = pathFromId(chapterId, "/chapters/")
-    const html = await request(new URL(path, BASE_URL))
+    const html = await getHtml(new URL(path, BASE_URL), {
+        referer: `${BASE_URL}/`,
+        maxBytes: MAX_HTML_BYTES,
+    })
     return parsePages(html, path)
 }
 

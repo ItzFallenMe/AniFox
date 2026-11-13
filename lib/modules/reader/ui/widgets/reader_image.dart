@@ -1,4 +1,5 @@
 import 'package:anifox/common/widgets/smart_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:anifox/modules/reader/state/reader_prefs_provider.dart';
 
@@ -20,6 +21,13 @@ class ReaderImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final memoryWidth = (screenWidth * devicePixelRatio)
+        .round()
+        .clamp(600, kIsWeb ? 1100 : 1800)
+        .toInt();
+
     BoxFit fit = BoxFit.fitWidth;
     if (scaleType == ReaderScaleType.fitHeight) {
       fit = BoxFit.fitHeight;
@@ -32,8 +40,8 @@ class ReaderImage extends StatelessWidget {
       httpHeaders: headers,
       fit: fit,
       width: double.infinity,
-      memCacheWidth: 1400,
-      maxWidthDiskCache: 1800,
+      memCacheWidth: memoryWidth,
+      maxWidthDiskCache: kIsWeb ? 1200 : 2000,
       progressIndicatorBuilder: (context, url, progress) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.8,
         child: Center(

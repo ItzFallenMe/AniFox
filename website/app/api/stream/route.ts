@@ -1,4 +1,4 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const SOURCES: Record<string, { base: string; supportsMal?: boolean; supportsAnime?: boolean }> = {
   vidly: { base: "https://vidly.pro", supportsMal: true },

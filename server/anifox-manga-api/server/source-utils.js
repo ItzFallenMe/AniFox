@@ -1,28 +1,101 @@
 const USER_AGENT = "AniFox/1.0 (+https://github.com/ItzFallenMe/AniFox)"
 const REQUEST_TIMEOUT_MS = 12_000
 const MAX_RESPONSE_BYTES = 6 * 1024 * 1024
+const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504])
 
-async function request(url, { accept = "application/json", headers = {}, referer } = {}) {
-    const response = await fetch(url, {
+async function fetchWithRetry(url, options = {}) {
+    const {
+        timeoutMs = REQUEST_TIMEOUT_MS,
+        retries = 1,
+        retryDelayMs = 200,
+    } = options
+    let lastError
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        let response
+        try {
+            response = await fetch(url, {
+                ...options,
+                timeoutMs: undefined,
+                retries: undefined,
+                retryDelayMs: undefined,
+                signal: AbortSignal.timeout(timeoutMs),
+            })
+        } catch (error) {
+            lastError = error
+            if (attempt === retries) throw error
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs * (attempt + 1)))
+            continue
+        }
+
+        if (response.ok || !RETRYABLE_STATUS.has(response.status) || attempt === retries) {
+            return response
+        }
+
+        const retryAfter = Number(response.headers.get("retry-after"))
+        await response.body?.cancel()
+        const delay = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(1000, retryAfter * 1000)
+            : retryDelayMs * (attempt + 1)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+
+    throw lastError || new Error("Manga source request failed")
+}
+
+async function readResponseText(response, maxBytes = MAX_RESPONSE_BYTES) {
+    if (!response.body) return ""
+
+    const contentLength = Number(response.headers.get("content-length"))
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+        throw new Error("Manga source returned an oversized response")
+    }
+
+    const reader = response.body.getReader()
+    const chunks = []
+    let byteLength = 0
+    try {
+        while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            byteLength += value.byteLength
+            if (byteLength > maxBytes) {
+                await reader.cancel()
+                throw new Error("Manga source returned an oversized response")
+            }
+            chunks.push(Buffer.from(value))
+        }
+    } finally {
+        reader.releaseLock()
+    }
+    return Buffer.concat(chunks, byteLength).toString("utf8")
+}
+
+async function request(url, {
+    accept = "application/json",
+    headers = {},
+    referer,
+    maxBytes = MAX_RESPONSE_BYTES,
+    ...options
+} = {}) {
+    const response = await fetchWithRetry(url, {
+        ...options,
         headers: {
             Accept: accept,
             "User-Agent": USER_AGENT,
             ...(referer ? { Referer: referer } : {}),
             ...headers,
         },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
-    if (!response.ok) throw new Error(`Manga source responded with ${response.status}`)
+    if (!response.ok) {
+        await response.body?.cancel()
+        throw new Error(`Manga source responded with ${response.status}`)
+    }
 
-    const length = Number(response.headers.get("content-length"))
-    if (Number.isFinite(length) && length > MAX_RESPONSE_BYTES) {
-        throw new Error("Manga source returned an oversized response")
+    return {
+        response,
+        text: await readResponseText(response, maxBytes),
     }
-    const data = Buffer.from(await response.arrayBuffer())
-    if (data.byteLength > MAX_RESPONSE_BYTES) {
-        throw new Error("Manga source returned an oversized response")
-    }
-    return { response, text: data.toString("utf8") }
 }
 
 async function getJson(url, options = {}) {
@@ -82,6 +155,8 @@ function numericChapter(value) {
 
 module.exports = {
     USER_AGENT,
+    fetchWithRetry,
+    readResponseText,
     request,
     getJson,
     getHtml,

@@ -1,4 +1,4 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 function error(message: string, status: number, asHtml = false) {
   if (asHtml) {

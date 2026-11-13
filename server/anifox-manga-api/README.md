@@ -1,17 +1,19 @@
-# AniFox Manga API
+# Manga API adapters
 
-Manga backend for AniFox, maintained by [ItzFallenMe](https://github.com/ItzFallenMe).
+The current AniFox manga API is part of the website deployment. Next.js route
+handlers live in [`website/app/api/manga`](../../website/app/api/manga) and call
+the source adapters in [`server/`](server). The website and API deploy together
+to Cloudflare Workers with OpenNext; this directory is not a standalone Express
+or Vercel service.
 
+From the repository root, install the adapter dependency and run its tests:
+
+```bash
+npm ci --prefix server/anifox-manga-api/server
+npm run api:test
 ```
-server/                 Express app consumed by Vercel
-next exemple/           Next.js usage example
-docs/                   Astro API documentation
-types/                  Shared TypeScript response types
-```
 
-- Run locally: `cd server && npm install && npm run dev`
-- Deploy: import this `server` directory into Vercel (`vercel.json` already routes
-  requests to `api/index.js`).
-- Endpoint notes live in [`server/README.md`](server/README.md).
+See [`server/README.md`](server/README.md) for implemented sources and routes.
 
-Licensed under GPL-3.0. See the repository root `LICENSE`.
+AniFox is licensed under the GNU General Public License v3.0 only. See the
+repository root [`LICENSE`](../../LICENSE).

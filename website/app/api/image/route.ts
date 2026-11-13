@@ -1,7 +1,8 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const ALLOWED_IMAGE_DOMAINS = [
   "mangadex.org",
+  "mangadex.network",
   "mangapill.com",
   "mangapill.net",
   "comick.io",
@@ -23,6 +24,27 @@ function allowed(url: URL) {
   return url.protocol === "https:" &&
     !url.username && !url.password && (!url.port || url.port === "443") &&
     ALLOWED_IMAGE_DOMAINS.some((domain) => url.hostname === domain || url.hostname.endsWith(`.${domain}`));
+}
+
+function refererFor(url: URL) {
+  if (
+    url.hostname === "mangadex.org" ||
+    url.hostname.endsWith(".mangadex.org") ||
+    url.hostname === "mangadex.network" ||
+    url.hostname.endsWith(".mangadex.network")
+  ) {
+    return "https://mangadex.org/";
+  }
+  if (url.hostname === "mangapill.com" || url.hostname.endsWith(".mangapill.com")) {
+    return "https://mangapill.com/";
+  }
+  if (url.hostname === "tcbonepiecechapters.com" || url.hostname.endsWith(".tcbonepiecechapters.com")) {
+    return "https://tcbonepiecechapters.com/";
+  }
+  if (url.hostname === "asurascans.com" || url.hostname.endsWith(".asurascans.com")) {
+    return "https://asurascans.com/";
+  }
+  return "https://comick.io/";
 }
 
 export async function OPTIONS() {
@@ -50,7 +72,7 @@ export async function GET(request: Request) {
       response = await fetch(target, {
         headers: {
           Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-          Referer: "https://mangapill.com/",
+          Referer: refererFor(target),
           "User-Agent": "AniFox/1.0 (+https://github.com/ItzFallenMe/AniFox)",
         },
         redirect: "manual",

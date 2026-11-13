@@ -34,7 +34,8 @@ class PlayerScreen extends ConsumerStatefulWidget {
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+class _PlayerScreenState extends ConsumerState<PlayerScreen>
+    with WindowListener {
   final ScreenshotController _screenshotController = ScreenshotController();
 
   bool _showControls = false;
@@ -44,6 +45,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Timer? _lockedIconTimer;
 
   bool _isFullScreen = false;
+  bool _isTogglingFullScreen = false;
   bool _isEpisodePanelOpen = false;
   Offset? _lastHoverPosition;
 
@@ -94,10 +96,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _initDesktopWindowState() {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.addListener(this);
       windowManager.isFullScreen().then((isFull) {
         if (mounted) setState(() => _isFullScreen = isFull);
+      }).catchError((Object error) {
+        debugPrint('Could not read desktop fullscreen state: $error');
       });
     }
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    if (mounted && !_isFullScreen) setState(() => _isFullScreen = true);
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    if (mounted && _isFullScreen) setState(() => _isFullScreen = false);
   }
 
   @override
@@ -109,6 +124,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _controlsTimer?.cancel();
     _lockedIconTimer?.cancel();
     _disposeSystemUI();
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      windowManager.removeListener(this);
+    }
 
     super.dispose();
   }
@@ -155,9 +173,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       windowManager.isFullScreen().then((isFull) async {
         if (isFull) {
           await windowManager.setFullScreen(false);
-          if (Platform.isWindows) {
-            await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-          }
         }
       });
     }
@@ -233,20 +248,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _toggleFullScreen() async {
     if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) return;
+    if (_isTogglingFullScreen) return;
 
-    final isFull = await windowManager.isFullScreen();
-    if (isFull) {
-      await windowManager.setFullScreen(false);
-      if (Platform.isWindows) {
-        await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-      }
-      if (mounted) setState(() => _isFullScreen = false);
-    } else {
-      if (Platform.isWindows) {
-        await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      }
-      await windowManager.setFullScreen(true);
-      if (mounted) setState(() => _isFullScreen = true);
+    _isTogglingFullScreen = true;
+    try {
+      final target = !(await windowManager.isFullScreen());
+      // Let window_manager preserve and restore the native window frame.
+      await windowManager.setFullScreen(target);
+      if (mounted) setState(() => _isFullScreen = target);
+    } catch (error, stackTrace) {
+      debugPrint('Could not toggle desktop fullscreen: $error\n$stackTrace');
+      try {
+        final actual = await windowManager.isFullScreen();
+        if (mounted) setState(() => _isFullScreen = actual);
+      } catch (_) {}
+    } finally {
+      _isTogglingFullScreen = false;
     }
   }
 

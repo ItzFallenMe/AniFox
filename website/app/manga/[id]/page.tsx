@@ -2,20 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeftIcon } from "@/components/icons";
+import { mangaImageSrc } from "@/lib/manga-images";
+import { mangaLanguageName } from "@/lib/manga-language";
 
 interface MangaChapter {
   id: string;
   name: string;
   createdAt?: string;
+  languageCode?: string;
 }
 
 interface MangaDetails {
   name?: string;
   source?: string;
-  sourceUrl?: string;
   imageUrl?: string;
   author?: string;
   status?: string;
@@ -50,15 +53,16 @@ export default function MangaDetailsPage() {
   if (error || !data) {
     return <div className="manga-empty-state manga-detail-error"><strong>Could not open this manga</strong><p>{error ?? "Manga details were not found."}</p><Link href="/manga">Back to manga</Link></div>;
   }
+  const imageUrl = mangaImageSrc(data.imageUrl);
 
   return (
     <div className="manga-detail-page">
       <Link href="/manga" className="manga-back-link"><ChevronLeftIcon /> Manga catalog</Link>
       <section className="manga-detail-hero">
-        {data.imageUrl ? <Image src={data.imageUrl} alt="" fill priority sizes="230px" unoptimized /> : null}
+        {imageUrl ? <Image src={imageUrl} alt="" fill priority sizes="230px" unoptimized /> : null}
         <div className="manga-detail-cover-shade" />
         <div className="manga-detail-info">
-          {data.imageUrl ? <Image className="manga-detail-poster" src={data.imageUrl} alt={data.name ?? "Manga cover"} width={196} height={280} priority unoptimized /> : null}
+          {imageUrl ? <Image className="manga-detail-poster" src={imageUrl} alt={data.name ?? "Manga cover"} width={196} height={280} priority unoptimized /> : null}
           <div>
             <span className="manga-eyebrow">
               MANGA · {(data.source || "mangadex").replaceAll("-", " ").toUpperCase()}
@@ -67,11 +71,6 @@ export default function MangaDetailsPage() {
             <p>{[data.author, data.status].filter(Boolean).join(" · ") || "Series details"}</p>
             <div className="manga-detail-tags">
               {(data.genres ?? []).slice(0, 6).map((genre) => <span key={genre}>{genre}</span>)}
-              {data.sourceUrl ? (
-                <a href={data.sourceUrl} target="_blank" rel="noreferrer" aria-label="Open this title on its source">
-                  Open source ↗
-                </a>
-              ) : null}
             </div>
           </div>
         </div>
@@ -81,16 +80,27 @@ export default function MangaDetailsPage() {
         <div className="manga-results-heading"><div><span>START READING</span><h2>Chapters</h2></div><span>{data.chapterList?.length ?? 0} chapters</span></div>
         {data.chapterList?.length ? (
           <div className="manga-chapter-list">
-            {data.chapterList.map((chapter) => (
-              <Link key={chapter.id} href={`/manga/${encodeURIComponent(id)}/${encodeURIComponent(chapter.id)}`} className="manga-chapter-row">
-                <span className="manga-chapter-number">{chapter.name.match(/[\d.]+/)?.[0] ?? "—"}</span>
-                <strong>{chapter.name}</strong>
-                <span>{chapter.createdAt ?? "Read chapter"}</span>
-                <b aria-hidden="true">↗</b>
-              </Link>
-            ))}
+            {data.chapterList.map((chapter) => {
+              return (
+                <Link
+                  key={chapter.id}
+                  href={`/manga/${encodeURIComponent(id)}/${encodeURIComponent(chapter.id)}`}
+                  className="manga-chapter-row"
+                >
+                  <span className="manga-chapter-number">{chapter.name.match(/[\d.]+/)?.[0] ?? "—"}</span>
+                  <strong>{chapter.name}</strong>
+                  <span>
+                    {mangaLanguageName(chapter.languageCode)}
+                    {chapter.createdAt ? ` · ${chapter.createdAt}` : ""}
+                  </span>
+                  <span className="manga-chapter-link-icon" aria-hidden="true">
+                    <ChevronRight />
+                  </span>
+                </Link>
+              );
+            })}
           </div>
-        ) : <div className="manga-empty-state"><strong>No chapters available</strong><p>This source did not return any chapters.</p></div>}
+        ) : <div className="manga-empty-state"><strong>No hosted chapters available</strong><p>MangaDex has no hosted chapters for this Safe-rated title.</p></div>}
       </section>
     </div>
   );

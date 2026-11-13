@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { mangaImageSrc } from "@/lib/manga-images";
+import { mangaLanguageName } from "@/lib/manga-language";
 
 interface MangaPage {
   title?: string;
@@ -13,6 +15,7 @@ interface MangaPage {
 interface ChapterLink {
   id: string;
   name: string;
+  languageCode?: string;
 }
 
 interface MangaDetails {
@@ -39,6 +42,9 @@ export default function MangaReaderPage() {
   const [loading, setLoading] = useState(true);
   const [fit, setFit] = useState<ReaderFit>("width");
   const [activePage, setActivePage] = useState(1);
+  const [nearbyPages, setNearbyPages] = useState<Set<number>>(
+    () => new Set([0, 1]),
+  );
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -82,6 +88,7 @@ export default function MangaReaderPage() {
 
   const chapters = manga?.chapterList ?? EMPTY_CHAPTERS;
   const chapterIndex = chapters.findIndex((item) => item.id === chapter);
+  const selectedChapter = chapters[chapterIndex];
   // The server keeps chapter lists oldest-to-newest for both supported sources.
   const previous = chapterIndex > 0 ? chapters[chapterIndex - 1] : undefined;
   const next = chapterIndex >= 0 ? chapters[chapterIndex + 1] : undefined;
@@ -114,6 +121,35 @@ export default function MangaReaderPage() {
   }, [pages.length]);
 
   useEffect(() => {
+    setNearbyPages(new Set([0, 1]));
+    const pageElements = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-reader-page]"),
+    );
+    if (!pageElements.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setNearbyPages((current) => {
+          const next = new Set(current);
+          for (const entry of entries) {
+            const index = Number(
+              entry.target.getAttribute("data-reader-page"),
+            ) - 1;
+            if (!Number.isInteger(index) || index < 0) continue;
+            if (entry.isIntersecting) next.add(index);
+            else next.delete(index);
+          }
+          return next;
+        });
+      },
+      { rootMargin: "1400px 0px", threshold: 0 },
+    );
+
+    pageElements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [pages.length]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target;
       if (target instanceof HTMLElement && target.closest("input, select, textarea, button")) return;
@@ -139,7 +175,13 @@ export default function MangaReaderPage() {
 
         <div className="manga-reader-title">
           <strong>{manga?.name || data?.title || "Manga reader"}</strong>
-          <span>{chapterTitle}{pages.length ? ` · Page ${activePage} of ${pages.length}` : ""}</span>
+          <span>
+            {chapterTitle}
+            {selectedChapter?.languageCode
+              ? ` · ${mangaLanguageName(selectedChapter.languageCode)}`
+              : ""}
+            {pages.length ? ` · Page ${activePage} of ${pages.length}` : ""}
+          </span>
         </div>
 
         <nav aria-label="Reader controls">
@@ -192,13 +234,16 @@ export default function MangaReaderPage() {
         <main className="manga-reader-pages" data-fit={fit}>
           {pages.map((page, index) => (
             <figure key={`${page.image}-${index}`} data-reader-page={index + 1}>
-              {page.image ? (
-                <img
-                  src={page.image}
+              {mangaImageSrc(page.image) ? (
+                <MangaReaderImage
+                  src={mangaImageSrc(page.image)!}
                   alt={page.title || `Page ${index + 1}`}
-                  loading={index < 2 ? "eager" : "lazy"}
-                  decoding="async"
-                  fetchPriority={index === 0 ? "high" : "auto"}
+                  shouldLoad={nearbyPages.has(index)}
+                  eager={index < 2}
+                  highPriority={index === 0}
+                  onVisible={() => {
+                    setNearbyPages((current) => new Set(current).add(index));
+                  }}
                 />
               ) : null}
               <figcaption>Page {index + 1}</figcaption>
@@ -218,5 +263,51 @@ export default function MangaReaderPage() {
         </main>
       ) : null}
     </div>
+  );
+}
+
+function MangaReaderImage({
+  src,
+  alt,
+  shouldLoad,
+  eager,
+  highPriority,
+  onVisible,
+}: {
+  src: string;
+  alt: string;
+  shouldLoad: boolean;
+  eager: boolean;
+  highPriority: boolean;
+  onVisible: () => void;
+}) {
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+
+  if (!shouldLoad) {
+    return (
+      <div
+        className="manga-reader-image-placeholder"
+        style={{ aspectRatio: aspectRatio ? `${aspectRatio}` : "0.7" }}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchPriority={highPriority ? "high" : "auto"}
+      style={aspectRatio ? { aspectRatio: `${aspectRatio}` } : undefined}
+      onLoad={(event) => {
+        const image = event.currentTarget;
+        if (image.naturalWidth && image.naturalHeight) {
+          setAspectRatio(image.naturalWidth / image.naturalHeight);
+        }
+        onVisible();
+      }}
+    />
   );
 }

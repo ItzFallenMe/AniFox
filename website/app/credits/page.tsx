@@ -5,7 +5,7 @@ import {
   BookOpenText,
   Code2,
   Database,
-  Play,
+  Languages,
   UserRound,
 } from "lucide-react";
 import { Reveal } from "@/components/motion";
@@ -32,18 +32,18 @@ const credits = [
   {
     role: "Open-source project",
     name: "ItzFallenMe / AniFox",
-    detail: "The Flutter clients, website, and bundled manga API are maintained in public under GPL-3.0-or-later.",
+    detail: "The Flutter clients, website, and bundled manga API are maintained in public under GPL-3.0-only.",
     href: GITHUB_URL,
     label: "Browse the repository",
     Icon: Code2,
   },
   {
-    role: "Manga source guide",
+    role: "Manga adapter attribution",
     name: "MeManga",
     detail:
-      "Its supported-source registry guides connector discovery. AniFox currently implements five manga adapters; provider availability can change.",
-    href: "https://github.com/meellm/MeManga/blob/main/docs/SUPPORTED_SOURCES.md",
-    label: "View supported sources",
+      "Some manga adapter parsing was adapted from MeManga at commit 4268b38. It is not a runtime dependency; attribution and the MIT notice are included in the repository.",
+    href: "https://github.com/meellm/MeManga/tree/4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8",
+    label: "View the referenced commit",
     Icon: BookOpenText,
   },
   {
@@ -56,38 +56,38 @@ const credits = [
     Icon: BookOpenText,
   },
   {
-    role: "Metadata & artwork",
-    name: "TMDB · AniList · MyAnimeList",
+    role: "Metadata & tracking",
+    name: "TMDB · AniList · MyAnimeList · Kitsu · Simkl",
     detail:
-      "Film and TV metadata is provided by TMDB. Anime metadata and tracking links use AniList and MyAnimeList.",
+      "TMDB and AniList provide catalog metadata. Tracking integrations connect to AniList, MyAnimeList, Kitsu, and Simkl.",
     href: TMDB_URL,
     label: "Visit TMDB",
     Icon: Database,
   },
   {
-    role: "Playback",
-    name: "Independent embed providers",
+    role: "Web typefaces",
+    name: "Inter · Outfit",
     detail:
-      "AniFox does not host, upload, or store video. Playback is supplied by the selected third-party provider.",
-    href: null,
-    label: null,
-    Icon: Play,
+      "The website bundles Inter and Outfit under the SIL Open Font License 1.1. Full copyright notices and license terms are included in the repository.",
+    href: `${GITHUB_URL}/blob/main/THIRD_PARTY_NOTICES.md`,
+    label: "View third-party notices",
+    Icon: Languages,
   },
 ];
 
 const stack = [
   "Flutter",
+  "Riverpod",
   "Next.js",
   "React",
   "TypeScript",
   "Tailwind CSS",
   "Node.js",
   "Cloudflare Workers",
-  "MangaDex API",
   "Cheerio",
-  "TMDB API",
-  "AniList GraphQL",
   "media_kit",
+  "Inter",
+  "Outfit",
 ];
 
 export default function CreditsPage() {
@@ -152,7 +152,7 @@ export default function CreditsPage() {
         </Reveal>
 
         <p className="credits-license">
-          AniFox is free software under the GNU General Public License v3.0. It
+          AniFox is free software under the GNU General Public License v3.0 only. It
           does not host, upload, or store media. Manga source availability and
           content are controlled by their respective providers.
         </p>

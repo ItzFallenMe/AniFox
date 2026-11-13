@@ -1,16 +1,13 @@
 import {
-  ArrowUpRight,
   Bell,
   Bookmark,
   BookOpenText,
   CheckCircle2,
   Download,
-  Gamepad2,
   History,
   Layers,
   Play,
   Search,
-  Server,
   ShieldCheck,
   Sparkles,
   Star,
@@ -24,7 +21,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { FaqSection } from '@/components/faq';
 import { HeroPhone, LibraryPhone, PlayerPhone } from '@/components/phones';
 import { Counter, Reveal, Spotlight } from '@/components/motion';
-import { DOWNLOAD_PAGE, GITHUB_URL, PROVIDERS, TMDB_URL } from '@/lib/links';
+import { DOWNLOAD_PAGE, GITHUB_URL, TMDB_URL } from '@/lib/links';
 
 const FEATURES = [
   {
@@ -46,18 +43,6 @@ const FEATURES = [
     tone: 'neutral',
   },
   {
-    icon: ShieldCheck,
-    title: 'Provider choice',
-    body: 'Playback opens through a selected third-party provider. Switch providers when a player is unavailable for a title or region.',
-    tone: 'brand',
-  },
-  {
-    icon: Server,
-    title: 'Four streaming providers',
-    body: 'Choose Vidly, VidBolt, Vidy, or EmbedWave. Each provider resolves titles differently, and availability can vary by title or region.',
-    tone: 'neutral',
-  },
-  {
     icon: Search,
     title: 'Search that remembers',
     body: 'Recent searches are saved locally and offered the moment you open the tab. Deep search covers the whole TMDB catalogue.',
@@ -66,14 +51,8 @@ const FEATURES = [
   {
     icon: BookOpenText,
     title: 'A reader for your next chapter',
-    body: 'Browse MangaDex and read with five connected sources: MangaDex, MangaPill, Asura Scans, ComicK and TCB Scans.',
+    body: 'Browse Safe-rated MangaDex titles and read hosted chapters in AniFox, with every chapter labeled by language.',
     tone: 'brand',
-  },
-  {
-    icon: Gamepad2,
-    title: 'Discord Rich Presence',
-    body: 'Android and desktop builds can show the title and episode you are watching. Web Rich Presence is not supported; iOS requires Discord account-linking setup.',
-    tone: 'neutral',
   },
   {
     icon: Sparkles,
@@ -103,7 +82,6 @@ const STEPS = [
 
 const STATS = [
   { value: 1000000, suffix: '+', label: 'TMDB titles' },
-  { value: 4, suffix: '', label: 'Streaming providers' },
   { value: 5, suffix: '', label: 'Connected manga sources' },
   { value: 0, suffix: '', label: 'Accounts required' },
 ];
@@ -219,8 +197,8 @@ export default function HomePage() {
                   <ShieldCheck className="h-3 w-3" />
                   Playback
                 </p>
-                  <p className="mt-0.5 text-[11px] font-bold text-white">
-                  Provider selected
+                <p className="mt-0.5 text-[11px] font-bold text-white">
+                  Player ready
                 </p>
               </div>
 
@@ -236,23 +214,6 @@ export default function HomePage() {
           </div>
         </div>
       </header>
-
-      {/* ── Provider marquee ─────────────────────────────── */}
-      <section className="relative z-10 border-y border-white/[0.05] bg-white/[0.012] py-5">
-        <div className="mask-fade-x overflow-hidden">
-          <div className="marquee-track flex w-max items-center gap-10 whitespace-nowrap px-6">
-            {[...PROVIDERS, ...PROVIDERS].map((provider, index) => (
-              <span
-                key={`${provider.name}-${index}`}
-                className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.28em] text-faint"
-              >
-                <span className="h-1 w-1 rounded-full bg-brand" />
-                {provider.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── Features ─────────────────────────────────────── */}
       <section id="features" className="relative z-10 px-6 py-28 sm:py-36">
@@ -325,9 +286,8 @@ export default function HomePage() {
                 <span className="text-muted">Skip the noise.</span>
               </h2>
               <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-                Playback is resolved through four bundled providers. AniFox
-                redirects to the selected provider, which serves its own player
-                and media; no video bytes are proxied by AniFox.
+                AniFox does not host or proxy video. Playback is provided by
+                independent third-party players.
               </p>
             </Reveal>
 
@@ -335,8 +295,8 @@ export default function HomePage() {
               {[
                 {
                   icon: ShieldCheck,
-                  title: 'Direct provider playback',
-                  body: 'The selected provider hosts its own player and media. AniFox supplies a validated redirect, not a media proxy.',
+                  title: 'External playback',
+                  body: 'Playback comes from an independent player. AniFox does not host or proxy media.',
                 },
                 {
                   icon: Zap,
@@ -421,7 +381,7 @@ export default function HomePage() {
       <section className="relative z-10 px-6 py-16">
         <div className="mx-auto max-w-7xl">
           <Reveal>
-            <div className="grid gap-px overflow-hidden rounded-[2rem] border border-white/[0.06] bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-px overflow-hidden rounded-[2rem] border border-white/[0.06] bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-3">
               {STATS.map(stat => (
                 <div
                   key={stat.label}
@@ -435,95 +395,6 @@ export default function HomePage() {
                   </p>
                 </div>
               ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── Servers ──────────────────────────────────────── */}
-      <section id="servers" className="relative z-10 px-6 py-28">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
-            <Reveal>
-              <p className="mb-5 text-[10px] font-black uppercase tracking-[0.35em] text-brand">
-                — Providers
-              </p>
-              <h2 className="font-display text-4xl font-black uppercase leading-[0.9] tracking-tighter text-white sm:text-5xl">
-                Four ways
-                <br />
-                <span className="text-muted">to the same story.</span>
-              </h2>
-              <p className="mt-6 max-w-md text-base font-medium leading-relaxed text-muted">
-                AniFox never hosts a media file. Playback resolves through one of
-                four third-party providers, each with its own player, availability,
-                and policies.
-              </p>
-              <p className="mt-4 max-w-md text-[12px] leading-relaxed text-faint">
-                Availability varies by title and region. When a provider is down,
-                you can switch to another one from the player.
-              </p>
-            </Reveal>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {PROVIDERS.map((provider, index) => (
-                <Reveal key={provider.name} delay={index * 60}>
-                  <div className="group flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-colors hover:border-brand/25 hover:bg-white/[0.04]">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] font-display text-xs font-black text-brand">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-white">
-                        {provider.name}
-                      </p>
-                      <p className="text-[11px] text-faint">{provider.note}</p>
-                    </div>
-                    {index === 0 ? (
-                      <span className="ml-auto shrink-0 rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.16em] text-brand">
-                        Default
-                      </span>
-                    ) : null}
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Discord band ─────────────────────────────────── */}
-      <section className="relative z-10 px-6 pb-28">
-        <div className="mx-auto max-w-7xl">
-          <Reveal>
-            <div className="relative overflow-hidden rounded-[2.2rem] border border-white/[0.07] bg-gradient-to-br from-white/[0.05] via-white/[0.015] to-transparent p-8 sm:p-12">
-              <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(255,122,26,0.18),transparent_65%)] blur-2xl" />
-              <div className="relative flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-                <div className="max-w-xl">
-                  <p className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-brand">
-                    <Gamepad2 className="h-3.5 w-3.5" />
-                    Optional integration
-                  </p>
-                  <h2 className="font-display text-3xl font-black uppercase leading-[0.95] tracking-tighter text-white sm:text-4xl">
-                    Let Discord know
-                    <br />
-                    what you&apos;re watching.
-                  </h2>
-                  <p className="mt-4 text-sm leading-relaxed text-muted">
-                    Desktop builds can publish the title and episode while the
-                    player is open, provided Discord is running and the public
-                    application ID is configured. Discord does not support this
-                    local RPC flow in ordinary web pages or iOS apps.
-                  </p>
-                </div>
-                <a
-                  href={`${GITHUB_URL}/tree/main/lib/core/services`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-5 py-3 text-xs font-bold text-white transition-colors hover:border-white/25 hover:bg-white/[0.09]"
-                >
-                  Read the setup
-                  <ArrowUpRight className="h-4 w-4" />
-                </a>
-              </div>
             </div>
           </Reveal>
         </div>
@@ -566,7 +437,7 @@ export default function HomePage() {
                 </div>
 
                 <p className="mt-8 text-[10px] uppercase tracking-[0.2em] text-faint">
-                  Android 7+ · No account · {PROVIDERS.length} playback sources ·{' '}
+                  Android 7+ · No account ·{' '}
                   <a
                     href={TMDB_URL}
                     target="_blank"

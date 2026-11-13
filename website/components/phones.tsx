@@ -8,9 +8,7 @@ import {
   Film,
   Play,
   Plus,
-  RefreshCw,
   Search,
-  ShieldCheck,
   SkipForward,
   Sparkles,
   Tv,
@@ -151,10 +149,6 @@ export function PlayerPhone() {
           <p className="truncate text-[10px] font-bold text-white">Frieren</p>
           <p className="truncate text-[7px] text-faint">Season 1 · Episode 3</p>
         </div>
-        <span className="flex items-center gap-1 rounded-md border border-brand/25 bg-brand/10 px-1.5 py-0.5 text-[6px] font-black tracking-[0.12em] text-brand">
-          <ShieldCheck className="h-2.5 w-2.5" />
-          SOURCE
-        </span>
       </div>
 
       <div className="relative flex aspect-video items-center justify-center border-y border-white/[0.06] bg-black">
@@ -163,49 +157,18 @@ export function PlayerPhone() {
           <Play className="h-4 w-4 text-black" fill="currentColor" strokeWidth={0} />
         </span>
         <span className="absolute bottom-2 left-2 rounded bg-black/70 px-1.5 py-0.5 text-[6px] font-bold uppercase tracking-[0.14em] text-white/70">
-          Vidly · external player
+          External player
         </span>
       </div>
 
       <div className="space-y-3 p-3">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[6.5px] font-black uppercase tracking-[0.2em] text-faint">
-              Server
-            </span>
-            <span className="flex items-center gap-1 text-[6.5px] font-bold text-brand">
-              <ShieldCheck className="h-2.5 w-2.5" />
-              Provider selected
-            </span>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]">
-              <RefreshCw className="h-2.5 w-2.5 text-white/70" />
-            </span>
-          </div>
-          <div className="flex gap-1">
-            {['Vidly', 'VidBolt', 'Vidy', 'EmbedWave'].map((label, index) => (
-              <span
-                key={label}
-                className={`rounded-md px-1.5 py-1 text-[6px] font-bold ${
-                  index === 0
-                    ? 'bg-white text-black'
-                    : 'border border-white/10 bg-white/[0.05] text-white/60'
-                }`}>
-                {label}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2 text-[6px] leading-relaxed text-faint">
-            Provider serves playback. AniFox does not host video files.
-          </p>
-        </div>
-
         <div className="flex items-center gap-1.5">
           <span className="flex h-8 flex-1 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[7px] font-bold text-white">
             Episodes
           </span>
           <span className="flex h-8 flex-1 items-center justify-center gap-1 rounded-full bg-brand text-[7px] font-black text-black">
             <SkipForward className="h-2.5 w-2.5" />
-            Next server
+            Next episode
           </span>
         </div>
 

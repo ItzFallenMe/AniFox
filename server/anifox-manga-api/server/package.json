@@ -2,7 +2,7 @@
   "name": "anifox-manga-adapters",
   "version": "1.0.0",
   "description": "Manga source adapters bundled into the AniFox web app API.",
-  "license": "GPL-3.0",
+  "license": "GPL-3.0-only",
   "private": true,
   "main": "sources.js",
   "engines": {

@@ -1,7 +1,7 @@
 name: anifox
 description: "AniFox — open-source anime, movie and TV streaming client."
 publish_to: "none"
-version: 2.1.5+4
+version: 1.0.0+1
 homepage: https://github.com/ItzFallenMe/AniFox
 repository: https://github.com/ItzFallenMe/AniFox
 issue_tracker: https://github.com/ItzFallenMe/AniFox/issues
@@ -83,6 +83,7 @@ dependencies:
   flutter_device_apps: ^0.8.1
   better_player_plus: ^1.0.8
   webview_all: ^1.4.4
+  webview_all_android: ^1.4.4
 
 dependency_overrides:
   flutter_inappwebview: 6.2.0-beta.2

@@ -1,18 +1,17 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import {
-  ArrowLeft,
-  CheckCircle2,
   Download,
-  ShieldCheck,
+  Laptop,
+  Monitor,
   Smartphone,
+  Terminal,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import { GithubIcon } from '@/components/icons';
 import { SiteNav } from '@/components/site-nav';
 import { SiteFooter } from '@/components/site-footer';
 import { Reveal } from '@/components/motion';
-import { DownloadCount } from '@/components/download-count';
 import {
   formatBytes,
   formatDate,
@@ -37,6 +36,117 @@ const preferred = (release: ReleaseInfo): ApkAsset | undefined =>
   release.apks.find(apk => apk.architecture === 'Universal') ??
   release.apks.find(apk => apk.architecture === 'ARM64') ??
   release.apks[0];
+
+type PlatformAsset = {
+  name: string;
+  size: number;
+  downloadUrl: string;
+  label: string;
+};
+
+type PlatformDownload = {
+  name: string;
+  description: string;
+  Icon: LucideIcon;
+  assets: PlatformAsset[];
+};
+
+function platformDownloads(release?: ReleaseInfo): PlatformDownload[] {
+  const packages = release?.packages ?? [];
+  const apk = release ? preferred(release) : undefined;
+
+  return [
+    {
+      name: 'Android',
+      description: 'Universal APK · recommended for most devices',
+      Icon: Smartphone,
+      assets: apk
+        ? [{
+            ...apk,
+            label: apk.architecture === 'Universal'
+              ? 'Download Universal APK'
+              : `Download ${apk.architecture} APK`,
+          }]
+        : [],
+    },
+    {
+      name: 'Windows',
+      description: '64-bit Windows',
+      Icon: Monitor,
+      assets: packages
+        .filter(file => /windows-x64\.zip$/i.test(file.name))
+        .map(file => ({ ...file, label: 'Download for Windows' })),
+    },
+    {
+      name: 'macOS',
+      description: 'Choose Apple Silicon or Intel',
+      Icon: Laptop,
+      assets: packages
+        .filter(file => /macos-(?:arm64|x64)\.zip$/i.test(file.name))
+        .map(file => ({
+          ...file,
+          label: /arm64/i.test(file.name) ? 'Apple Silicon' : 'Intel',
+        })),
+    },
+    {
+      name: 'Linux',
+      description: '64-bit Linux',
+      Icon: Terminal,
+      assets: packages
+        .filter(file => /linux-x64\.(?:tar\.gz|zip)$/i.test(file.name))
+        .map(file => ({ ...file, label: 'Download for Linux' })),
+    },
+  ];
+}
+
+const PlatformCard = ({
+  platform,
+  hasRelease,
+}: {
+  platform: PlatformDownload;
+  hasRelease: boolean;
+}) => (
+  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 transition-colors hover:border-brand/25 hover:bg-white/[0.04]">
+    <div className="flex items-center gap-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand/20 bg-brand/[0.08] text-brand">
+        <platform.Icon className="h-5 w-5" strokeWidth={1.8} />
+      </span>
+      <div>
+        <h2 className="text-base font-bold text-white">{platform.name}</h2>
+        <p className="mt-0.5 text-[11px] text-faint">{platform.description}</p>
+      </div>
+    </div>
+    <div className="mt-5 flex flex-col gap-2">
+      {platform.assets.length ? (
+        platform.assets.map(asset => (
+          <a
+            key={asset.name}
+            href={asset.downloadUrl}
+            className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-brand px-3.5 py-2.5 text-xs font-bold text-black transition hover:brightness-110"
+          >
+            <span>{asset.label}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="text-[10px] font-semibold text-black/65">
+                {formatBytes(asset.size)}
+              </span>
+              <Download className="h-4 w-4" />
+            </span>
+          </a>
+        ))
+      ) : (
+        <a
+          href={`${GITHUB_URL}/releases`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-white/[0.08]"
+        >
+          {hasRelease ? 'Not in the latest release' : 'Check releases'}
+          <GithubIcon className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </div>
+  </div>
+);
 
 const ApkCard = ({ apk }: { apk: ApkAsset }) => (
   <a
@@ -150,7 +260,7 @@ const ReleaseBlock = ({ release, latest }: { release: ReleaseInfo; latest: boole
 export default async function DownloadPage() {
   const releases = await getReleases();
   const latest = releases[0];
-  const primary = latest ? preferred(latest) : undefined;
+  const platforms = platformDownloads(latest);
 
   return (
     <main className="relative min-h-screen bg-background text-ink">
@@ -161,86 +271,64 @@ export default async function DownloadPage() {
 
       <SiteNav />
 
-      <header className="relative z-10 px-6 pb-16 pt-36 sm:pt-44">
+      <header className="relative z-10 px-6 pb-12 pt-36 sm:pt-44">
         <div className="mx-auto max-w-5xl">
           <Reveal>
             <p className="mb-4 text-[10px] font-black uppercase tracking-[0.35em] text-brand">
-              — Android · Windows · macOS · Linux
+              {latest ? `Latest release · AniFox ${latest.version}` : 'Android · Windows · macOS · Linux'}
             </p>
-            <h1 className="font-display text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white sm:text-7xl">
-              Install AniFox.
+            <h1 className="font-display text-5xl font-black uppercase leading-[0.9] tracking-tighter text-white sm:text-7xl">
+              Download AniFox.
             </h1>
-            <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-              Download Android, Windows, macOS, and Linux builds from GitHub
-              Releases. iOS builds are not installable until Apple signing is
-              configured.
+            <p className="mt-5 max-w-xl text-base font-medium leading-relaxed text-muted">
+              Choose your platform for a direct download of the latest release.
             </p>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-              {primary ? (
-                <a
-                  href={primary.downloadUrl}
-                  className="btn-shine inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-brand px-9 text-sm font-black uppercase tracking-[0.06em] text-black shadow-[0_18px_50px_rgba(255,122,26,0.28)] transition-transform hover:scale-[1.02] active:scale-95"
-                >
-                  <Download className="h-5 w-5" />
-                  {latest ? `Download Android ${latest.version}` : 'Download APK'}
-                </a>
-              ) : (
-                <a
-                  href={`${GITHUB_URL}/releases`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-brand px-9 text-sm font-black uppercase text-black"
-                >
-                  <GithubIcon className="h-5 w-5" />
-                  View releases
-                </a>
-              )}
-              <Link
-                href="/"
-                className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.04] px-6 text-sm font-bold text-white transition-colors hover:border-white/25 hover:bg-white/[0.08]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to home
-              </Link>
-            </div>
-          </Reveal>
-
-          <Reveal delay={200}>
-            <div className="mt-10 grid gap-3 text-[11px] font-bold text-muted sm:grid-cols-3">
-              <p className="flex items-center gap-2">
-                <CheckCircle2 className="h-3.5 w-3.5 text-brand" />
-                Android · Windows · macOS · Linux
-              </p>
-              <p className="flex items-center gap-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-brand" />
-                Open source · release checksums
-              </p>
-              <p className="flex items-center gap-2">
-                <Smartphone className="h-3.5 w-3.5 text-brand" />
-                Android 7+ · ARM64 recommended
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={260}>
-            <div className="mt-8 max-w-xl">
-              <DownloadCount />
-            </div>
           </Reveal>
         </div>
       </header>
 
+      <section id="platforms" className="relative z-10 px-6 pb-16">
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.26em] text-brand">
+                  Choose your platform
+                </p>
+                <h2 className="mt-1 font-display text-2xl font-black tracking-tight text-white">
+                  {latest ? `AniFox ${latest.version}` : 'Latest downloads'}
+                </h2>
+              </div>
+              {latest?.publishedAt ? (
+                <span className="text-[11px] font-medium text-faint">
+                  Released {formatDate(latest.publishedAt)}
+                </span>
+              ) : null}
+            </div>
+          </Reveal>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {platforms.map((platform, index) => (
+              <Reveal key={platform.name} delay={index * 55}>
+                <PlatformCard platform={platform} hasRelease={Boolean(latest)} />
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="relative z-10 px-6 pb-24">
         <div className="mx-auto max-w-5xl space-y-6">
           {releases.length > 0 ? (
-            releases.map((release, index) => (
-              <Reveal key={release.tag} delay={index * 60}>
-                <ReleaseBlock release={release} latest={index === 0} />
-              </Reveal>
-            ))
+            <>
+              <h2 className="font-display text-2xl font-black text-white">
+                All release files
+              </h2>
+              {releases.map((release, index) => (
+                <Reveal key={release.tag} delay={index * 60}>
+                  <ReleaseBlock release={release} latest={index === 0} />
+                </Reveal>
+              ))}
+            </>
           ) : (
             <Reveal>
               <div className="rounded-[2rem] border border-white/[0.06] bg-white/[0.02] p-8 text-center">
@@ -260,34 +348,6 @@ export default async function DownloadPage() {
               </div>
             </Reveal>
           )}
-
-          <Reveal>
-            <div className="rounded-[2rem] border border-white/[0.06] bg-white/[0.02] p-6 sm:p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-brand">
-                Install notes
-              </p>
-              <ul className="mt-4 space-y-3 text-[13px] leading-relaxed text-muted">
-                <li>
-                  Android: allow installs from your browser or file manager when
-                  prompted, then open the downloaded APK.
-                </li>
-                <li>
-                  Windows and Linux: extract the archive, then run the included
-                  AniFox application. macOS: open the app from the archive; its
-                  build is unsigned and may require Gatekeeper approval.
-                </li>
-                <li>
-                  APK updates preserve your library when installed over the
-                  existing app. Local debug builds use a different signing key
-                  and may require uninstalling the release first.
-                </li>
-                <li>
-                  The Play Store AAB is for store upload, not direct installation.
-                  iOS requires signing and is not available yet.
-                </li>
-              </ul>
-            </div>
-          </Reveal>
         </div>
       </section>
 

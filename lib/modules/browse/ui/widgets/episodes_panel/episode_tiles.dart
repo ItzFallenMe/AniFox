@@ -28,6 +28,19 @@ enum EpisodeImageFadeDirection {
   bottom,
 }
 
+String _mangaLanguageName(String? languageCode) {
+  final code = languageCode?.trim().toLowerCase();
+  if (code == null || code.isEmpty) return 'Unknown language';
+
+  return switch (code) {
+    'fa' => 'Persian',
+    'pt-br' => 'Brazilian Portuguese',
+    'tr' => 'Turkish',
+    'vi' => 'Vietnamese',
+    _ => code.toUpperCase(),
+  };
+}
+
 abstract class BaseEpisodeTile extends StatelessWidget {
   final UnifiedEpisode episode;
   final MediaType mediaType;
@@ -377,8 +390,9 @@ class EpisodeClassicTile extends BaseEpisodeTile {
                                     fontSize: 11,
                                   ),
                                 ),
-                                if (episode.scanlator != null &&
-                                    episode.scanlator!.isNotEmpty) ...[
+                                if (episode.languageCode != null ||
+                                    (episode.scanlator != null &&
+                                        episode.scanlator!.isNotEmpty)) ...[
                                   const SizedBox(width: 6),
                                   Text(
                                     '•',
@@ -390,7 +404,11 @@ class EpisodeClassicTile extends BaseEpisodeTile {
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      episode.scanlator!,
+                                      episode.languageCode != null
+                                          ? _mangaLanguageName(
+                                              episode.languageCode,
+                                            )
+                                          : episode.scanlator!,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: theme.textTheme.labelSmall
@@ -400,6 +418,14 @@ class EpisodeClassicTile extends BaseEpisodeTile {
                                           ),
                                     ),
                                   ),
+                                  if (episode.languageCode != null) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.translate_rounded,
+                                      size: 11,
+                                      color: dimColor,
+                                    ),
+                                  ],
                                 ],
                               ],
                             ),
@@ -1142,6 +1168,7 @@ class EpisodeCoverTile extends BaseEpisodeTile {
                       ),
                     ),
                     if ((displayDate != null && displayDate!.isNotEmpty) ||
+                        episode.languageCode != null ||
                         (episode.scanlator != null &&
                             episode.scanlator!.isNotEmpty) ||
                         (episode.description != null &&
@@ -1166,8 +1193,9 @@ class EpisodeCoverTile extends BaseEpisodeTile {
                               ),
                             ),
                           ],
-                          if (episode.scanlator != null &&
-                              episode.scanlator!.isNotEmpty) ...[
+                          if (episode.languageCode != null ||
+                              (episode.scanlator != null &&
+                                  episode.scanlator!.isNotEmpty)) ...[
                             if (displayDate != null && displayDate!.isNotEmpty)
                               Text(
                                 '  •  ',
@@ -1175,7 +1203,9 @@ class EpisodeCoverTile extends BaseEpisodeTile {
                               ),
                             Flexible(
                               child: Text(
-                                episode.scanlator!,
+                                episode.languageCode != null
+                                    ? _mangaLanguageName(episode.languageCode)
+                                    : episode.scanlator!,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -1185,6 +1215,14 @@ class EpisodeCoverTile extends BaseEpisodeTile {
                                 ),
                               ),
                             ),
+                            if (episode.languageCode != null) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.translate_rounded,
+                                size: 11,
+                                color: dimColor,
+                              ),
+                            ],
                           ],
                           if ((displayDate == null || displayDate!.isEmpty) &&
                               episode.description != null &&

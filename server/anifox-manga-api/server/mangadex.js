@@ -1,3 +1,5 @@
+const { fetchWithRetry, readResponseText } = require("./source-utils")
+
 const API_BASE = process.env.MANGADEX_API_URL?.trim().replace(/\/+$/, "") || "https://api.mangadex.org"
 const COVER_BASE = "https://uploads.mangadex.org/covers"
 const PAGE_LIMIT = 24
@@ -24,14 +26,20 @@ async function request(path, params = {}) {
     if (pendingRequests.has(key)) return pendingRequests.get(key)
 
     const pending = (async () => {
-        const response = await fetch(url, {
+        const response = await fetchWithRetry(url, {
             headers: { Accept: "application/json", "User-Agent": USER_AGENT },
-            signal: AbortSignal.timeout(15_000),
+            timeoutMs: 15_000,
         })
         if (!response.ok) {
+            await response.body?.cancel()
             throw new Error(`MangaDex responded with ${response.status}`)
         }
-        return response.json()
+        const text = await readResponseText(response)
+        try {
+            return JSON.parse(text)
+        } catch {
+            throw new Error("MangaDex returned invalid JSON")
+        }
     })()
     pendingRequests.set(key, pending)
 
@@ -105,13 +113,29 @@ function orderFor(type) {
     return { "order[latestUploadedChapter]": "desc" }
 }
 
+function isSafeManga(manga) {
+    return manga?.attributes?.contentRating === "safe"
+}
+
+function rejectUnsafeManga() {
+    const error = new Error("This title is unavailable because AniFox only shows MangaDex Safe-rated manga.")
+    error.status = 404
+    throw error
+}
+
+async function mangaById(mangaId, params = {}) {
+    const result = await request(`/manga/${mangaId}`, params)
+    if (!isSafeManga(result.data)) rejectUnsafeManga()
+    return result.data
+}
+
 async function list({ page = 1, type = "latest", state, category } = {}) {
     const currentPage = Math.max(1, Number(page) || 1)
     const params = {
         limit: PAGE_LIMIT,
         offset: (currentPage - 1) * PAGE_LIMIT,
         "includes[]": ["cover_art"],
-        "contentRating[]": ["safe", "suggestive"],
+        "contentRating[]": ["safe"],
         ...orderFor(type),
     }
     if (state && String(state).toLowerCase() !== "none") {
@@ -124,7 +148,7 @@ async function list({ page = 1, type = "latest", state, category } = {}) {
     const result = await request("/manga", params)
     const total = Math.max(0, result.total || 0)
     return {
-        mangaList: (result.data || []).map(toCard),
+        mangaList: (result.data || []).filter(isSafeManga).map(toCard),
         metaData: {
             totalStories: total,
             totalPages: Math.max(1, Math.ceil(total / PAGE_LIMIT)),
@@ -152,12 +176,12 @@ async function search({ query, page = 1 } = {}) {
         limit: PAGE_LIMIT,
         offset: (currentPage - 1) * PAGE_LIMIT,
         "includes[]": ["cover_art"],
-        "contentRating[]": ["safe", "suggestive"],
+        "contentRating[]": ["safe"],
         "order[relevance]": "desc",
     })
     const total = Math.max(0, result.total || 0)
     return {
-        mangaList: (result.data || []).map(toCard),
+        mangaList: (result.data || []).filter(isSafeManga).map(toCard),
         metaData: {
             totalStories: total,
             totalPages: Math.max(1, Math.ceil(total / PAGE_LIMIT)),
@@ -167,6 +191,7 @@ async function search({ query, page = 1 } = {}) {
 }
 
 async function chapters(mangaId) {
+    await mangaById(mangaId)
     const items = []
     let offset = 0
 
@@ -174,7 +199,6 @@ async function chapters(mangaId) {
         const result = await request(`/manga/${mangaId}/feed`, {
             limit: 500,
             offset,
-            "translatedLanguage[]": ["en"],
             "order[volume]": "asc",
             "order[chapter]": "asc",
             "includes[]": ["scanlation_group"],
@@ -188,23 +212,23 @@ async function chapters(mangaId) {
     return items
         .filter((chapter) => chapter.attributes.pages > 0 && !chapter.attributes.externalUrl)
         .map((chapter) => {
-        const attributes = chapter.attributes
-        const label = attributes.chapter ? `Chapter ${attributes.chapter}` : "Oneshot"
-        return {
-            id: chapter.id,
-            path: `https://mangadex.org/chapter/${chapter.id}`,
-            name: attributes.title ? `${label} — ${attributes.title}` : label,
-            view: "",
-            createdAt: attributes.publishAt || attributes.createdAt || "",
-        }
-    })
+            const attributes = chapter.attributes
+            const label = attributes.chapter ? `Chapter ${attributes.chapter}` : "Oneshot"
+            return {
+                id: chapter.id,
+                path: `https://mangadex.org/chapter/${chapter.id}`,
+                name: attributes.title ? `${label} — ${attributes.title}` : label,
+                languageCode: attributes.translatedLanguage || "unknown",
+                view: "",
+                createdAt: attributes.publishAt || attributes.createdAt || "",
+            }
+        })
 }
 
 async function details(mangaId) {
-    const result = await request(`/manga/${mangaId}`, {
+    const manga = await mangaById(mangaId, {
         "includes[]": ["cover_art", "author", "artist"],
     })
-    const manga = result.data
     if (!manga) throw new Error("Manga not found")
 
     const attributes = manga.attributes
@@ -228,20 +252,48 @@ async function details(mangaId) {
     }
 }
 
-async function pages(chapterId) {
+async function pages(mangaId, chapterId) {
+    const chapterResult = await request(`/chapter/${chapterId}`, {
+        "includes[]": ["manga"],
+    })
+    const chapter = chapterResult.data
+    if (!chapter) throw new Error("Chapter not found")
+
+    const parentId = chapter.relationships?.find((item) => item.type === "manga")?.id
+    if (!parentId || parentId !== mangaId) {
+        const error = new Error("Chapter does not belong to this manga.")
+        error.status = 404
+        throw error
+    }
+    await mangaById(parentId)
+
+    if (!(chapter.attributes?.pages > 0) || chapter.attributes?.externalUrl) {
+        throw new Error("This chapter has no MangaDex-hosted pages.")
+    }
+
     const result = await request(`/at-home/server/${chapterId}`)
     if (!result.chapter) throw new Error("Chapter pages not found")
-    const base = `${result.baseUrl}/data/${result.chapter.hash}`
+    const useDataSaver = Array.isArray(result.chapter.dataSaver) && result.chapter.dataSaver.length > 0
+    const files = useDataSaver ? result.chapter.dataSaver : result.chapter.data || []
+    const qualityPath = useDataSaver ? "data-saver" : "data"
+    const base = `${result.baseUrl}/${qualityPath}/${result.chapter.hash}`
     return {
         title: "",
         currentChapter: "",
         chapterListIds: [],
         source: "mangadex",
-        images: (result.chapter.data || []).map((file) => ({
+        images: files.map((file) => ({
             title: file,
             image: `${base}/${file}`,
         })),
     }
 }
 
-module.exports = { list, search, details, chapters, pages }
+module.exports = {
+    list,
+    search,
+    details,
+    chapters,
+    pages,
+    _test: { isSafeManga },
+}

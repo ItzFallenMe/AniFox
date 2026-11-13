@@ -2,6 +2,7 @@
   "name": "anifox-monorepo",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "description": "AniFox Flutter clients, Next.js web app, and shared API",
   "scripts": {
     "web:dev": "npm --prefix website run dev",

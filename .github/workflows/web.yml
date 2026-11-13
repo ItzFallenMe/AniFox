@@ -8,10 +8,12 @@ on:
     branches: [main, anifox]
     paths:
       - "website/**"
+      - "server/anifox-manga-api/server/**"
       - ".github/workflows/web.yml"
   pull_request:
     paths:
       - "website/**"
+      - "server/anifox-manga-api/server/**"
       - ".github/workflows/web.yml"
   workflow_dispatch:
 
@@ -35,11 +37,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: website/package-lock.json
+          cache-dependency-path: |
+            website/package-lock.json
+            server/anifox-manga-api/server/package-lock.json
 
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Install manga API dependencies
+        run: npm ci --prefix ../server/anifox-manga-api/server
 
       - name: Typecheck
         run: npm run typecheck

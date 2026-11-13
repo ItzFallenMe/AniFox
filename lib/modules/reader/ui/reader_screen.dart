@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,10 +40,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   GlobalKey<ReaderWebtoonViewState> _webtoonKey = GlobalKey();
 
   Offset? _pointerDownPos;
+  int? _previousImageCacheSize;
+  int? _previousImageCacheSizeBytes;
 
   @override
   void initState() {
     super.initState();
+    _limitWebImageCache();
     _enableImmersiveMode();
     _tryEnableWakelock();
 
@@ -79,7 +83,29 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     try {
       WakelockPlus.disable();
     } catch (_) {}
+    _restoreWebImageCache();
     super.dispose();
+  }
+
+  void _limitWebImageCache() {
+    if (!kIsWeb) return;
+    final cache = PaintingBinding.instance.imageCache;
+    _previousImageCacheSize = cache.maximumSize;
+    _previousImageCacheSizeBytes = cache.maximumSizeBytes;
+    cache.maximumSize = cache.maximumSize > 32 ? 32 : cache.maximumSize;
+    const readerCacheLimit = 48 * 1024 * 1024;
+    cache.maximumSizeBytes = cache.maximumSizeBytes > readerCacheLimit
+        ? readerCacheLimit
+        : cache.maximumSizeBytes;
+  }
+
+  void _restoreWebImageCache() {
+    if (!kIsWeb) return;
+    final cache = PaintingBinding.instance.imageCache;
+    final previousSize = _previousImageCacheSize;
+    final previousSizeBytes = _previousImageCacheSizeBytes;
+    if (previousSize != null) cache.maximumSize = previousSize;
+    if (previousSizeBytes != null) cache.maximumSizeBytes = previousSizeBytes;
   }
 
   void _enableImmersiveMode() {
