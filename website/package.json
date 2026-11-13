@@ -11,7 +11,7 @@
     "directory": "website"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "next dev",
@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.20.16",
+    "dotenv": "^18.0.10",
+    "lucide-react": "^1.72.0",
     "next": "15.5.29",
     "react": "19.2.0",
     "react-dom": "19.2.0"

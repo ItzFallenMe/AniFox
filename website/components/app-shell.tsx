@@ -36,22 +36,24 @@ function BackToTop() {
 
 function Footer() {
   return (
-    <footer className="app-footer relative z-10 mt-auto w-full bg-black px-6 py-6 pb-20 text-white/50 md:pb-8 md:pl-[100px] md:pr-14 lg:pl-[120px]">
+    <footer className="app-footer relative z-10 mt-auto w-full px-6 py-7 pb-20 text-white/50 md:pb-8 md:pl-[100px] md:pr-14 lg:pl-[120px]">
       <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-12">
         <p className="max-w-xl text-[11px] leading-[1.7] text-white/40">
-          AniFox does not host, upload or store any media. Titles are indexed from
-          public metadata providers (TMDB, AniList, MyAnimeList) and playback is
-          provided by third-party embed hosts. AniFox only supplies links.
+          AniFox connects public metadata and manga sources to third-party
+          playback and download providers. Providers serve their own pages and
+          media; AniFox does not host media files.
         </p>
         <div className="shrink-0 md:text-right">
-          <p className="text-[11px] text-white/40">© {new Date().getFullYear()} AniFox · v1.0.0</p>
-          <nav aria-label="Footer" className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1 text-[11px] text-white/40 md:justify-end">
-            <Link className="underline decoration-white/15 underline-offset-2 transition-colors hover:text-white/70" href="/home">
-              Web app
-            </Link>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">© {new Date().getFullYear()} AniFox · ItzFallenMe</p>
+          <nav aria-label="Footer" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-white/45 md:justify-end">
+            <Link className="transition-colors hover:text-[#ffad78]" href="/">About</Link>
+            <Link className="transition-colors hover:text-[#ffad78]" href="/download">Download</Link>
+            <Link className="transition-colors hover:text-[#ffad78]" href="/privacy">Privacy</Link>
+            <Link className="transition-colors hover:text-[#ffad78]" href="/terms">Terms</Link>
+            <Link className="transition-colors hover:text-[#ffad78]" href="/credits">Credits</Link>
             <a
-              className="inline-flex items-center gap-1 underline decoration-white/15 underline-offset-2 transition-colors hover:text-white/70"
+              className="inline-flex items-center gap-1 transition-colors hover:text-[#ffad78]"
               href="https://github.com/ItzFallenMe"
               target="_blank"
               rel="noreferrer"
@@ -59,7 +61,7 @@ function Footer() {
               <GithubIcon className="h-3 w-3" /> ItzFallenMe
             </a>
             <a
-              className="underline decoration-white/15 underline-offset-2 transition-colors hover:text-white/70"
+              className="transition-colors hover:text-[#ffad78]"
               href="https://github.com/ItzFallenMe/AniFox"
               target="_blank"
               rel="noreferrer"
@@ -76,10 +78,15 @@ function Footer() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const routeSegments = pathname.split("/").filter(Boolean);
+  const hasOwnMobileNavigation = pathname.startsWith("/title/");
 
-  // The landing page, watch player and manga reader have their own full-bleed UI.
+  // Marketing/legal pages, the watch player and manga reader have their own shell.
   if (
     pathname === "/" ||
+    pathname === "/download" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/credits" ||
     pathname.startsWith("/watch/") ||
     pathname.startsWith("/cast") ||
     (routeSegments[0] === "manga" && routeSegments.length === 3)
@@ -90,9 +97,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-frame flex min-h-screen flex-col overflow-x-clip bg-black text-white">
       <Sidebar />
-      <Link href="/home" aria-label="AniFox home" className="mobile-brand md:hidden">
-        <Image src="/logo.png" alt="" width={48} height={48} priority />
-      </Link>
+      {!hasOwnMobileNavigation ? (
+        <Link href="/home" aria-label="AniFox home" className="mobile-brand app-mobile-brand">
+          <Image src="/anifox-logo-mark.png" alt="" width={48} height={48} className="object-contain" priority />
+        </Link>
+      ) : null}
       <main key={pathname} className="app-main relative z-10 flex-1 animate-fade-in pb-10">
         {children}
       </main>

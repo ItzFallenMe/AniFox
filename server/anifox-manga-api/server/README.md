@@ -1,53 +1,65 @@
-# AniFox Manga API
+# Manga source adapters
 
-The manga backend for [AniFox](https://github.com/ItzFallenMe/AniFox), maintained by
-[ItzFallenMe](https://github.com/ItzFallenMe).
+This folder contains AniFox's server-side manga source adapters. It is a source
+package, not a separately deployed web service: Next.js handlers under
+[`website/app/api/manga`](../../../website/app/api/manga) call these modules and
+Cloudflare Workers hosts the website and API on one origin.
 
-- Search manga
-- Manga details and chapter list
-- Chapter page images
+## Implemented sources
 
-## Endpoints
+| Source | Catalog | Search | Details | Chapters | Pages |
+| --- | --- | --- | --- | --- | --- |
+| MangaDex | Yes | Yes | Yes | Yes | Yes |
+| MangaPill | No | Yes | Yes | Yes | Yes |
+| Asura Scans | No | Yes | Yes | Yes | Yes |
+| ComicK | No | Yes | Yes | Yes | Yes |
+| TCB Scans | No | Yes | Yes | Yes | Yes |
+
+Provider availability and page structure can change. The registry intentionally
+lists only adapters implemented in this repository; it does not claim every
+source in MeManga's catalog works in AniFox.
+
+## API routes
+
+The canonical client routes are hosted by the web app:
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/` | API information |
-| `GET` | `/health` | Health check |
-| `GET` | `/api/search/naruto?page=1` | Search manga |
-| `GET` | `/api/mangaList` | Catalog with filters |
-| `GET` | `/api/manga/:id` | Manga details and chapters |
-| `GET` | `/api/manga/:id/:chapter` | Chapter images |
+| `GET` | `/api/manga/sources` | Implemented sources and capabilities |
+| `GET` | `/api/manga/catalog?page=1` | MangaDex catalog |
+| `GET` | `/api/manga/search?query=naruto&source=all` | Search one or all sources |
+| `GET` | `/api/manga/title/{id}` | Manga details and chapters |
+| `GET` | `/api/manga/chapter/{mangaId}/{chapterId}` | Chapter page URLs |
+| `GET` | `/api/image?url=...` | Allow-listed manga image proxy |
 
-## Development
+The API returns metadata and page-image URLs. It does not store manga content.
+Streaming and download provider pages use separate `/api/stream` and
+`/api/download` routes; those routes redirect and do not proxy media bytes.
 
-```bash
-cd server
-npm install
-cp .env.example .env
-npm run dev
-```
+## Tests
 
-The API runs on `http://localhost:3000` by default.
-
-## Deploy to Vercel
+From the repository root:
 
 ```bash
-cd server
-vercel
+npm run api:test
 ```
 
-`vercel.json` routes every request to the Express app in `api/index.js`. Use the
-Vercel deployment's root URL as `MANGA_API_URL` in AniFox; do not add `/api` to
-that client setting.
+Or from this folder:
 
-Metadata and page images come from the public
-[MangaDex API](https://api.mangadex.org/docs/). No API key is required. Set
-`MANGADEX_API_URL` only when you need to route requests through your own proxy
-or a mirror; the default is `https://api.mangadex.org`.
+```bash
+npm test
+```
 
-The API is a metadata and page-image proxy. It does not store content. Respect
-MangaDex's rate limits and terms when deploying it.
+## Attribution
+
+Some adapter parsing and source research were ported from MeManga at commit
+[`4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8`](https://github.com/meellm/MeManga/tree/4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8),
+then adapted for AniFox's API and data models. MeManga is not a runtime dependency.
+See the root [`THIRD_PARTY_NOTICES.md`](../../../THIRD_PARTY_NOTICES.md) for
+copyright and license terms. AniFox is maintained by
+[ItzFallenMe](https://github.com/ItzFallenMe).
 
 ## License
 
-GPL-3.0 — see the repository [LICENSE](../../LICENSE).
+AniFox's own code is GPL-3.0-or-later; third-party notices and license
+attributions are included at the repository root.

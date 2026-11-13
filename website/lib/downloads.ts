@@ -8,34 +8,37 @@ export interface DownloadQuery {
   episode?: number | null;
 }
 
-function baseUrl() {
-  return (process.env.NEXT_PUBLIC_DOWNLOAD_URL ?? "").trim().replace(/\/+$/, "");
-}
-
 export function isDownloadConfigured() {
-  return baseUrl().length > 0;
+  // The provider URL is server-only; `/api/download` reports configuration
+  // status and redirects only after validating the requested media IDs.
+  return true;
 }
 
 /**
- * Builds the provider page for a title.
+ * Builds the same-origin API route that retrieves a provider's download links.
  *
- * The provider is embedded from its own domain and authorises the caller by
- * the referring domain, so no key is involved. Routes follow the provider's
- * public templates: `/movie/{tmdb}`, `/tv/{tmdb}/{season}/{episode}` and
- * `/anime/{anilist}/{episode}`.
+ * The provider URL stays server-side; only validated, same-origin link routes
+ * are sent to the browser.
  */
 export function downloadUrl({ type, tmdbId, anilistId, season, episode }: DownloadQuery): string | null {
-  const base = baseUrl();
-  if (!base) return null;
-
+  let providerType: string;
+  const params = new URLSearchParams();
   if (type === "movie") {
-    return tmdbId ? `${base}/movie/${tmdbId}` : null;
-  }
-
-  if (type === "tv") {
     if (!tmdbId) return null;
-    return `${base}/tv/${tmdbId}/${season ?? 1}/${episode ?? 1}`;
+    providerType = "movie";
+    params.set("tmdbId", String(tmdbId));
+  } else if (type === "tv") {
+    if (!tmdbId) return null;
+    providerType = "tv";
+    params.set("tmdbId", String(tmdbId));
+    params.set("season", String(season ?? 1));
+    params.set("episode", String(episode ?? 1));
+  } else {
+    if (!anilistId) return null;
+    providerType = "anime";
+    params.set("anilistId", String(anilistId));
+    params.set("episode", String(episode ?? 1));
   }
-
-  return anilistId ? `${base}/anime/${anilistId}/${episode ?? 1}` : null;
+  params.set("type", providerType);
+  return `/api/download-links?${params.toString()}`;
 }

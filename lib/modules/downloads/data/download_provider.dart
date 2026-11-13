@@ -1,16 +1,14 @@
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/core/utils/env.dart';
 
-/// Builds pages for the operator's licensed download provider.
+/// Builds a same-origin AniFox API URL that redirects to the configured
+/// licensed download provider.
 ///
-/// The provider is configured at build time with
-/// `--dart-define=DOWNLOAD_URL=...`. Its pages authorise the caller by allowed
-/// domain, so there is no key or API call involved.
+/// Provider configuration stays server-side; only `ANIFOX_API_URL` is needed
+/// in the app build.
 class DownloadProvider {
-  static String get _base => Env.DOWNLOAD_URL.trim().replaceAll(
-        RegExp(r'/+$'),
-        '',
-      );
+  static String get _base =>
+      Env.ANIFOX_API_URL.trim().replaceAll(RegExp(r'/+$'), '');
 
   static bool get isConfigured => _base.isNotEmpty;
 
@@ -24,26 +22,46 @@ class DownloadProvider {
     final base = _base;
     if (base.isEmpty) return null;
 
+    String? type;
+    String? tmdbId;
+    String? anilistId;
+    final resolvedSeason = season == null || season < 1 ? 1 : season;
+    final resolvedEpisode = episode == null || episode < 1 ? 1 : episode;
+
     switch (media.type) {
       case MediaType.MOVIE:
-        final tmdbId = media.externalIds.tmdb;
-        return tmdbId == null || tmdbId.isEmpty
-            ? null
-            : '$base/movie/$tmdbId';
+        type = 'movie';
+        tmdbId = media.externalIds.tmdb;
+        break;
       case MediaType.TV:
-        final tmdbId = media.externalIds.tmdb;
-        if (tmdbId == null || tmdbId.isEmpty) return null;
-        final s = season == null || season < 1 ? 1 : season;
-        final e = episode == null || episode < 1 ? 1 : episode;
-        return '$base/tv/$tmdbId/$s/$e';
+        type = 'tv';
+        tmdbId = media.externalIds.tmdb;
+        break;
       case MediaType.ANIME:
-        final anilistId = media.externalIds.anilist ?? media.id;
-        if (anilistId.isEmpty) return null;
-        final e = episode == null || episode < 1 ? 1 : episode;
-        return '$base/anime/$anilistId/$e';
+        type = 'anime';
+        anilistId = media.externalIds.anilist ?? media.id;
+        break;
       case MediaType.MANGA:
       case MediaType.NOVEL:
         return null;
     }
+
+    if ((type == 'movie' || type == 'tv') &&
+        (tmdbId == null || tmdbId.isEmpty)) {
+      return null;
+    }
+    if (type == 'anime' && (anilistId == null || anilistId.isEmpty)) {
+      return null;
+    }
+
+    return Uri.parse('$base/api/download')
+        .replace(queryParameters: {
+          'type': type,
+          if (tmdbId != null) 'tmdbId': tmdbId,
+          if (anilistId != null) 'anilistId': anilistId,
+          'season': '$resolvedSeason',
+          'episode': '$resolvedEpisode',
+        })
+        .toString();
   }
 }

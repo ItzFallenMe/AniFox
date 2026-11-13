@@ -1,0 +1,15 @@
+{
+  "name": "anifox-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AniFox Flutter clients, Next.js web app, and shared API",
+  "scripts": {
+    "web:dev": "npm --prefix website run dev",
+    "web:build": "npm --prefix website run build",
+    "web:lint": "npm --prefix website run lint",
+    "web:typecheck": "npm --prefix website run typecheck",
+    "web:cloudflare:build": "npm --prefix website run cloudflare:build",
+    "api:test": "npm --prefix server/anifox-manga-api/server test",
+    "flutter": "node scripts/flutter.mjs"
+  }
+}

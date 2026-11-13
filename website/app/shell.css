@@ -885,6 +885,7 @@
   aspect-ratio: 16 / 9;
   margin: 18px auto 0;
   overflow: hidden;
+  container-type: normal;
   border-radius: 14px;
   background: #000;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);

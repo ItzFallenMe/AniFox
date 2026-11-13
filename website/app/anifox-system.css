@@ -1,0 +1,438 @@
+/* Shared visual language for the AniFox site and streaming client.
+   The marketing routes use reference.css; these scoped tokens carry that
+   black-glass / warm-orange system through the app routes as well. */
+:root {
+  --background: #050506;
+  --foreground: #f5f5f7;
+  --brand: #ff7a1a;
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --font-bebas: var(--font-outfit);
+  color-scheme: dark;
+}
+
+html {
+  background: #050506;
+  scrollbar-color: #373238 #050506;
+  scrollbar-width: thin;
+}
+
+body {
+  min-height: 100vh;
+  background: #050506;
+  color: #f5f5f7;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgba(255, 122, 26, 0.38);
+  color: #fff;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(255, 154, 91, 0.9);
+  outline-offset: 3px;
+}
+
+/* Client shell */
+.app-frame {
+  --rail-w: 80px;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(255, 122, 26, 0.055), transparent 34rem),
+    #050506 !important;
+  color: #f5f5f7;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+.app-rail {
+  border-right-color: rgba(255, 255, 255, 0.065) !important;
+  background: rgba(5, 5, 6, 0.78) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
+  backdrop-filter: blur(24px) saturate(145%) !important;
+}
+
+.app-rail-fade {
+  background:
+    radial-gradient(140px 240px at 0% 8%, rgba(255, 122, 26, 0.14), transparent 72%),
+    linear-gradient(90deg, rgba(5, 5, 6, 0.97), rgba(5, 5, 6, 0.64) 62%, transparent) !important;
+}
+
+.app-rail-link,
+.app-rail-utility {
+  color: rgba(245, 245, 247, 0.57) !important;
+}
+
+.app-rail-link:hover,
+.app-rail-utility:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.055) !important;
+}
+
+.app-rail-link.is-active {
+  border-color: rgba(255, 145, 80, 0.2) !important;
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.15), rgba(255, 122, 26, 0.025)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 145, 80, 0.12) !important;
+  color: #fff !important;
+}
+
+.app-rail-link.is-active .app-rail-icon,
+.mobile-tab.is-active svg {
+  color: #ff9a5b !important;
+  filter: drop-shadow(0 0 10px rgba(255, 122, 26, 0.34));
+}
+
+.app-rail-marker,
+.mobile-tab.is-active::before {
+  background: #ff7a1a !important;
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.55) !important;
+}
+
+.app-rail-app-link {
+  border-color: rgba(255, 145, 80, 0.25) !important;
+  background: linear-gradient(135deg, rgba(255, 148, 76, 0.14), rgba(255, 122, 26, 0.035)) !important;
+  color: #ffc08e !important;
+}
+
+.app-main {
+  background: transparent;
+}
+
+.app-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(0, 0, 0, 0.32)) !important;
+}
+
+.mobile-brand {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 5, 6, 0.68);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 24px rgba(255, 122, 26, 0.1);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-tabs {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(5, 5, 6, 0.82) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%) !important;
+  backdrop-filter: blur(24px) saturate(145%) !important;
+}
+
+.mobile-tab.is-active {
+  color: #fff !important;
+}
+
+.mobile-tab.is-active svg {
+  transform: translateY(-1px);
+}
+
+/* Discovery rails and cards */
+.streaming-home,
+.catalog-page {
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(255, 122, 26, 0.055), transparent 34rem),
+    #050506 !important;
+}
+
+.media-rail-heading h2,
+.media-rail-title h2,
+.title-section-heading h2,
+.manga-results-heading h2 {
+  font-family: var(--font-outfit), var(--font-inter), sans-serif;
+}
+
+.media-rail-index {
+  -webkit-text-stroke-color: rgba(255, 255, 255, 0.2);
+}
+
+.media-rail:hover .media-rail-index {
+  -webkit-text-stroke-color: rgba(255, 154, 91, 0.6);
+}
+
+.media-rail .stagger {
+  gap: 11px !important;
+  padding-top: 13px !important;
+  padding-bottom: 5px;
+}
+
+.media-rail-arrows button:hover:not(:disabled),
+.group\/va:hover,
+.group\/va:focus-visible {
+  color: #ffad78 !important;
+}
+
+.media-card-art,
+.group\/card > div:first-of-type {
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.group\/card:hover > div:first-of-type,
+.group\/card:focus-visible > div:first-of-type {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 145, 80, 0.26);
+}
+
+.group\/card:hover p:first-child,
+.group\/card:focus-visible p:first-child {
+  color: #fff;
+}
+
+.rank-num {
+  background-image: linear-gradient(100deg, #ffd2ae 12%, #ff7a1a 62%, transparent 100%) !important;
+}
+
+/* Search and source filters */
+.discover-page {
+  min-height: 78vh;
+  padding-bottom: 84px;
+}
+
+.discover-search {
+  border-color: rgba(255, 255, 255, 0.085) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.035) !important;
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+.discover-search:focus-within {
+  border-color: rgba(255, 145, 80, 0.35) !important;
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.075), 0 18px 48px rgba(0, 0, 0, 0.3) !important;
+}
+
+.discover-filter[aria-pressed="true"] {
+  background: linear-gradient(120deg, #ff7a1a, #ff9d4d) !important;
+  color: #1a0b03 !important;
+  box-shadow: 0 5px 18px rgba(255, 122, 26, 0.2);
+}
+
+.discover-filter:not([aria-pressed="true"]):hover {
+  background: rgba(255, 255, 255, 0.065) !important;
+  color: #fff !important;
+}
+
+/* Manga catalog uses the same warm accent as the rest of AniFox. */
+.manga-client-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 78vh;
+}
+
+.manga-client-page::before {
+  position: absolute;
+  z-index: -1;
+  top: -90px;
+  right: -18vw;
+  width: min(55vw, 720px);
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 122, 26, 0.085), transparent 68%);
+  content: "";
+  pointer-events: none;
+}
+
+.manga-client-page h1 {
+  font-family: var(--font-outfit), var(--font-inter), sans-serif;
+  letter-spacing: -0.055em;
+}
+
+.manga-client-page .manga-heading-accent {
+  background-image: linear-gradient(105deg, #ff7a1a 0%, #ffd0a8 45%, #ff7a1a 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.manga-search-panel {
+  border-color: rgba(255, 255, 255, 0.085) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3), inset 0 1px rgba(255, 255, 255, 0.035) !important;
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+.manga-search-panel:focus-within {
+  border-color: rgba(255, 145, 80, 0.34) !important;
+}
+
+.manga-search-panel button[type="submit"] {
+  background: linear-gradient(120deg, #ff7a1a, #ff9d4d) !important;
+  color: #1b0b03 !important;
+  box-shadow: 0 7px 20px rgba(255, 122, 26, 0.19);
+}
+
+.manga-search-panel button[type="submit"]:hover {
+  filter: brightness(1.08);
+}
+
+.manga-client-card .manga-cover {
+  border-radius: 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.27);
+}
+
+.manga-client-card:hover .manga-cover {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 145, 80, 0.25);
+}
+
+/* Title, manga details, and reader surfaces share reference-shaped panels. */
+.title-page,
+.manga-detail-page,
+.manga-reader-page {
+  background-color: #050506;
+}
+
+.title-summary h1 {
+  font-family: var(--font-outfit), var(--font-inter), sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.055em !important;
+  line-height: 0.96 !important;
+}
+
+.title-play-button {
+  border: 1px solid rgba(255, 188, 142, 0.35) !important;
+  background: linear-gradient(120deg, #ff7a1a, #ffa45e) !important;
+  box-shadow: 0 12px 34px rgba(255, 122, 26, 0.24);
+  color: #1b0b03 !important;
+}
+
+.title-play-button:hover {
+  filter: brightness(1.08);
+}
+
+.title-outbound-link:hover,
+.title-back-link:hover,
+.manga-back-link:hover {
+  color: #ffad78 !important;
+}
+
+.title-season-tab.is-active {
+  border-color: rgba(255, 145, 80, 0.34) !important;
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.16), rgba(255, 122, 26, 0.045)) !important;
+}
+
+.title-facts,
+.manga-chapter-row,
+.downloads,
+.vp-panel-box,
+.vp-eps {
+  border-color: rgba(255, 255, 255, 0.085) !important;
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.title-type-pill,
+.manga-eyebrow,
+.title-section-heading > span,
+.manga-results-heading > div > span {
+  color: #ffad78 !important;
+}
+
+.title-episode-card:hover,
+.manga-chapter-row:hover {
+  border-color: rgba(255, 145, 80, 0.34) !important;
+}
+
+.watch-root {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 122, 26, 0.055), transparent 32rem),
+    #050506 !important;
+}
+
+.vp-root {
+  --vp-accent: #ff7a1a;
+  --vp-track: rgba(255, 255, 255, 0.22);
+  --vp-buffer: rgba(255, 173, 120, 0.42);
+}
+
+.vp-trigger.is-active,
+.vp-trigger:hover,
+.vp-opt.is-active,
+.vp-ep.is-current {
+  border-color: rgba(255, 145, 80, 0.33) !important;
+}
+
+.vp-opt.is-active {
+  background: linear-gradient(90deg, rgba(255, 122, 26, 0.15), rgba(255, 122, 26, 0.035)) !important;
+}
+
+.watch-mobile-bar {
+  border-bottom-color: rgba(255, 255, 255, 0.075) !important;
+  background: rgba(5, 5, 6, 0.9) !important;
+}
+
+.watch-mobile-server:hover,
+.watch-mobile-server:focus-visible {
+  border-color: rgba(255, 145, 80, 0.4) !important;
+  color: #ffbd91 !important;
+}
+
+.manga-reader-toolbar {
+  border-bottom-color: rgba(255, 255, 255, 0.075) !important;
+  background: rgba(5, 5, 6, 0.88) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+.manga-reader-progress span {
+  background: linear-gradient(90deg, #ff7a1a, #ffc08c) !important;
+}
+
+/* Shared status treatments */
+.notice-error {
+  border-color: rgba(255, 122, 26, 0.22) !important;
+  background: rgba(255, 122, 26, 0.075) !important;
+  color: #ffd1b0 !important;
+}
+
+.empty-state-panel {
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.cast-receiver-idle p {
+  color: #fff;
+  font-family: var(--font-outfit), var(--font-inter), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.055em;
+}
+
+@media (max-width: 899px) {
+  .app-footer {
+    padding-bottom: calc(102px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .discover-page,
+  .manga-client-page {
+    padding-top: 82px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 899px) {
+  .mobile-brand {
+    display: grid !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

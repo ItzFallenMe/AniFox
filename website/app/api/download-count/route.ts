@@ -4,8 +4,11 @@ const MAX_RELEASE_PAGES = 10;
 export const revalidate = 3600;
 
 interface GitHubRelease {
-  assets?: Array<{ download_count?: number }>;
+  assets?: Array<{ name?: string; download_count?: number }>;
 }
+
+const APP_PACKAGE_PATTERN =
+  /^(?:anifox-.*\.(?:apk|aab|ipa|zip|dmg|msi|tar\.gz)|(?:windows|linux|macos)\.zip)$/i;
 
 export async function GET() {
   let nextUrl: string | null = RELEASES_URL;
@@ -33,10 +36,9 @@ export async function GET() {
       totalDownloads += releases.reduce(
         (releaseTotal, release) =>
           releaseTotal +
-          (release.assets ?? []).reduce(
-            (assetTotal, asset) => assetTotal + (asset.download_count ?? 0),
-            0,
-          ),
+          (release.assets ?? [])
+            .filter((asset) => APP_PACKAGE_PATTERN.test(asset.name ?? ""))
+            .reduce((assetTotal, asset) => assetTotal + (asset.download_count ?? 0), 0),
         0,
       );
 
@@ -48,9 +50,14 @@ export async function GET() {
       nextUrl = nextLink?.match(/<([^>]+)>/)?.[1] ?? null;
     }
 
-    return Response.json({ totalDownloads }, {
-      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
-    });
+    return Response.json(
+      { totalDownloads, source: "GitHub app release packages" },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      },
+    );
   } catch {
     return Response.json(
       { error: "Release download counts are temporarily unavailable." },

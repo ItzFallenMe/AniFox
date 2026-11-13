@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  A clean, ad-free client for anime, movies, TV shows and manga — built with
+  A free client for anime, movies, TV shows and manga — built with
   Flutter for Android, iOS, macOS, Windows and Linux, plus a Next.js web client.
   <br />
   Built by <a href="https://github.com/ItzFallenMe">ItzFallenMe</a>.
@@ -14,17 +14,16 @@
 <p align="center">
   <a href="https://github.com/ItzFallenMe/AniFox/actions/workflows/test-apk.yml"><img alt="Test APK" src="https://github.com/ItzFallenMe/AniFox/actions/workflows/test-apk.yml/badge.svg" /></a>
   <a href="https://github.com/ItzFallenMe/AniFox/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/ItzFallenMe/AniFox?label=release" /></a>
+  <a href="https://github.com/ItzFallenMe/AniFox/releases"><img alt="Total app downloads" src="https://img.shields.io/github/downloads/ItzFallenMe/AniFox/total?label=app%20downloads" /></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-orange" /></a>
 </p>
 
-> **AniFox: Reimagined** — this branch is the rebuilt app with the current web
-> client and app. It becomes `main` when the rebuild is released.
-
 ## What AniFox is
 
-AniFox is a front-end. It reads public metadata from TMDB, AniList and
-MyAnimeList, and plays media through third-party embed hosts. Nothing is hosted,
-uploaded or stored by this project, and no account is required.
+AniFox is one project with Flutter clients, a Next.js web client, and a shared
+API hosted by the web app. The API resolves manga sources and playback/download
+provider pages; third parties continue serving the media. No media bytes are
+proxied for streaming or downloads.
 
 The repository contains two clients and the manga API they share:
 
@@ -32,48 +31,71 @@ The repository contains two clients and the manga API they share:
 | --- | --- | --- |
 | Flutter app | `lib/` | Flutter, Riverpod, Material 3 |
 | Web client and landing page | `website/` | Next.js, TypeScript, Tailwind |
-| Manga API | `server/anifox-manga-api/` | Express on Vercel |
+| Shared API and website | `website/app/api/` | Next.js routes on Cloudflare Workers via OpenNext |
+| Manga source adapters | `server/anifox-manga-api/server/` | Node-compatible modules bundled into the web API |
 
 ## Highlights
 
 - **Metadata-first browsing** — trending, popular, top-rated and upcoming lists
   for movies, TV and anime, with search across all three.
-- **Bundled stream hosts** — playback uses four built-in embed servers (Vidly,
-  VidBolt, Vidy, EmbedWave). No extensions to install.
+- **Bundled stream hosts** — the shared `/api/stream` route validates requests
+  and redirects to four built-in embed servers (Vidly, VidBolt, Vidy, EmbedWave).
 - **Library and tracking** — keep a local library and sync progress with AniList,
   MyAnimeList, Kitsu and Simkl.
 - **Continue watching** — resume an episode or film from the home rail.
-- **Downloads through your provider** — the provider page opens inside AniFox,
+- **Downloads through your provider** — `/api/download` resolves the configured
+  provider page, which opens inside AniFox,
   and the quality links it produces are saved to `AniFox/downloads` and playable
   from Downloads.
 - **Personalisation** — colour schemes, dynamic colour, AMOLED black, home
   layout, header and navigation styles, UI scale, card density and a TV layout.
 - **Local-first data** — library, history and settings stay on device and can be
   exported or restored.
-- **Manga reader** — catalog, chapter list and a paged reader backed by the
-  optional AniFox Manga API.
+- **Manga reader** — MangaDex catalog and AniFox's implemented MangaDex,
+  MangaPill, Asura Scans, ComicK and TCB Scans connectors.
+- **Discord Rich Presence** — Android uses Discord's Social SDK RPC service;
+  Windows, macOS and Linux use desktop RPC. Configure `DISCORD_APPLICATION_ID`
+  in the root `.env`. iOS and web integrations are not implemented; see
+  [Discord notes](docs/DISCORD_RICH_PRESENCE.md).
 - **Chromecast on the web** — a custom receiver at `/cast` drives the player.
-- **No ads, no accounts required.**
+- **No AniFox account required.** Third-party playback providers may show their
+  own ads and have their own availability and policies.
 
 ## Getting started
 
 Requirements:
 
-- Flutter `3.41.x` or newer (pinned in `.fvmrc`; `fvm flutter` works too)
+- Flutter `3.44.0` (pinned in `.fvmrc`; `fvm flutter` works too)
 - Dart `3.9.x` or newer
+- Node.js `22+` for the website and Cloudflare Worker build
 - Toolchains for the platforms you build
 
 ```bash
+cp .env.example .env
+npm install --prefix website
 flutter pub get
-flutter run
+npm run web:dev
 ```
 
-Anime works without any keys. Movies and TV need a free TMDB API key for title
-matching. Pass it at build time — never commit it:
+For Flutter commands, use the root wrapper to forward `.env` values as build
+defines:
 
 ```bash
-export TMDB_API_KEY="your-tmdb-key"
-flutter run --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
+npm run flutter -- run
+```
+
+For an Android emulator, set `ANIFOX_API_URL=http://10.0.2.2:3000` in `.env`.
+
+Anime works without any keys. Movies and TV need a free TMDB API key for title
+matching. Add it to the root `.env` (never commit that file); the wrapper passes
+it only to Flutter build/run commands:
+
+```bash
+# In the root .env file:
+TMDB_API_KEY=your-tmdb-key
+
+# In your shell:
+npm run flutter -- run
 ```
 
 ### Build-time configuration
@@ -81,24 +103,25 @@ flutter run --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
 | Define | Required | Purpose |
 | --- | --- | --- |
 | `TMDB_API_KEY` | For movies and TV | TMDB metadata and ID matching |
-| `DOWNLOAD_URL` | Only for downloads | Base URL of your licensed download provider |
-| `MANGA_API_URL` | Only for manga | Root URL of the deployed AniFox Manga API |
+| `ANIFOX_API_URL` | App clients | Root URL of the website deployment that hosts `/api` |
+| `DOWNLOAD_PROVIDER_URL` | Server-side | Licensed provider origin; never bundled into clients |
+| `DISCORD_APPLICATION_ID` | Optional | Discord application ID for Android and desktop Rich Presence |
 
 ```bash
-flutter build apk --release \
-  --dart-define=TMDB_API_KEY="$TMDB_API_KEY" \
-  --dart-define=DOWNLOAD_URL="https://downloads.example.com" \
-  --dart-define=MANGA_API_URL="https://your-manga-api.vercel.app"
+npm run flutter -- build apk --release
 ```
 
-Do not append `/api` to `MANGA_API_URL`.
+The wrapper reads the root `.env` and forwards client defines. Server-only
+values such as `DOWNLOAD_PROVIDER_URL` are not embedded in the app.
 
 ### Downloads
 
-Downloads are provided by an operator you are licensed to use — AniFox ships no
-download source. Set `DOWNLOAD_URL` to that provider's origin. The app opens
-that page inside AniFox, intercepts the file links it produces and saves them
-to `AniFox/downloads`:
+AniFox ships no download source. The root `.env.example` uses Streamrip for
+testing; replace `DOWNLOAD_PROVIDER_URL` with a provider you are authorized to
+use for production. Keep it in the root `.env` locally or as a server-side
+Cloudflare variable. Clients use the same-origin
+`/api/download` route, which redirects to the provider page. The app intercepts
+file links and saves them to `AniFox/downloads`:
 
 | Platform | Folder |
 | --- | --- |
@@ -114,23 +137,26 @@ The provider page uses these routes:
 /anime/{anilistId}/{episode}
 ```
 
-The provider authorises the request by allowed domain, so no API key is
-involved; add your app or site to the provider's allowlist. Without
-`DOWNLOAD_URL` the download button reports that downloads are not configured.
+The provider authorises the request by allowed domain; add your AniFox website
+domain to its allowlist. The provider serves the files directly; AniFox does not
+proxy them.
 
 ### Builds
 
 ```bash
-flutter build apk --release        # Android
-flutter build appbundle --release  # Play Store bundle
-flutter build ios --release        # iOS (macOS host)
-flutter build macos --release      # macOS
-flutter build windows --release    # Windowsflutter build linux --release          # Linux
+npm run flutter -- build apk --release                         # Android
+npm run flutter -- build appbundle --release                   # Play Store bundle
+npm run flutter -- build ios --release --no-codesign            # iOS verification
+npm run flutter -- build macos --release                       # macOS
+npm run flutter -- build windows --release                     # Windows
+npm run flutter -- build linux --release                       # Linux
 ```
 
-Tagging `v*` publishes release builds for `arm64-v8a`, `armeabi-v7a` and
-`x86_64`, plus a universal APK and a `SHA256SUMS.txt` file, through the
-`Release APK` workflow.
+Tagging `vMAJOR.MINOR.PATCH` publishes Android APKs for `arm64-v8a`,
+`armeabi-v7a` and `x86_64`, a universal APK, a Play Store app bundle, and
+Windows, Linux and macOS packages, plus a `SHA256SUMS.txt` checksum list.
+The iOS target is compiled as an unsigned verification artifact; an installable
+iOS release still requires Apple signing and provisioning credentials.
 
 Display names, bundle identifiers and icons live in `package_rename_config.yaml`
 and `flutter_launcher_icons.yaml`. After changing the logo:
@@ -141,15 +167,12 @@ dart run flutter_launcher_icons
 
 ## Web client
 
-`website/` contains the landing page at `/` and the streaming client at `/home`,
-plus catalogs, title pages, the player and the manga reader. It is a separate
-Next.js app with its own README.
+`website/` contains the landing page at `/`, the streaming client at `/home`, and
+the shared API routes used by both clients.
 
 ```bash
-cd website
-npm install
-cp .env.example .env.local
-npm run dev
+npm install --prefix website
+npm run web:dev
 ```
 
 Open <http://localhost:3000> for the landing page, <http://localhost:3000/home>
@@ -157,41 +180,39 @@ for the client. Website environment variables:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `TMDB_API_KEY` | For movies and TV | Server-side TMDB proxy only; never sent to the browser |
-| `NEXT_PUBLIC_STREAM_API_URL` | No | Extra embed source, listed first when set |
-| `NEXT_PUBLIC_DOWNLOAD_URL` | No | Download provider origin, embedded by allowed domain |
+| `TMDB_API_KEY` | For movies and TV | Server-side TMDB proxy; Flutter also receives a build define |
+| `DOWNLOAD_PROVIDER_URL` | For downloads | Server-side licensed provider origin |
+| `ANIFOX_API_URL` | Flutter app | Web deployment origin; website routes use their own origin |
+| `DISCORD_APPLICATION_ID` | Optional | Public application ID for Android and desktop Rich Presence |
 | `NEXT_PUBLIC_CAST_RECEIVER_APP_ID` | For Cast | Custom receiver application id |
-| `MANGA_API_URL` | No | Manga API root URL (no `/api`) |
 
-The site deploys to Vercel or Cloudflare through the OpenNext adapter. See
-[`website/README.md`](website/README.md) for routes, the download provider
-contract, Chromecast setup and deploy commands.
+Deploy the website and shared API together to Cloudflare with OpenNext. See
+[`website/README.md`](website/README.md) for route and deployment details.
 
 ## Manga API
 
-`server/anifox-manga-api/` is the customized manga backend used by both the app
-and the web client. It proxies search, catalog, title and chapter-page requests
-and stores no content itself.
+The shared manga API lives at `website/app/api/manga`. The same routes serve the
+web and Flutter clients. Source adapters and tests live under
+`server/anifox-manga-api/server` and are bundled into the web deployment rather
+than hosted as a separate Express service.
 
 ```bash
-cd server/anifox-manga-api/server
-npm install
-cp .env.example .env
-npm run dev
+npm run api:test
 ```
 
-Metadata and page images come from the public [MangaDex API](https://api.mangadex.org/docs/);
-no API key is required. Deploy the `server` directory to Vercel, then point the
-clients at the deployment:
+Implemented manga sources are MangaDex, MangaPill, Asura Scans, ComicK and TCB
+Scans. Availability can change; AniFox does not claim every domain in
+[MeManga's source registry](https://github.com/meellm/MeManga/blob/4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8/docs/SUPPORTED_SOURCES.md)
+works in AniFox. Port attribution and license details are in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 | Client | Setting |
 | --- | --- |
-| Web | `MANGA_API_URL` in `website/.env.local` or the hosting environment |
-| App | `--dart-define=MANGA_API_URL=https://your-manga-api.vercel.app` |
+| Web | Same origin as the website; no separate API URL |
+| App | `ANIFOX_API_URL=https://your-cloudflare-site.example` in root `.env` |
 
-Use the deployment root URL in both cases; do not append `/api`. A `502` from
-the API means MangaDex could not be reached, so retry or check
-`MANGADEX_API_URL` if you pointed it at a proxy.
+Use the website origin; do not append `/api`. A `502` means all selected manga
+providers failed; retry or check `MANGADEX_API_URL` when using a custom mirror.
 
 ## Project structure
 
@@ -203,20 +224,26 @@ lib/
                preferences, reader, tv, alerts, launch
   streaming/   bundled embed hosts, URL building, metadata sources
   assets/      images and icons
-website/       Next.js landing page and web client
-server/        manga API used by both clients
+website/       Next.js landing page, web client and shared /api deployment
+server/        manga source adapters/tests bundled into the web API
+scripts/       root .env to Flutter build-define wrapper
 ```
 
 ## CI and releases
 
-- **Test APK** (`test-apk.yml`) — runs `flutter analyze` and uploads a debug APK
-  on pushes and pull requests.
-- **Release APK** (`release-apk.yml`) — on a `v*` tag, builds split-per-ABI
-  release APKs and attaches them to a GitHub release.
+- **Test APK** (`test-apk.yml`) — runs Flutter analysis/tests and manga API tests,
+  and builds debug APKs on pushes and pull requests.
+- **Release app builds** (`release-apk.yml`) — validates a `vMAJOR.MINOR.PATCH`
+  tag, builds Android and desktop packages, verifies the unsigned iOS target,
+  then publishes Android and desktop artifacts to a GitHub release. Windows and
+  macOS packages are unsigned; macOS notarization and an installable iOS release
+  need platform signing credentials.
 
-Release signing uses the `ANDROID_KEYSTORE_BASE64`,
+Configure the Actions variable `ANIFOX_API_URL` with the production HTTPS website
+origin, and the `TMDB_API_KEY`, `ANDROID_KEYSTORE_BASE64`,
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`
-repository secrets. Without them the build completes debug-signed.
+repository secrets before publishing. The iOS verification artifact is not
+installable; App Store distribution requires Apple signing/provisioning setup.
 
 ```bash
 git tag v2.1.5
@@ -229,15 +256,18 @@ git push origin v2.1.5
   with the define; changing it at runtime has no effect.
 - **A title opens the wrong match** — anime is matched to TMDB by title and year.
   Use the title page's AniList or MyAnimeList link to confirm the entry.
-- **The download button says downloads are not configured** — the build has no
-  `DOWNLOAD_URL`. Rebuild with your provider's origin.
+- **The download button says downloads are not configured** — set the
+  server-side `DOWNLOAD_PROVIDER_URL` for the website/API deployment.
 - **A download stays in the provider page** — the provider opened a format the
   app does not intercept (for example a blob or a ZIP). Use a direct MP4, MKV or
   HLS link, or download from the site instead.
 - **Downloads are not visible on Android** — grant file access when prompted.
   Without it AniFox keeps files in its private `AniFox/downloads` folder.
-- **Manga is empty** — `MANGA_API_URL` is unset, or the API deployment failed.
-  Check the API URL first, then the site or app configuration.
+- **Manga is empty** — the shared website `/api` route or selected providers
+  are unavailable. The Flutter build must point `ANIFOX_API_URL` at the website.
+- **Discord presence is missing** — Android requires the Discord app installed
+  and `DISCORD_APPLICATION_ID` configured; desktop builds also need the Discord
+  desktop client running. Check [Discord notes](docs/DISCORD_RICH_PRESENCE.md).
 - **Chromecast button is disabled** — the web build has no
   `NEXT_PUBLIC_CAST_RECEIVER_APP_ID`, or the site is not served over HTTPS.
 

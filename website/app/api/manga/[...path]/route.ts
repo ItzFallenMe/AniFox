@@ -1,75 +1,102 @@
-const CACHE_SECONDS = 300;
+// The shared manga adapters are packaged with this monorepo and execute in
+// this route; they are not a separately deployed service.
+import mangaApi from "../../../../../server/anifox-manga-api/server/sources.js";
 
-function jsonError(message: string, status: number) {
-  return Response.json({ error: message }, { status });
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// The adapters are CommonJS JavaScript; pin the route contract here rather
+// than letting TypeScript infer a partial destructured-parameter shape.
+const searchManga = mangaApi.search as unknown as (params: {
+  query: string;
+  page: number;
+  source: string;
+}) => Promise<unknown>;
+
+const commonHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Accept",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
+function json(data: unknown, status = 200, cache = "no-store") {
+  return Response.json(data, {
+    status,
+    headers: { ...commonHeaders, "Cache-Control": cache },
+  });
 }
 
-function appendPath(base: string, suffix: string) {
-  const url = new URL(base);
-  const prefix = url.pathname.replace(/\/+$/, "");
-  url.pathname = `${prefix}${suffix}`;
-  url.search = "";
-  return url;
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isValidId(value: string) {
+  return /^[A-Za-z0-9_-]{1,220}$/.test(value);
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: commonHeaders });
 }
 
 export async function GET(
   request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
-  const apiUrl = process.env.MANGA_API_URL?.trim().replace(/\/+$/, "");
-  if (!apiUrl) {
-    return jsonError("Manga is not configured on this deployment yet.", 503);
-  }
-
-  let base: string;
-  try {
-    base = apiUrl.endsWith("/api") ? apiUrl : `${apiUrl}/api`;
-    new URL(base);
-  } catch {
-    return jsonError("The manga API URL is invalid.", 503);
-  }
-
   const { path } = await context.params;
   const url = new URL(request.url);
-  let target: URL;
-
-  if (path.length === 1 && path[0] === "search") {
-    const query = url.searchParams.get("query")?.trim();
-    if (!query) return jsonError("Enter a title to search for.", 400);
-    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-    target = appendPath(base, `/search/${encodeURIComponent(query)}`);
-    target.searchParams.set("page", String(page));
-  } else if (path.length === 1 && path[0] === "catalog") {
-    target = appendPath(base, "/mangaList");
-    for (const key of ["category", "type", "state", "page"]) {
-      const value = url.searchParams.get(key);
-      if (value) target.searchParams.set(key, value.slice(0, 80));
-    }
-  } else if (path.length === 2 && path[0] === "title") {
-    if (!/^[\w-]{1,180}$/.test(path[1])) return jsonError("Invalid manga id.", 400);
-    target = appendPath(base, `/manga/${encodeURIComponent(path[1])}`);
-  } else if (path.length === 3 && path[0] === "chapter") {
-    if (!/^[\w-]{1,180}$/.test(path[1]) || !/^[\w-]{1,180}$/.test(path[2])) {
-      return jsonError("Invalid chapter id.", 400);
-    }
-    target = appendPath(base, `/manga/${encodeURIComponent(path[1])}/${encodeURIComponent(path[2])}`);
-  } else {
-    return jsonError("Manga endpoint not found.", 404);
-  }
+  const [endpoint, first, second] = path;
 
   try {
-    const response = await fetch(target, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: CACHE_SECONDS },
-    });
-    return new Response(response.body, {
-      status: response.status,
-      headers: {
-        "Content-Type": response.headers.get("content-type") ?? "application/json; charset=utf-8",
-        "Cache-Control": `public, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=3600`,
-      },
-    });
-  } catch {
-    return jsonError("The manga service could not be reached. Please try again later.", 502);
+    if (endpoint === "sources" && path.length === 1) {
+      return json(await mangaApi.listSources(), 200, "public, s-maxage=300, stale-while-revalidate=3600");
+    }
+
+    if (endpoint === "search" && path.length === 1) {
+      const query = url.searchParams.get("query")?.trim() ?? "";
+      if (!query) return json({ error: "Enter a manga title to search for." }, 400);
+      if (query.length > 100) return json({ error: "Search titles must be 100 characters or less." }, 400);
+      const source = url.searchParams.get("source") || "all";
+      const result = await searchManga({
+        query,
+        page: Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1,
+        source,
+      });
+      return json(result);
+    }
+
+    if (endpoint === "catalog" && path.length === 1) {
+      const result = await mangaApi.list({
+        page: url.searchParams.get("page") || 1,
+        type: url.searchParams.get("type") || "latest",
+        state: url.searchParams.get("state") || undefined,
+        category: url.searchParams.get("category") || undefined,
+      });
+      return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600");
+    }
+
+    if (endpoint === "title" && path.length === 2 && first && isValidId(first)) {
+      return json(await mangaApi.details(first), 200, "public, s-maxage=300, stale-while-revalidate=3600");
+    }
+
+    if (endpoint === "chapter" && path.length === 3 && first && second && isValidId(first) && isValidId(second)) {
+      const result = await mangaApi.pages(first, second);
+      return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600");
+    }
+
+    return json({ error: "Manga endpoint not found." }, 404);
+  } catch (error) {
+    const status = Number.isInteger((error as { status?: number })?.status)
+      ? (error as { status: number }).status
+      : /not found/i.test(errorMessage(error, ""))
+        ? 404
+        : 502;
+    const message = status === 400
+      ? errorMessage(error, "Invalid manga request.")
+      : status === 404
+        ? "Manga details or chapter pages are unavailable."
+        : "The manga provider is temporarily unavailable.";
+    return json({ error: message }, status);
   }
 }

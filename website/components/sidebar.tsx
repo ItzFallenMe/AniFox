@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
-  AnimeIcon,
+  CrunchyrollIcon,
   GithubIcon,
   HomeIcon,
   MangaIcon,
@@ -18,7 +18,7 @@ const items = [
   { href: "/home", label: "Home", Icon: HomeIcon },
   { href: "/explore", label: "Search", Icon: SearchIcon },
   { href: "/tv", label: "TV Shows", Icon: TvIcon },
-  { href: "/anime", label: "Anime", Icon: AnimeIcon },
+  { href: "/anime", label: "Anime", Icon: CrunchyrollIcon },
   { href: "/movies", label: "Movies", Icon: MovieIcon },
   { href: "/manga", label: "Manga", Icon: MangaIcon },
 ];
@@ -37,7 +37,7 @@ export function Sidebar() {
 
       <Link href="/home" className="app-rail-brand" aria-label="AniFox home">
         <span className="app-rail-logo">
-          <Image src="/logo.png" alt="" width={46} height={46} priority />
+          <Image src="/anifox-logo-mark.png" alt="" width={46} height={46} className="object-contain" priority />
         </span>
         <span className="app-rail-wordmark">AniFox</span>
       </Link>

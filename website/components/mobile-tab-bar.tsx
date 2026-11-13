@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimeIcon, HomeIcon, MangaIcon, MovieIcon, SearchIcon, TvIcon } from "./icons";
+import { CrunchyrollIcon, HomeIcon, MangaIcon, MovieIcon, SearchIcon, TvIcon } from "./icons";
 
 const tabs = [
   { href: "/home", label: "Home", Icon: HomeIcon },
   { href: "/explore", label: "Search", Icon: SearchIcon },
   { href: "/tv", label: "TV", Icon: TvIcon },
-  { href: "/anime", label: "Anime", Icon: AnimeIcon },
+  { href: "/anime", label: "Anime", Icon: CrunchyrollIcon },
   { href: "/movies", label: "Movies", Icon: MovieIcon },
   { href: "/manga", label: "Manga", Icon: MangaIcon },
 ];

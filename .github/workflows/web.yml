@@ -1,8 +1,11 @@
 name: Web client
 
+permissions:
+  contents: read
+
 on:
   push:
-    branches: [main, anifox, "reimagined*"]
+    branches: [main, anifox]
     paths:
       - "website/**"
       - ".github/workflows/web.yml"
@@ -30,7 +33,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: website/package-lock.json
 
@@ -48,3 +51,10 @@ jobs:
         run: npm run build
         env:
           TMDB_API_KEY: ci-placeholder
+          ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL || 'https://anifox.invalid' }}
+
+      - name: Build Cloudflare Worker bundle
+        run: npm run cloudflare:build
+        env:
+          TMDB_API_KEY: ci-placeholder
+          ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL || 'https://anifox.invalid' }}

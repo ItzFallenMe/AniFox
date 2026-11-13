@@ -22,6 +22,7 @@ import 'package:anifox/modules/playback/ui/widgets/player_keyboard_listener.dart
 import 'package:anifox/modules/playback/state/player_controller.dart';
 import 'package:anifox/modules/playback/state/player_prefs_provider.dart';
 import 'package:anifox/common/widgets/app_bottom_sheet.dart';
+import 'package:anifox/core/services/discord_presence.dart';
 
 // Main video player screen.
 class PlayerScreen extends ConsumerStatefulWidget {
@@ -57,6 +58,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    _startDiscordPresence();
     try {
       WakelockPlus.enable();
     } catch (_) {}
@@ -100,6 +102,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    unawaited(DiscordPresenceService.instance.clear());
     try {
       WakelockPlus.disable();
     } catch (_) {}
@@ -108,6 +111,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     _disposeSystemUI();
 
     super.dispose();
+  }
+
+  void _startDiscordPresence() {
+    final mode = widget.mode;
+    if (mode is PlayerModeOnline) {
+      final episodeTitle = mode.episode.title?.trim();
+      final episodeLabel = [
+        if (mode.episode.season != null) 'Season ${mode.episode.season}',
+        'Episode ${mode.episode.number}',
+        if (episodeTitle != null && episodeTitle.isNotEmpty) episodeTitle,
+      ].join(' · ');
+      unawaited(
+        DiscordPresenceService.instance.startWatching(
+          title: mode.media.title.getPreferedTitle,
+          state: episodeLabel,
+        ),
+      );
+    } else if (mode is PlayerModeOffline) {
+      unawaited(
+        DiscordPresenceService.instance.startWatching(
+          title: mode.title?.trim().isNotEmpty == true
+              ? mode.title!.trim()
+              : 'Local video',
+          state: 'Watching on AniFox',
+        ),
+      );
+    }
   }
 
   void _disposeSystemUI() {

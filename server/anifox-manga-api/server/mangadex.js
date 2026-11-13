@@ -2,6 +2,10 @@ const API_BASE = process.env.MANGADEX_API_URL?.trim().replace(/\/+$/, "") || "ht
 const COVER_BASE = "https://uploads.mangadex.org/covers"
 const PAGE_LIMIT = 24
 const USER_AGENT = "AniFox/1.0 (+https://github.com/ItzFallenMe/AniFox)"
+const CACHE_TTL_MS = 30_000
+const CACHE_MAX_ENTRIES = 250
+const responseCache = new Map()
+const pendingRequests = new Map()
 
 async function request(path, params = {}) {
     const url = new URL(`${API_BASE}${path}`)
@@ -13,13 +17,35 @@ async function request(path, params = {}) {
         }
     }
 
-    const response = await fetch(url, {
-        headers: { Accept: "application/json", "User-Agent": USER_AGENT },
-    })
-    if (!response.ok) {
-        throw new Error(`MangaDex responded with ${response.status}`)
+    const key = url.toString()
+    const cached = responseCache.get(key)
+    if (cached && cached.expiresAt > Date.now()) return cached.value
+    if (cached) responseCache.delete(key)
+    if (pendingRequests.has(key)) return pendingRequests.get(key)
+
+    const pending = (async () => {
+        const response = await fetch(url, {
+            headers: { Accept: "application/json", "User-Agent": USER_AGENT },
+            signal: AbortSignal.timeout(15_000),
+        })
+        if (!response.ok) {
+            throw new Error(`MangaDex responded with ${response.status}`)
+        }
+        return response.json()
+    })()
+    pendingRequests.set(key, pending)
+
+    try {
+        const value = await pending
+        if (responseCache.size >= CACHE_MAX_ENTRIES) {
+            const oldest = responseCache.keys().next().value
+            if (oldest) responseCache.delete(oldest)
+        }
+        responseCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS })
+        return value
+    } finally {
+        pendingRequests.delete(key)
     }
-    return response.json()
 }
 
 function titleOf(attributes) {
@@ -49,6 +75,7 @@ function toCard(manga) {
     return {
         id: manga.id,
         url: `https://mangadex.org/title/${manga.id}`,
+        source: "mangadex",
         image: file ? `${COVER_BASE}/${manga.id}/${file}.256.jpg` : null,
         title: titleOf(manga.attributes),
         chapter: null,
@@ -187,6 +214,8 @@ async function details(mangaId) {
     return {
         imageUrl: file ? `${COVER_BASE}/${manga.id}/${file}.512.jpg` : null,
         name: titleOf(attributes),
+        source: "mangadex",
+        sourceUrl: `https://mangadex.org/title/${manga.id}`,
         author: authorOf(manga),
         status: statusOf(attributes.status),
         updated: attributes.updatedAt || "",
@@ -207,6 +236,7 @@ async function pages(chapterId) {
         title: "",
         currentChapter: "",
         chapterListIds: [],
+        source: "mangadex",
         images: (result.chapter.data || []).map((file) => ({
             title: file,
             image: `${base}/${file}`,

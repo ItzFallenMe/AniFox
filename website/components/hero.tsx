@@ -118,13 +118,13 @@ export function Hero({ items }: { items: Media[] }) {
               <Link
                 href={watchHref(media.type, media.id, 1, 1)}
                 aria-label={`Play ${media.title}`}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f9f9f9] text-black shadow-lg transition hover:scale-105 hover:bg-white active:scale-95 md:h-14 md:w-14"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-[#ff9d4d] text-[#1a0b03] shadow-[0_10px_32px_rgba(255,122,26,0.28)] transition hover:scale-105 hover:brightness-110 active:scale-95 md:h-14 md:w-14"
               >
                 <PlayIcon className="h-5 w-5 translate-x-px fill-current" />
               </Link>
               <Link
                 href={titleHref(media)}
-                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-white/20 bg-[#0f1014]/60 px-6 py-3 text-[13px] font-semibold text-[#f9f9f9] backdrop-blur-md transition hover:border-white/30 hover:bg-white/10 active:scale-95 md:py-3.5 md:text-[15px]"
+                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-white/15 bg-white/[0.045] px-6 py-3 text-[13px] font-semibold text-white backdrop-blur-xl transition hover:border-brand/35 hover:bg-white/[0.08] active:scale-95 md:py-3.5 md:text-[15px]"
               >
                 See More
               </Link>
@@ -151,7 +151,7 @@ export function Hero({ items }: { items: Media[] }) {
                     className="h-full w-full object-cover"
                   />
                   {slideIndex === index ? (
-                    <span className="absolute inset-0 rounded ring-2 ring-white/80" />
+                    <span className="absolute inset-0 rounded ring-2 ring-brand/90" />
                   ) : null}
                 </button>
               ))}
@@ -186,7 +186,7 @@ export function Hero({ items }: { items: Media[] }) {
                 aria-label={`Show ${slide.title}`}
                 onClick={() => setIndex(slideIndex)}
                 className={`h-1.5 rounded-full transition-all ${
-                  slideIndex === index ? "w-5 bg-white" : "w-1.5 bg-white/35"
+                  slideIndex === index ? "w-5 bg-brand" : "w-1.5 bg-white/35"
                 }`}
               />
             ))}

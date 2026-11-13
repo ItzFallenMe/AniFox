@@ -14,6 +14,8 @@ interface MangaChapter {
 
 interface MangaDetails {
   name?: string;
+  source?: string;
+  sourceUrl?: string;
   imageUrl?: string;
   author?: string;
   status?: string;
@@ -58,10 +60,19 @@ export default function MangaDetailsPage() {
         <div className="manga-detail-info">
           {data.imageUrl ? <Image className="manga-detail-poster" src={data.imageUrl} alt={data.name ?? "Manga cover"} width={196} height={280} priority unoptimized /> : null}
           <div>
-            <span className="manga-eyebrow">MANGA · READ ONLINE</span>
+            <span className="manga-eyebrow">
+              MANGA · {(data.source || "mangadex").replaceAll("-", " ").toUpperCase()}
+            </span>
             <h1>{data.name || "Untitled manga"}</h1>
             <p>{[data.author, data.status].filter(Boolean).join(" · ") || "Series details"}</p>
-            <div className="manga-detail-tags">{(data.genres ?? []).slice(0, 6).map((genre) => <span key={genre}>{genre}</span>)}</div>
+            <div className="manga-detail-tags">
+              {(data.genres ?? []).slice(0, 6).map((genre) => <span key={genre}>{genre}</span>)}
+              {data.sourceUrl ? (
+                <a href={data.sourceUrl} target="_blank" rel="noreferrer" aria-label="Open this title on its source">
+                  Open source ↗
+                </a>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>
