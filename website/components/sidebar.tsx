@@ -2,11 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
 import {
   AnimeIcon,
-  ChevronRightIcon,
   GithubIcon,
   HomeIcon,
   MangaIcon,
@@ -31,34 +29,19 @@ function isActive(pathname: string, href: string) {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const term = query.trim();
-    router.push(term ? `/explore?q=${encodeURIComponent(term)}` : "/explore");
-  }
 
   return (
-    <aside className="app-sidebar" aria-label="Sidebar">
-      <Link href="/home" className="app-sidebar-brand" aria-label="AniFox home">
-        <Image src="/logo.png" alt="" width={38} height={38} priority />
-        <span>AniFox</span>
+    <aside className="app-rail group/rail" aria-label="Sidebar">
+      <div className="app-rail-fade" aria-hidden="true" />
+
+      <Link href="/home" className="app-rail-brand" aria-label="AniFox home">
+        <span className="app-rail-logo">
+          <Image src="/logo.png" alt="" width={46} height={46} priority />
+        </span>
+        <span className="app-rail-wordmark">AniFox</span>
       </Link>
 
-      <form className="app-sidebar-search" onSubmit={submit} role="search">
-        <SearchIcon />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search titles"
-          aria-label="Search anime, movies and TV"
-          spellCheck={false}
-        />
-      </form>
-
-      <nav className="app-sidebar-nav" aria-label="Main">
+      <nav className="app-rail-nav" aria-label="Main">
         {items.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
           return (
@@ -66,34 +49,44 @@ export function Sidebar() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`app-sidebar-link ${active ? "is-active" : ""}`}
+              className={`app-rail-link ${active ? "is-active" : ""}`}
             >
-              <span className="app-sidebar-icon">
+              <span className="app-rail-marker" aria-hidden="true" />
+              <span className="app-rail-icon">
                 <Icon />
               </span>
-              <span>{label}</span>
-              {active ? <i aria-hidden="true" /> : null}
+              <span className="app-rail-label">{label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="app-sidebar-foot">
-        <Link href="/credits" className="app-sidebar-utility">
-          <span>Credits</span>
-          <ChevronRightIcon />
+      <div className="app-rail-foot">
+        <Link href="/credits" className="app-rail-utility">
+          <span className="app-rail-icon">
+            <span className="app-rail-dot" aria-hidden="true" />
+          </span>
+          <span className="app-rail-label">Credits</span>
         </Link>
         <a
           href="https://github.com/ItzFallenMe/AniFox"
           target="_blank"
           rel="noreferrer"
-          className="app-sidebar-utility"
+          className="app-rail-utility"
         >
-          <GithubIcon />
-          <span>Source</span>
+          <span className="app-rail-icon">
+            <GithubIcon />
+          </span>
+          <span className="app-rail-label">Source</span>
         </a>
-        <Link href="/" className="app-sidebar-download">
-          Get the app
+        <Link href="/" className="app-rail-app-link">
+          <span className="app-rail-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" strokeLinecap="round" />
+            </svg>
+          </span>
+          <span className="app-rail-label">Get the app</span>
         </Link>
       </div>
     </aside>

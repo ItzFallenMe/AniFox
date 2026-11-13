@@ -26,6 +26,12 @@ class Env {
   /// Optional URL of the separately deployed AniFox manga API.
   static const MANGA_API_URL = String.fromEnvironment('MANGA_API_URL');
 
+  /// Optional licensed download provider. Expected to expose `GET /downloads`.
+  static const DOWNLOAD_API_URL = String.fromEnvironment('DOWNLOAD_API_URL');
+
+  /// Bearer token sent to the download provider.
+  static const DOWNLOAD_API_KEY = String.fromEnvironment('DOWNLOAD_API_KEY');
+
   // helpers
   static List<String> get ANILIST_CLIENT_ID_LIST =>
       ANILIST_CLIENT_ID.split('|');

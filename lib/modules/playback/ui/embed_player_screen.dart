@@ -6,6 +6,7 @@ import 'package:webview_all/webview_all.dart';
 
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
+import 'package:anifox/modules/downloads/data/download_api.dart';
 import 'package:anifox/modules/downloads/state/downloads_provider.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
 import 'package:anifox/modules/playback/models/player_mode.dart';
@@ -33,7 +34,6 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   String? _url;
   bool _isLoading = true;
   int _progress = 0;
-  final Set<String> _sniffed = <String>{};
 
   UnifiedMedia get _media => widget.mode.media;
   int get _episodeNumber => widget.mode.episode.number.toInt();
@@ -49,10 +49,6 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     super.initState();
     _source = widget.mode.sourceInfo;
     _controller = WebViewController();
-    _controller.addJavaScriptChannel(
-      'AniFoxSniffer',
-      onMessageReceived: (message) => _onSniffed(message.message),
-    );
     _configureController();
     _loadSource(_source);
     _recordHistory();
@@ -89,53 +85,46 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
           },
           onPageFinished: (_) {
             if (mounted) setState(() => _isLoading = false);
-            _injectSniffer();
           },
         ),
       );
   }
 
-  void _injectSniffer() {
-    _controller.runJavaScript(_snifferScript).catchError((Object _) {});
-  }
-
-  void _onSniffed(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return;
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null) return;
-    final path = uri.path.toLowerCase();
-    if (!path.endsWith('.m3u8') &&
-        !path.endsWith('.mp4') &&
-        !path.endsWith('.m4v')) {
-      return;
-    }
-    if (_sniffed.add(trimmed) && mounted) {
-      setState(() {});
-    }
-  }
-
-  String _labelForUrl(String url) {
-    final quality = RegExp(r'(\d{3,4})p').firstMatch(url);
-    if (quality != null) return '${quality.group(1)}p stream';
-    final segments = Uri.tryParse(url)?.pathSegments ?? const <String>[];
-    final name = segments.isEmpty ? 'Stream' : segments.last;
-    return name.length > 48 ? '${name.substring(0, 48)}…' : name;
-  }
-
   Future<void> _openDownloadSheet() async {
-    if (_sniffed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (!DownloadApi.isConfigured) {
+      messenger.showSnackBar(
         const SnackBar(
-          content: Text(
-            'Let the episode play for a few seconds, then tap download again.',
-          ),
+          content: Text('Downloads are not configured in this build.'),
         ),
       );
       return;
     }
 
-    final selected = await showModalBottomSheet<String>(
+    final List<DownloadOption> options;
+    try {
+      options = await DownloadApi().forMedia(
+        _media,
+        season: _season,
+        episode: _episodeNumber,
+      );
+    } on DownloadApiException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    }
+
+    if (!mounted) return;
+    if (options.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('No downloads are available for this title yet.'),
+        ),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<DownloadOption>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -146,14 +135,14 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
-                'Download stream',
+                'Download',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
-                'Media captured from ${_source.name}. Pick the stream quality to save.',
+                'Choose a quality to keep offline.',
                 style: TextStyle(
                   fontSize: 12,
                   color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
@@ -164,16 +153,13 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  for (final url in _sniffed)
+                  for (final option in options)
                     ListTile(
-                      leading: const Icon(Icons.movie_outlined),
-                      title: Text(_labelForUrl(url)),
-                      subtitle: Text(
-                        Uri.tryParse(url)?.host ?? url,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () => Navigator.of(sheetContext).pop(url),
+                      leading: const Icon(Icons.download_rounded),
+                      title: Text(option.label),
+                      subtitle:
+                          option.detail.isEmpty ? null : Text(option.detail),
+                      onTap: () => Navigator.of(sheetContext).pop(option),
                     ),
                 ],
               ),
@@ -186,19 +172,22 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
 
     if (selected == null || !mounted) return;
 
-    final pageUrl = _url;
-    await ref
-        .read(downloadsProvider.notifier)
-        .start(
-          url: selected,
-          mediaTitle: _media.title.getPreferedTitle,
-          episodeLabel: _episodeNumber > 0 ? 'Episode $_episodeNumber' : '',
-          sourceName: _source.name,
-          headers: {
-            if (pageUrl != null) 'Referer': pageUrl,
-            if (pageUrl != null) 'Origin': Uri.parse(pageUrl).origin,
-          },
-        );
+    try {
+      await ref
+          .read(downloadsProvider.notifier)
+          .start(
+            url: selected.url,
+            mediaTitle: _media.title.getPreferedTitle,
+            episodeLabel: _episodeNumber > 0 ? 'Episode $_episodeNumber' : '',
+            sourceName: selected.label,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The download could not be started.')),
+      );
+      return;
+    }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -398,18 +387,9 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
             ),
           ),
           IconButton(
-            tooltip: _sniffed.isEmpty
-                ? 'Download (play first to capture the stream)'
-                : 'Download captured stream',
+            tooltip: 'Download',
             onPressed: _openDownloadSheet,
-            icon: Badge(
-              isLabelVisible: _sniffed.isNotEmpty,
-              smallSize: 7,
-              child: const Icon(
-                Icons.download_rounded,
-                color: Colors.white,
-              ),
-            ),
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
           ),
           IconButton(
             tooltip: 'Downloads',
@@ -454,53 +434,3 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   }
 }
 
-
-const _snifferScript = r"""
-(function () {
-  if (window.__aniFoxSniffer) return;
-  window.__aniFoxSniffer = true;
-  function send(value) {
-    try {
-      if (!value) return;
-      var absolute = new URL(String(value), location.href).href;
-      if (/\.(m3u8|mp4|m4v)(\?|#|$)/i.test(absolute)) {
-        window.AniFoxSniffer.postMessage(absolute);
-      }
-    } catch (e) {}
-  }
-  try {
-    var originalFetch = window.fetch;
-    if (originalFetch) {
-      window.fetch = function () {
-        try {
-          var input = arguments[0];
-          send(typeof input === 'string' ? input : (input && input.url));
-        } catch (e) {}
-        return originalFetch.apply(this, arguments);
-      };
-    }
-  } catch (e) {}
-  try {
-    var originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (method, url) {
-      send(url);
-      return originalOpen.apply(this, arguments);
-    };
-  } catch (e) {}
-  try {
-    new PerformanceObserver(function (list) {
-      list.getEntries().forEach(function (entry) { send(entry.name); });
-    }).observe({ type: 'resource', buffered: true });
-  } catch (e) {}
-  setInterval(function () {
-    try {
-      performance.getEntriesByType('resource').forEach(function (entry) {
-        send(entry.name);
-      });
-      document.querySelectorAll('video').forEach(function (video) {
-        send(video.currentSrc || video.src);
-      });
-    } catch (e) {}
-  }, 2000);
-})();
-""";
