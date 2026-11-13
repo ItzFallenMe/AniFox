@@ -121,5 +121,13 @@ freebuff-chat-*.md
 result
 result-*
 
-# Nested local project, not part of this repository
-server/
+# Manga API local state
+server/**/node_modules/
+server/**/.next/
+server/**/.vercel/
+server/**/.env
+server/**/.env.*
+!**/.env.example
+
+# Gradle/Kotlin local state
+android/.kotlin/
