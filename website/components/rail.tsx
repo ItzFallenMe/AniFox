@@ -10,9 +10,11 @@ interface RailProps extends RailData {
   /** Number the first nine items, Top-10 style. */
   ranked?: boolean;
   href?: string;
+  /** Position used for the oversized section numeral. */
+  index?: number;
 }
 
-export function Rail({ title, items, wide = false, ranked = false, href = "/explore" }: RailProps) {
+export function Rail({ title, items, wide = false, ranked = false, href = "/explore", index }: RailProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -43,13 +45,22 @@ export function Rail({ title, items, wide = false, ranked = false, href = "/expl
   }
 
   if (!items.length) return null;
+  const numeral = index != null ? String(index).padStart(2, "0") : null;
 
   return (
     <section className={`media-rail px-6 pt-8 lg:px-20 ${ranked ? "media-rail-ranked" : ""}`}>
       <div className="media-rail-heading mb-4 flex items-center justify-between gap-4">
-        <h2 className="truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
-          {title}
-        </h2>
+        <div className="media-rail-title">
+          {numeral ? <span className="media-rail-index" aria-hidden="true">{numeral}</span> : null}
+          <div className="media-rail-title-copy">
+            <span className="media-rail-kicker">
+              {ranked ? "THIS WEEK'S CHART" : "ANI FOX COLLECTION"}
+            </span>
+            <h2 className="truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
+              {title}
+            </h2>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <Link
             href={href}

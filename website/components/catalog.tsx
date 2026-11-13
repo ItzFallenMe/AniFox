@@ -120,7 +120,9 @@ export function Catalog({ kind }: { kind: Kind }) {
           </section>
 
           <div className="catalog-rails">
-            {(data?.rails ?? []).map((rail) => <Rail key={rail.title} {...rail} />)}
+            {(data?.rails ?? []).map((rail, index) => (
+              <Rail key={rail.title} {...rail} index={index + 1} />
+            ))}
           </div>
         </>
       )}

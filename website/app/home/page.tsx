@@ -3,8 +3,17 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { Hero } from "@/components/hero";
+import { HomeSpotlight } from "@/components/home-spotlight";
 import { Rail } from "@/components/rail";
 import { PageSkeleton } from "@/components/notice";
+import {
+  AnimeIcon,
+  ChevronRightIcon,
+  MangaIcon,
+  MovieIcon,
+  SearchIcon,
+  TvIcon,
+} from "@/components/icons";
 import { useAsync } from "@/lib/hooks";
 import { getMovieList, getTrending, getTvList } from "@/lib/tmdb";
 import { getPopularAnime, getTopRatedAnime, getTrendingAnime } from "@/lib/anilist";
@@ -67,6 +76,30 @@ export default function StreamingHomePage() {
 
   const heroItems = data?.trending.length ? data.trending : data?.animeTrending ?? [];
 
+  const spotlight = useMemo(() => {
+    if (!data) return null;
+    const pool = [
+      ...data.upcoming,
+      ...data.topMovies,
+      ...data.movies,
+      ...data.tv,
+      ...data.animeTrending,
+    ];
+    return (
+      pool.find((item) => item.backdrop && item.overview) ??
+      pool.find((item) => item.backdrop) ??
+      null
+    );
+  }, [data]);
+
+  const categories = [
+    { href: "/movies", label: "Movies", Icon: MovieIcon },
+    { href: "/tv", label: "TV Shows", Icon: TvIcon },
+    { href: "/anime", label: "Anime", Icon: AnimeIcon },
+    { href: "/manga", label: "Manga", Icon: MangaIcon },
+    { href: "/explore", label: "All titles", Icon: SearchIcon },
+  ];
+
   if (loading) {
     return (
       <div className="streaming-home">
@@ -84,23 +117,22 @@ export default function StreamingHomePage() {
     <div className="streaming-home pb-10">
       <Hero items={heroItems} />
       <div className="home-quicklinks" aria-label="Browse categories">
-        {[
-          { href: "/movies", label: "Movies" },
-          { href: "/tv", label: "TV Shows" },
-          { href: "/anime", label: "Anime" },
-          { href: "/manga", label: "Manga" },
-          { href: "/explore", label: "All titles" },
-        ].map((item) => (
-          <Link key={item.href} href={item.href} className="home-quicklink">
-            {item.label}
+        {categories.map(({ href, label, Icon }) => (
+          <Link key={href} href={href} className="home-quicklink">
+            <Icon className="home-quicklink-icon" />
+            <span>{label}</span>
+            <ChevronRightIcon className="home-quicklink-arrow" />
           </Link>
         ))}
       </div>
       <div className="home-rails">
-        <div className="home-rails-intro"><span>YOUR WATCHLIST STARTS HERE</span><i /></div>
-        {topTen.length ? <Rail title="Top 10 on AniFox today" items={topTen} ranked href="/explore" /> : null}
-        {rails.map((rail) => (
-          <Rail key={rail.title} {...rail} />
+        <div className="home-rails-intro"><span>CURATED COLLECTIONS</span><i /></div>
+        {topTen.length ? (
+          <Rail title="Top 10 on AniFox today" items={topTen} ranked index={1} href="/explore" />
+        ) : null}
+        {spotlight ? <HomeSpotlight media={spotlight} /> : null}
+        {rails.map((rail, railIndex) => (
+          <Rail key={rail.title} {...rail} index={railIndex + 2} />
         ))}
       </div>
       {!rails.length ? (
