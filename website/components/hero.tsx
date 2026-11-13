@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, PlayIcon, StarIcon } from "./icons";
+import { getTitleLogo } from "@/lib/tmdb";
 import { titleHref, typeLabel, watchHref } from "@/lib/routes";
 import type { Media } from "@/lib/types";
 
@@ -14,6 +15,26 @@ export function Hero({ items }: { items: Media[] }) {
     [items],
   );
   const [index, setIndex] = useState(0);
+  const [logos, setLogos] = useState<Record<string, string | null>>({});
+  const requested = useRef(new Set<string>());
+
+  useEffect(() => {
+    let cancelled = false;
+    for (const slide of slides) {
+      if (requested.current.has(slide.key)) continue;
+      requested.current.add(slide.key);
+      getTitleLogo(slide)
+        .then((logo) => {
+          if (!cancelled) {
+            setLogos((current) => ({ ...current, [slide.key]: logo }));
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [slides]);
 
   useEffect(() => {
     if (slides.length < 2) return;
@@ -30,6 +51,7 @@ export function Hero({ items }: { items: Media[] }) {
   if (!slides.length) return null;
   const media = slides[index];
   const genres = media.genres?.slice(0, 2) ?? [];
+  const logo = logos[media.key];
 
   return (
     <section
@@ -57,9 +79,17 @@ export function Hero({ items }: { items: Media[] }) {
       <div className="absolute inset-0 flex flex-col justify-end px-6 pb-[90px] md:pl-[100px] md:pr-6 lg:pl-[120px] lg:pr-8 lg:pb-24">
         <div className="flex w-full flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
           <div key={`copy-${media.key}`} className="flex w-[88%] max-w-2xl animate-[fade-in_500ms_ease_both] flex-col items-start text-left md:w-full">
-            <h1 className="text-[34px] font-extrabold leading-[1.05] tracking-[-0.03em] text-white sm:text-5xl md:text-6xl">
-              {media.title}
-            </h1>
+            {logo ? (
+              <img
+                src={logo}
+                alt={media.title}
+                className="max-h-[64px] w-auto max-w-full object-contain object-left drop-shadow-2xl sm:max-h-[100px] md:max-h-[130px]"
+              />
+            ) : (
+              <h1 className="text-[34px] font-extrabold leading-[1.05] tracking-[-0.03em] text-white sm:text-5xl md:text-6xl">
+                {media.title}
+              </h1>
+            )}
             <div className="mt-3 flex flex-wrap items-center text-[13px] font-semibold text-white/90 md:text-[14px]">
               {media.score != null && media.score > 0 ? (
                 <span className="flex items-center gap-1 text-white">

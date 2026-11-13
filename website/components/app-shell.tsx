@@ -36,8 +36,9 @@ function BackToTop() {
 
 function Footer() {
   return (
-    <footer className="app-footer relative z-10 mt-auto w-full border-t border-white/[0.06] bg-black px-6 py-8 pb-16 text-white/50 md:pb-8">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-12">
+    <footer className="app-footer relative z-10 mt-auto w-full bg-black px-6 py-6 pb-20 text-white/50 md:pb-8 md:pl-[100px] md:pr-14 lg:pl-[120px]">
+      <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-12">
         <p className="max-w-xl text-[11px] leading-[1.7] text-white/40">
           AniFox does not host, upload or store any media. Titles are indexed from
           public metadata providers (TMDB, AniList, MyAnimeList) and playback is

@@ -115,6 +115,37 @@ export async function searchTmdb(query: string): Promise<Media[]> {
   return items;
 }
 
+interface TmdbImages {
+  images?: {
+    logos?: {
+      file_path: string;
+      iso_639_1: string | null;
+      vote_average: number;
+    }[];
+  };
+}
+
+/** English title treatment from TMDB, matching the reference billboard. */
+export async function getTitleLogo(media: Pick<Media, "type" | "id" | "tmdbId">): Promise<string | null> {
+  if (media.type === "anime") return null;
+  const id = media.tmdbId ?? media.id;
+  if (!id) return null;
+
+  try {
+    const data = await tmdb<TmdbImages>(`/${media.type}/${id}/images`, {
+      include_image_language: "en,null",
+    });
+    const logos = data.images?.logos ?? [];
+    const preferred = logos
+      .filter((logo) => !logo.iso_639_1 || logo.iso_639_1 === "en")
+      .sort((a, b) => b.vote_average - a.vote_average);
+    const logo = preferred[0] ?? logos[0];
+    return logo ? tmdbImage(logo.file_path, "w500") : null;
+  } catch {
+    return null;
+  }
+}
+
 interface TmdbDetails extends TmdbItem {
   runtime?: number;
   episode_run_time?: number[];

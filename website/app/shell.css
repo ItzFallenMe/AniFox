@@ -333,6 +333,66 @@
   user-select: none;
 }
 
+.stream-hero-skeleton {
+  min-height: 75vh;
+}
+
+@media (min-width: 768px) {
+  .stream-hero-skeleton {
+    min-height: 0;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: 85vh;
+  }
+}
+
+@media (min-width: 900px) {
+  .title-page {
+    margin-left: calc(-1 * var(--rail-w));
+  }
+
+  .app-footer {
+    padding-left: calc(var(--rail-w) + 24px);
+  }
+}
+
+.title-summary h1 {
+  font-family: var(--font-inter), sans-serif;
+  font-size: clamp(32px, 4vw, 58px);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+
+.title-backdrop {
+  height: min(82svh, 760px);
+}
+
+.title-section-heading > span {
+  display: none;
+}
+
+.title-section-heading h2 {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.title-play-button {
+  border-radius: 999px;
+  background: #f9f9f9;
+  color: #000;
+}
+
+.title-play-button:hover {
+  background: #fff;
+}
+
+.title-episode-card {
+  border-radius: 10px;
+}
+
 @media (min-width: 640px) {
   .rank-num {
     font-size: 120px;
