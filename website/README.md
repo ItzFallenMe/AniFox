@@ -88,7 +88,7 @@ Open <http://localhost:3000> for the download page or
 # Server-only TMDB key (v3 API key or v4 read token). Never exposed to the browser.
 TMDB_API_KEY=your_tmdb_api_key
 
-# Optional manga API root URL — do not append /api.
+# Root URL of the manga API in `server/anifox-manga-api` — no /api suffix.
 MANGA_API_URL=https://your-manga-api.vercel.app
 
 # Optional Chromecast receiver application id.

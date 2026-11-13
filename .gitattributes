@@ -1,0 +1,22 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.jks binary
+*.zip binary
+
+dart format
+*.dart text
+*.ts text
+*.tsx text
+*.css text
+*.json text
+*.yml text
+*.yaml text
+*.md text

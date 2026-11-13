@@ -17,8 +17,8 @@
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-orange" /></a>
 </p>
 
-> **AniFox: Reimagined** — this branch is the rebuilt app. The `main` branch
-> still contains the earlier code and is replaced once the rebuild is complete.
+> **AniFox: Reimagined** — this branch is the rebuilt app with the current web
+> client and app. It becomes `main` when the rebuild is released.
 
 ## What AniFox is
 
@@ -26,12 +26,13 @@ AniFox is a front-end. It reads public metadata from TMDB, AniList and
 MyAnimeList, and plays media through third-party embed hosts. Nothing is hosted,
 uploaded or stored by this project, and no account is required.
 
-The repository has two clients and one optional service:
+The repository contains two clients and the manga API they share:
 
 | Part | Path | Stack |
 | --- | --- | --- |
 | Flutter app | `lib/` | Flutter, Riverpod, Material 3 |
 | Web client and landing page | `website/` | Next.js, TypeScript, Tailwind |
+| Manga API | `server/anifox-manga-api/` | Express on Vercel |
 
 ## Highlights
 
@@ -92,7 +93,9 @@ flutter build apk --release \
 
 Do not append `/api` to `MANGA_API_URL`.
 
-### DownloadsDownloads are provided by an operator you are licensed to use — AniFox ships no
+### Downloads
+
+Downloads are provided by an operator you are licensed to use — AniFox ships no
 download source. Set `DOWNLOAD_URL` to that provider's origin. The app opens
 that page inside AniFox, intercepts the file links it produces and saves them
 to `AniFox/downloads`:
@@ -122,9 +125,12 @@ flutter build apk --release        # Android
 flutter build appbundle --release  # Play Store bundle
 flutter build ios --release        # iOS (macOS host)
 flutter build macos --release      # macOS
-flutter build windows --release    # Windows
-flutter build linux --release      # Linux
+flutter build windows --release    # Windowsflutter build linux --release          # Linux
 ```
+
+Tagging `v*` publishes release builds for `arm64-v8a`, `armeabi-v7a` and
+`x86_64`, plus a universal APK and a `SHA256SUMS.txt` file, through the
+`Release APK` workflow.
 
 Display names, bundle identifiers and icons live in `package_rename_config.yaml`
 and `flutter_launcher_icons.yaml`. After changing the logo:
@@ -163,10 +169,29 @@ contract, Chromecast setup and deploy commands.
 
 ## Manga API
 
-The manga catalog and reader need a separate manga API deployment; it is not
-bundled in this repository. Point clients at its public root URL with
-`MANGA_API_URL` (site and app) once it is running. Without it, the rest of
-AniFox works normally and the manga screens stay empty.
+`server/anifox-manga-api/` is the customized manga backend used by both the app
+and the web client. It proxies search, catalog, title and chapter-page requests
+and stores no content itself.
+
+```bash
+cd server/anifox-manga-api/server
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Deploy the `server` directory to Vercel and set `DATAPROVIDER_URL` there to the
+upstream provider's root URL (defaults to `https://ww6.mangakakalot.tv`). Then
+point the clients at the deployment:
+
+| Client | Setting |
+| --- | --- |
+| Web | `MANGA_API_URL` in `website/.env.local` or the hosting environment |
+| App | `--dart-define=MANGA_API_URL=https://your-manga-api.vercel.app` |
+
+Use the deployment root URL in both cases; do not append `/api`. A `502` from
+the API means the configured upstream provider could not be reached, so check
+`DATAPROVIDER_URL` and the provider's availability first.
 
 ## Project structure
 
@@ -179,6 +204,7 @@ lib/
   streaming/   bundled embed hosts, URL building, metadata sources
   assets/      images and icons
 website/       Next.js landing page and web client
+server/        manga API used by both clients
 ```
 
 ## CI and releases
@@ -220,6 +246,7 @@ git push origin v2.1.5
 - [Contributing guide](CONTRIBUTING.md) — setup, checks and pull request rules
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Security policy](SECURITY.md) — report vulnerabilities privately
+- [Changelog](CHANGELOG.md) — what changed in each release
 - [Issues](https://github.com/ItzFallenMe/AniFox/issues) and
   [discussions](https://github.com/ItzFallenMe/AniFox/discussions)
 

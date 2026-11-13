@@ -29,6 +29,11 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -52,23 +57,36 @@ jobs:
           storeFile=keystore/release.jks
           PROPS
 
-      - name: Build release APKs
-        run: flutter build apk --release --no-pub --split-per-abi
+      - name: Build split APKs
+        run: >-
+          flutter build apk --release --no-pub --split-per-abi
+          --target-platform android-arm,android-arm64,android-x64
 
-      - name: Rename APKs
+      - name: Build universal APK
+        run: flutter build apk --release --no-pub
+
+      - name: Name APKs and checksums
         run: |
           cd build/app/outputs/flutter-apk
           for f in app-*-release.apk; do
             [ -e "$f" ] || continue
-            mv "$f" "anifox-${GITHUB_REF_NAME}-${f#app-}"
+            abi="${f#app-}"
+            abi="${abi%-release.apk}"
+            mv "$f" "anifox-${GITHUB_REF_NAME}-${abi}.apk"
           done
+          if [ -f app-release.apk ]; then
+            mv app-release.apk "anifox-${GITHUB_REF_NAME}-universal.apk"
+          fi
+          sha256sum anifox-*.apk > SHA256SUMS.txt
           ls -lh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: anifox-release-apks
-          path: build/app/outputs/flutter-apk/anifox-*.apk
+          path: |
+            build/app/outputs/flutter-apk/anifox-*.apk
+            build/app/outputs/flutter-apk/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -77,4 +95,6 @@ jobs:
           name: AniFox ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: build/app/outputs/flutter-apk/anifox-*.apk
+          files: |
+            build/app/outputs/flutter-apk/anifox-*.apk
+            build/app/outputs/flutter-apk/SHA256SUMS.txt
