@@ -21,16 +21,16 @@ export function MediaCard({ media, wide = false, fluid = false, rank }: MediaCar
       style={{ "--i": rank ? Math.min(rank - 1, 12) : undefined } as CSSProperties}
       className={`media-card group/card relative flex min-w-0 shrink-0 flex-col outline-none transition-transform duration-500 ease-smooth hover:z-10 hover:-translate-y-2 focus-visible:z-10 ${
         wide
-          ? "w-[210px] md:w-[270px] lg:w-[330px]"
+          ? "w-[220px] md:w-[280px] lg:w-[320px]"
           : fluid
             ? "w-full"
-            : "w-[132px] md:w-[162px] lg:w-[188px]"
+            : "w-[130px] md:w-[160px] lg:w-[185px]"
       } ${rank ? "media-card-ranked" : ""}`}
     >
       {rank ? <span className="media-card-rank" aria-hidden="true">{String(rank).padStart(2, "0")}</span> : null}
 
       <div
-        className={`media-card-art relative overflow-hidden rounded-xl bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-500 group-hover/card:ring-white/25 group-focus-visible/card:ring-2 group-focus-visible/card:ring-white/70 ${
+        className={`media-card-art relative overflow-hidden rounded-lg bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-500 group-hover/card:ring-white/25 group-focus-visible/card:ring-2 group-focus-visible/card:ring-white/70 ${
           wide ? "aspect-video" : "aspect-[2/3]"
         }`}
       >

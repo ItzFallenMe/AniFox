@@ -7,14 +7,12 @@ import { MediaCard } from "./media-card";
 import type { RailData } from "@/lib/types";
 
 interface RailProps extends RailData {
-  /** Number the first nine items, Top-10 style. */
+  /** Number the first ten items, trending style. */
   ranked?: boolean;
   href?: string;
-  /** Position used for the oversized section numeral. */
-  index?: number;
 }
 
-export function Rail({ title, items, wide = false, ranked = false, href = "/explore", index }: RailProps) {
+export function Rail({ title, items, wide = false, ranked = false, href = "/explore" }: RailProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -45,31 +43,22 @@ export function Rail({ title, items, wide = false, ranked = false, href = "/expl
   }
 
   if (!items.length) return null;
-  const numeral = index != null ? String(index).padStart(2, "0") : null;
 
   return (
-    <section className={`media-rail px-6 pt-8 lg:px-20 ${ranked ? "media-rail-ranked" : ""}`}>
-      <div className="media-rail-heading mb-4 flex items-center justify-between gap-4">
-        <div className="media-rail-title">
-          {numeral ? <span className="media-rail-index" aria-hidden="true">{numeral}</span> : null}
-          <div className="media-rail-title-copy">
-            <span className="media-rail-kicker">
-              {ranked ? "THIS WEEK'S CHART" : "ANI FOX COLLECTION"}
-            </span>
-            <h2 className="truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
-              {title}
-            </h2>
-          </div>
-        </div>
+    <section className={`media-rail px-6 pt-7 lg:px-16 ${ranked ? "media-rail-ranked" : ""}`}>
+      <div className="media-rail-heading mb-1 flex items-center justify-between gap-4">
+        <h2 className="media-rail-title truncate text-[17px] font-semibold tracking-[-0.01em] text-white lg:text-[19px]">
+          {title}
+        </h2>
         <div className="flex items-center gap-3">
           <Link
             href={href}
-            className="media-rail-more group/va flex shrink-0 items-center gap-1.5 py-1 text-[13px] font-medium tracking-[-0.01em] text-white/50 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
+            className="media-rail-more group/va flex shrink-0 items-center gap-1 py-1 text-[12px] font-medium tracking-[-0.01em] text-white/45 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
           >
             <span className="relative after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover/va:after:scale-x-100 group-focus-visible/va:after:scale-x-100">
               View all
             </span>
-            <ChevronRightIcon className="h-[15px] w-[15px] transition-transform duration-300 group-hover/va:translate-x-1 group-focus-visible/va:translate-x-1" />
+            <ChevronRightIcon className="h-[13px] w-[13px] transition-transform duration-300 group-hover/va:translate-x-0.5 group-focus-visible/va:translate-x-0.5" />
           </Link>
           <div className="media-rail-arrows hidden md:flex">
             <button
@@ -94,14 +83,14 @@ export function Rail({ title, items, wide = false, ranked = false, href = "/expl
 
       <div
         ref={scroller}
-        className={`stagger no-scrollbar flex gap-3 overflow-x-auto scroll-smooth ${wide ? "py-4" : "pt-4"}`}
+        className={`stagger no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth ${wide ? "py-4" : "py-3"}`}
       >
-        {items.map((media, index) => (
+        {items.map((media, cardIndex) => (
           <MediaCard
             key={media.key}
             media={media}
             wide={wide}
-            rank={ranked && index < 10 ? index + 1 : undefined}
+            rank={ranked && cardIndex < 10 ? cardIndex + 1 : undefined}
           />
         ))}
       </div>

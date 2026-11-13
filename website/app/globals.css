@@ -5845,6 +5845,225 @@ body {
   }
 }
 
+/* Browse layout aligned to the reference shell */
+
+.streaming-home {
+  background: #0a0a0d;
+}
+
+.stream-hero {
+  height: 75svh;
+  min-height: 470px;
+  max-height: 85svh;
+  background: #0a0a0d;
+}
+
+@media (min-width: 768px) {
+  .stream-hero {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.stream-hero-shade {
+  background:
+    linear-gradient(0deg, #0a0a0d 0%, rgba(10, 10, 13, 0.55) 16%, transparent 46%),
+    linear-gradient(90deg, rgba(6, 7, 9, 0.96) 0%, rgba(6, 7, 9, 0.74) 34%, rgba(6, 7, 9, 0.16) 72%, transparent 100%);
+}
+
+.stream-hero-copy {
+  right: clamp(24px, 8vw, 120px);
+  bottom: clamp(58px, 11vh, 124px);
+  left: clamp(24px, 6vw, 96px);
+  max-width: 640px;
+}
+
+.stream-hero-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+.stream-hero-label::before {
+  display: none;
+}
+
+.stream-hero-copy h1 {
+  margin-top: 10px;
+  font-family: var(--font-alfa), Georgia, serif;
+  font-size: clamp(38px, 5.1vw, 72px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+
+.stream-hero-meta {
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.stream-hero-copy > p {
+  max-width: 56ch;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  -webkit-line-clamp: 3;
+}
+
+.stream-hero-actions {
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.stream-hero-actions a {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 12.5px;
+}
+
+.stream-hero-controls {
+  right: clamp(24px, 6vw, 96px);
+  bottom: 28px;
+  gap: 16px;
+}
+
+.stream-hero-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stream-hero-dots button {
+  width: 16px;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: width 240ms ease, background 240ms ease;
+}
+
+.stream-hero-dots button.is-active {
+  width: 30px;
+  background: #fff;
+}
+
+.stream-hero-arrows button {
+  width: 34px;
+  height: 34px;
+}
+
+.home-rails {
+  padding-top: 6px;
+}
+
+.media-rail {
+  padding-top: 26px;
+}
+
+.media-rail-heading {
+  padding-bottom: 2px;
+}
+
+.media-rail-arrows button {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.media-rail-arrows button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.media-card-art {
+  border-radius: 8px;
+}
+
+.catalog-spotlight {
+  height: min(64svh, 620px);
+}
+
+.catalog-spotlight-copy {
+  padding-bottom: clamp(32px, 7vh, 72px);
+}
+
+.catalog-spotlight-heading h1 {
+  margin-top: 0;
+  font-family: var(--font-alfa), Georgia, serif;
+  font-size: clamp(38px, 4.6vw, 64px);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+}
+
+.catalog-spotlight-subtitle {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.catalog-featured-copy h2 {
+  font-family: var(--font-alfa), Georgia, serif;
+  font-size: clamp(26px, 2.6vw, 38px);
+  font-weight: 400;
+  line-height: 1.08;
+}
+
+.title-summary h1 {
+  font-family: var(--font-alfa), Georgia, serif;
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+}
+
+.title-play-button,
+.title-outbound-link {
+  border-radius: 999px;
+}
+
+.catalog-page {
+  background: #0a0a0d;
+}
+
+@media (max-width: 899px) {
+  .stream-hero {
+    height: calc(75svh - var(--nav-h));
+    min-height: 420px;
+    max-height: none;
+  }
+
+  .stream-hero-copy {
+    right: 24px;
+    bottom: 74px;
+    left: 24px;
+  }
+
+  .stream-hero-copy h1 {
+    font-size: clamp(32px, 8.6vw, 48px);
+  }
+
+  .stream-hero-copy > p {
+    font-size: 12.5px;
+  }
+
+  .stream-hero-controls {
+    right: 24px;
+    bottom: 22px;
+  }
+
+  .stream-hero-arrows {
+    display: none;
+  }
+
+  .media-rail {
+    padding-top: 22px;
+  }
+}
+
 /* Download provider embed */
 
 .downloads {

@@ -37,43 +37,41 @@ export function Hero({ items }: { items: Media[] }) {
         <img src={media.backdrop ?? ""} alt="" fetchPriority="high" />
       </div>
       <div className="stream-hero-shade" />
-      <div className="stream-hero-grain" />
-
-      <div className="stream-hero-topline">
-        <span><i /> CURATED FOR YOUR NEXT WATCH</span>
-        <span className="stream-hero-count">{String(index + 1).padStart(2, "0")} <b>/ {String(slides.length).padStart(2, "0")}</b></span>
-      </div>
 
       <div key={`copy-${media.key}`} className="stream-hero-copy">
-        <div className="stream-hero-label"><span>{media.type === "tv" ? "SERIES SPOTLIGHT" : `${typeLabel(media.type)} SPOTLIGHT`}</span></div>
+        <div className="stream-hero-label">
+          {media.type === "tv" ? "SERIES" : typeLabel(media.type).toUpperCase()}
+        </div>
         <h1>{media.title}</h1>
         <div className="stream-hero-meta">
-          {media.score != null && media.score > 0 ? <span className="stream-hero-score"><StarIcon /> {media.score.toFixed(1)}</span> : null}
+          {media.score != null && media.score > 0 ? (
+            <span className="stream-hero-score"><StarIcon /> {media.score.toFixed(1)}</span>
+          ) : null}
           {media.year ? <span>{media.year}</span> : null}
           {genres.map((genre) => <span key={genre}>{genre}</span>)}
         </div>
         {media.overview ? <p>{media.overview}</p> : null}
         <div className="stream-hero-actions">
-          <Link href={watchHref(media.type, media.id, 1, 1)} className="stream-hero-play"><PlayIcon /> Watch now</Link>
-          <Link href={titleHref(media)} className="stream-hero-details">Explore title <span>↗</span></Link>
+          <Link href={watchHref(media.type, media.id, 1, 1)} className="stream-hero-play">
+            <PlayIcon /> Watch now
+          </Link>
+          <Link href={titleHref(media)} className="stream-hero-details">See More</Link>
         </div>
       </div>
 
       {slides.length > 1 ? (
         <div className="stream-hero-controls">
-          <div className="stream-hero-progress" key={media.key}><i /></div>
-          <div className="stream-hero-thumbnails">
+          <div className="stream-hero-dots" role="tablist" aria-label="Featured titles">
             {slides.map((slide, slideIndex) => (
               <button
                 key={slide.key}
                 type="button"
-                aria-label={`Feature ${slide.title}`}
-                aria-current={slideIndex === index ? "true" : undefined}
-                onClick={() => setIndex(slideIndex)}
+                role="tab"
+                aria-label={slide.title}
+                aria-selected={slideIndex === index}
                 className={slideIndex === index ? "is-active" : ""}
-              >
-                <img src={slide.backdrop ?? slide.poster ?? ""} alt="" loading="lazy" />
-              </button>
+                onClick={() => setIndex(slideIndex)}
+              />
             ))}
           </div>
           <div className="stream-hero-arrows">
