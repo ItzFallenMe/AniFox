@@ -1,10 +1,13 @@
 {
-  "name": "anifox-cli",
-  "version": "0.1.0",
-  "description": "Terminal client for the AniFox API",
+  "name": "anifox-tui",
+  "version": "0.2.0",
+  "description": "Terminal UI for the AniFox API",
   "type": "module",
   "bin": {
     "anifox": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs"
   },
   "engines": {
     "node": ">=22"
