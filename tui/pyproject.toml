@@ -1,0 +1,22 @@
+[project]
+name = "anifox-tui"
+version = "0.1.0"
+description = "Interactive terminal interface for the AniFox API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-only" }
+dependencies = [
+  "httpx>=0.27.0",
+  "rich>=13.9.0",
+  "InquirerPy>=0.3.4",
+]
+
+[project.scripts]
+anifox = "anifox_tui.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["anifox_tui"]
