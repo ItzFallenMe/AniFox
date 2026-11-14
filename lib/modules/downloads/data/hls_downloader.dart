@@ -217,7 +217,7 @@ class HlsDownloader {
     return path.endsWith('.m3u8') || path.endsWith('.m3u');
   }
 
-  String? _extractMediaUrl(String html, Uri base) {
+  Uri? _extractMediaUrl(String html, Uri base) {
     final candidates = <String>[];
     final attributePattern = RegExp(
       r'''(?:href|src|data-url)\s*=\s*["']([^"']+)["']''',
@@ -243,7 +243,7 @@ class HlsDownloader {
       candidates.add(match.group(1)!);
     }
 
-    String? fallback;
+    Uri? fallback;
     for (final raw in candidates) {
       final value = raw
           .replaceAll('&amp;', '&')
@@ -261,13 +261,13 @@ class HlsDownloader {
 
       if (RegExp(r'\.(?:mp4|mkv|webm|avi|mov|m3u8|m3u)(?:[?#]|$)')
           .hasMatch(lower)) {
-        return resolved.toString();
+        return resolved;
       }
       fallback ??= lower.contains('/download') ||
               lower.contains('/get?') ||
               lower.contains('/file?') ||
               lower.contains('download?')
-          ? resolved.toString()
+          ? resolved
           : null;
     }
 
