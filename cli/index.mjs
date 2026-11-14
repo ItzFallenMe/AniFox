@@ -149,6 +149,7 @@ async function loadMangaSearch(query) {
   await load("manga/search", { query, page: 1, source: "all" }, `Manga search · ${query}`, "manga");
 }
 function prompt(label, submit) {
+  previousScreen = state.screen;
   state.screen = "input"; state.input = { label, value: "", submit }; redraw();
 }
 function streamPrompt() {
