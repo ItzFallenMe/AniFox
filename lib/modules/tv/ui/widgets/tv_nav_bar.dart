@@ -42,15 +42,33 @@ class TvNavBar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             _TvTabItem(
-              label: 'Discover',
+              label: 'Search',
               isSelected: selectedIndex == 1,
               onTap: () => onTabSelected(1),
             ),
             const SizedBox(width: 12),
             _TvTabItem(
-              label: 'Library',
+              label: 'TV',
               isSelected: selectedIndex == 2,
               onTap: () => onTabSelected(2),
+            ),
+            const SizedBox(width: 12),
+            _TvTabItem(
+              label: 'Anime',
+              isSelected: selectedIndex == 3,
+              onTap: () => onTabSelected(3),
+            ),
+            const SizedBox(width: 12),
+            _TvTabItem(
+              label: 'Movies',
+              isSelected: selectedIndex == 4,
+              onTap: () => onTabSelected(4),
+            ),
+            const SizedBox(width: 12),
+            _TvTabItem(
+              label: 'Library',
+              isSelected: selectedIndex == 5,
+              onTap: () => onTabSelected(5),
             ),
             const SizedBox(width: 12),
             _TvTabItem(

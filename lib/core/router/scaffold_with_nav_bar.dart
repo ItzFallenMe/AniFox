@@ -216,14 +216,62 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
 class _NavDest {
   final IconData icon;
   final String label;
-  const _NavDest(this.icon, this.label);
+  final String location;
+
+  const _NavDest(this.icon, this.label, this.location);
 }
 
 const _destinations = [
-  _NavDest(Icons.home_outlined, 'Home'),
-  _NavDest(Icons.search_rounded, 'Search'),
-  _NavDest(Icons.library_books_outlined, 'Library'),
+  _NavDest(Icons.home_outlined, 'Home', '/home'),
+  _NavDest(Icons.search_rounded, 'Search', '/discover'),
+  _NavDest(Icons.tv_outlined, 'TV', '/tv'),
+  _NavDest(Icons.auto_awesome_outlined, 'Anime', '/anime'),
+  _NavDest(Icons.movie_outlined, 'Movies', '/movies'),
+  _NavDest(Icons.library_books_outlined, 'Library', '/library'),
 ];
+
+int _selectedDestinationIndex(
+  BuildContext context,
+  StatefulNavigationShell navigationShell,
+) {
+  final path = GoRouter.of(context).routeInformationProvider.value.uri.path;
+  final matchingIndex = _destinations.indexWhere(
+    (destination) => destination.location == path,
+  );
+  if (matchingIndex >= 0) return matchingIndex;
+
+  return switch (navigationShell.currentIndex) {
+    1 => 1,
+    2 => 5,
+    _ => 0,
+  };
+}
+
+void _selectDestination(
+  BuildContext context,
+  StatefulNavigationShell navigationShell,
+  int index,
+) {
+  switch (index) {
+    case 0:
+      navigationShell.goBranch(
+        0,
+        initialLocation: navigationShell.currentIndex == 0,
+      );
+      return;
+    case 1:
+      context.go('/discover');
+      return;
+    case 5:
+      navigationShell.goBranch(
+        2,
+        initialLocation: navigationShell.currentIndex == 2,
+      );
+      return;
+    default:
+      context.go(_destinations[index].location);
+  }
+}
 
 class _BottomNavBar extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
@@ -256,17 +304,17 @@ class _BottomNavBar extends ConsumerWidget {
     final isDocked = navBarStyle == NavBarStyle.docked;
 
     final bottomMargin = isDocked ? 0.0 : r.height * 0.018;
+    final selectedIndex = _selectedDestinationIndex(context, navigationShell);
 
     Widget navBarWidget;
 
     if (isDocked) {
       navBarWidget = NavigationBar(
         height: 72.0,
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (i) => navigationShell.goBranch(
-          i,
-          initialLocation: i == navigationShell.currentIndex,
-        ),
+        selectedIndex: selectedIndex,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        onDestinationSelected: (i) =>
+            _selectDestination(context, navigationShell, i),
         backgroundColor: cs.surfaceContainer,
         indicatorColor: cs.primaryContainer,
         destinations: [
@@ -299,6 +347,8 @@ class _BottomNavBar extends ConsumerWidget {
         fontSize,
         activeItemRadius,
         navBarStyle,
+        selectedIndex,
+        compact: r.isPhone,
       );
 
       if (uiPrefs.liquidGlass) {
@@ -376,12 +426,14 @@ class _BottomNavBar extends ConsumerWidget {
     double fontSize,
     double itemRadius,
     NavBarStyle navBarStyle,
-  ) {
-    return Row(
+    int selectedIndex, {
+    required bool compact,
+  }) {
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.start,
       children: List.generate(_destinations.length, (i) {
-        final active = navigationShell.currentIndex == i;
+        final active = selectedIndex == i;
         final themeData = NavBarThemeData.resolve(
           navBarStyle,
           cs,
@@ -390,14 +442,18 @@ class _BottomNavBar extends ConsumerWidget {
         );
 
         Widget item = InkWell(
-          onTap: () => navigationShell.goBranch(i),
+          onTap: () => _selectDestination(context, navigationShell, i),
           borderRadius: BorderRadius.circular(itemRadius),
           focusColor: cs.primary.withValues(alpha: 0.2),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
             height: double.maxFinite,
-            padding: EdgeInsets.symmetric(horizontal: active ? 18 : 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact
+                  ? (active ? 10 : 8)
+                  : (active ? 18 : 14),
+            ),
             decoration:
                 (active
                         ? themeData.activeItemDecoration
@@ -467,6 +523,10 @@ class _BottomNavBar extends ConsumerWidget {
         return item;
       }),
     );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: row,
+    );
   }
 }
 
@@ -481,6 +541,7 @@ class _SideNavBar extends ConsumerWidget {
     final h = r.heightTier;
     final uiPrefs = ref.watch(uiPrefsProvider);
     final navBarStyle = uiPrefs.navBarStyle;
+    final selectedIndex = _selectedDestinationIndex(context, navigationShell);
 
     final isDocked = navBarStyle == NavBarStyle.docked;
 
@@ -497,13 +558,9 @@ class _SideNavBar extends ConsumerWidget {
               ),
               Expanded(
                 child: NavigationRail(
-                  selectedIndex: navigationShell.currentIndex == 3
-                      ? null
-                      : navigationShell.currentIndex,
-                  onDestinationSelected: (i) => navigationShell.goBranch(
-                    i,
-                    initialLocation: i == navigationShell.currentIndex,
-                  ),
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (i) =>
+                      _selectDestination(context, navigationShell, i),
                   backgroundColor: Colors.transparent,
                   indicatorColor: cs.primaryContainer,
                   groupAlignment: 0.0, // Center alignment
@@ -576,7 +633,7 @@ class _SideNavBar extends ConsumerWidget {
     final hideNavLabels = h == HeightTier.cramped;
     final itemsCol = Column(
       children: List.generate(_destinations.length, (i) {
-        final active = navigationShell.currentIndex == i;
+        final active = selectedIndex == i;
         final themeData = NavBarThemeData.resolve(
           navBarStyle,
           cs,
@@ -587,7 +644,7 @@ class _SideNavBar extends ConsumerWidget {
 
         return Expanded(
           child: InkWell(
-            onTap: () => navigationShell.goBranch(i),
+            onTap: () => _selectDestination(context, navigationShell, i),
             borderRadius: BorderRadius.circular(activeItemRadius),
             focusColor: cs.primary.withValues(alpha: 0.2),
             child: AnimatedContainer(

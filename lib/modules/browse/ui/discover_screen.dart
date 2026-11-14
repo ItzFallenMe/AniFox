@@ -32,6 +32,7 @@ class DiscoverScreen extends ConsumerStatefulWidget {
   final List<String> initialTags;
   final String? source;
   final String? customTitle;
+  final bool showMediaSwitcher;
   final SearchSort initialSort;
   final SearchStatusFilter initialStatus;
   final SearchFormatFilter initialFormat;
@@ -45,6 +46,7 @@ class DiscoverScreen extends ConsumerStatefulWidget {
     this.initialTags = const [],
     this.source,
     this.customTitle,
+    this.showMediaSwitcher = true,
     this.initialSort = SearchSort.popularity,
     this.initialStatus = SearchStatusFilter.all,
     this.initialFormat = SearchFormatFilter.all,
@@ -170,16 +172,19 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   void _attachOverlay() {
     Future.microtask(() {
       try {
-        if (!mounted || Navigator.of(context).canPop()) return;
-        ref
-            .read(navBarProvider.notifier)
-            .attachTop(
-              MediaSwitcherOverlay(
-                controller: _tabController,
-                supportedTypes: _supportedMediaTypes,
-              ),
-              branchIndex: 1,
-            );
+        if (!mounted) return;
+        final navBar = ref.read(navBarProvider.notifier);
+        if (!widget.showMediaSwitcher || Navigator.of(context).canPop()) {
+          navBar.clearTop(branchIndex: 1);
+          return;
+        }
+        navBar.attachTop(
+          MediaSwitcherOverlay(
+            controller: _tabController,
+            supportedTypes: _supportedMediaTypes,
+          ),
+          branchIndex: 1,
+        );
       } catch (_) {}
     });
   }

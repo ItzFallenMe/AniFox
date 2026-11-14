@@ -85,6 +85,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             navigatorKey: _searchNavigatorKey,
             routes: [
               GoRoute(
+                path: '/anime',
+                builder: (context, state) => const DiscoverScreen(
+                  type: MediaType.ANIME,
+                  showMediaSwitcher: false,
+                ),
+              ),
+              GoRoute(
+                path: '/movies',
+                builder: (context, state) => const DiscoverScreen(
+                  type: MediaType.MOVIE,
+                  showMediaSwitcher: false,
+                ),
+              ),
+              GoRoute(
+                path: '/tv',
+                builder: (context, state) => const DiscoverScreen(
+                  type: MediaType.TV,
+                  showMediaSwitcher: false,
+                ),
+              ),
+              GoRoute(
                 path: '/discover',
                 builder: (context, state) {
                   final query = state.uri.queryParameters['query'];

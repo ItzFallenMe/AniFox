@@ -18,7 +18,14 @@ import 'package:anifox/streaming/models/stream_source.dart';
 import 'package:anifox/streaming/utils/media_type_utils.dart';
 
 class TvSearchScreen extends ConsumerStatefulWidget {
-  const TvSearchScreen({super.key});
+  final MediaType initialType;
+  final bool showTypeToggle;
+
+  const TvSearchScreen({
+    super.key,
+    this.initialType = MediaType.ANIME,
+    this.showTypeToggle = true,
+  });
 
   @override
   ConsumerState<TvSearchScreen> createState() => _TvSearchScreenState();
@@ -30,7 +37,7 @@ class _TvSearchScreenState extends ConsumerState<TvSearchScreen> {
   final ScrollController _scrollController = ScrollController();
 
   String _query = '';
-  MediaType _selectedType = MediaType.ANIME;
+  late MediaType _selectedType;
   String? _selectedGenre;
   String? _selectedTag;
   String? _selectedSource;
@@ -111,6 +118,7 @@ class _TvSearchScreenState extends ConsumerState<TvSearchScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedType = widget.initialType;
     _scrollController.addListener(_onScroll);
   }
 
@@ -369,18 +377,20 @@ class _TvSearchScreenState extends ConsumerState<TvSearchScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        _TvTypeToggle(
-          selectedType: _selectedType,
-          onTypeChanged: (type) {
-            setState(() {
-              _selectedType = type;
-              _selectedGenre = null;
-              _selectedTag = null;
-              _selectedSource = null;
-            });
-          },
-        ),
+        if (widget.showTypeToggle) ...[
+          const SizedBox(width: 16),
+          _TvTypeToggle(
+            selectedType: _selectedType,
+            onTypeChanged: (type) {
+              setState(() {
+                _selectedType = type;
+                _selectedGenre = null;
+                _selectedTag = null;
+                _selectedSource = null;
+              });
+            },
+          ),
+        ],
       ],
     );
   }

@@ -65,27 +65,34 @@ function ExploreContent() {
         <p className="mt-3 text-sm leading-relaxed text-white/50">Search films, series, and anime together. Results open on their detail pages.</p>
       </header>
 
-      <div className="discover-search flex h-14 items-center gap-3 rounded-2xl border px-4 transition-all duration-200 md:px-5">
-        <SearchIcon className="h-5 w-5 shrink-0 text-white/40" />
+      <form
+        role="search"
+        onSubmit={(event) => event.preventDefault()}
+        className="discover-search relative z-20 isolate flex h-14 w-full items-center gap-3 rounded-2xl border px-4 transition-all duration-200 md:px-5"
+      >
+        <SearchIcon className="pointer-events-none h-5 w-5 shrink-0 text-white/40" />
         <input
+          type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Movies, shows, anime and more…"
           spellCheck={false}
+          autoComplete="off"
+          enterKeyHint="search"
           aria-label="Search movies, TV shows and anime"
-          className="relative z-10 w-full bg-transparent text-[16px] font-medium tracking-[-0.01em] text-white outline-none placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
+          className="relative z-10 min-w-0 flex-1 bg-transparent text-[16px] font-medium tracking-[-0.01em] text-white outline-none placeholder:text-white/35 [&::-webkit-search-cancel-button]:hidden"
         />
         {query ? (
           <button
             type="button"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="shrink-0 text-lg leading-none text-white/40 transition hover:text-white"
+            className="relative z-10 shrink-0 text-lg leading-none text-white/40 transition hover:text-white"
           >
             ×
           </button>
         ) : null}
-      </div>
+      </form>
 
       <div className="no-scrollbar mt-4 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/[0.06] bg-white/[0.02] p-1" role="group" aria-label="Filter results">
         {filters.map((item) => (
