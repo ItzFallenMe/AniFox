@@ -27,7 +27,7 @@ jobs:
       build_number: ${{ steps.release.outputs.build_number }}
     env:
       RELEASE_TAG: ${{ inputs.tag_name || github.ref_name }}
-      ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL }}
+      ANIFOX_API_URL: ${{ secrets.ANIFOX_API_URL || vars.ANIFOX_API_URL }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -51,7 +51,7 @@ jobs:
             const url = new URL(process.env.ANIFOX_API_URL);
             if (url.protocol !== "https:" || url.pathname !== "/" || url.search || url.hash) process.exit(1);
           ' 2>/dev/null; then
-            echo "::error::Set ANIFOX_API_URL to the HTTPS website origin only (do not append /api or a path)."
+            echo "::error::Set ANIFOX_API_URL as a repository secret or Actions variable to the HTTPS website origin only (do not append /api or a path)."
             exit 1
           fi
 
@@ -87,7 +87,7 @@ jobs:
       RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
       APP_VERSION: ${{ needs.validate.outputs.app_version }}
       BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
-      ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL }}
+      ANIFOX_API_URL: ${{ secrets.ANIFOX_API_URL || vars.ANIFOX_API_URL }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
     steps:
@@ -231,7 +231,7 @@ jobs:
       RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
       APP_VERSION: ${{ needs.validate.outputs.app_version }}
       BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
-      ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL }}
+      ANIFOX_API_URL: ${{ secrets.ANIFOX_API_URL || vars.ANIFOX_API_URL }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
     steps:
@@ -311,7 +311,7 @@ jobs:
       RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
       APP_VERSION: ${{ needs.validate.outputs.app_version }}
       BUILD_NUMBER: ${{ needs.validate.outputs.build_number }}
-      ANIFOX_API_URL: ${{ vars.ANIFOX_API_URL }}
+      ANIFOX_API_URL: ${{ secrets.ANIFOX_API_URL || vars.ANIFOX_API_URL }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
     steps:
