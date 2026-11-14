@@ -22,7 +22,7 @@ Please do not open public issues for security problems. See
 
 - Flutter `3.44.0` (pinned in `.fvmrc`)
 - Dart `3.9.x` or newer
-- Node.js `22+` for the website and Cloudflare Worker build
+- Node.js `22+` for the website and Cloudflare Worker tooling
 - Platform toolchains for the targets you build
 
 ## Local setup
@@ -30,7 +30,6 @@ Please do not open public issues for security problems. See
 ```bash
 cp .env.example .env
 npm ci --prefix website
-npm ci --prefix server/anifox-manga-api/server
 flutter pub get
 ```
 

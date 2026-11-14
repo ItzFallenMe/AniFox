@@ -8,12 +8,6 @@ export interface DownloadQuery {
   episode?: number | null;
 }
 
-export function isDownloadConfigured() {
-  // The provider URL is server-only; `/api/download` reports configuration
-  // status and redirects only after validating the requested media IDs.
-  return true;
-}
-
 /**
  * Builds the same-origin API route that retrieves a provider's download links.
  *

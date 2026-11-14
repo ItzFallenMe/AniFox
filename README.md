@@ -21,9 +21,9 @@
 ## What AniFox is
 
 AniFox is one project with Flutter clients, a Next.js web client, and a shared
-API hosted by the web app. The API resolves manga sources and playback/download
-provider pages; third parties continue serving the media. No media bytes are
-proxied for streaming or downloads.
+API hosted by the web app. The API provides MangaDex catalog/reader data and
+validated links to third-party streaming and download providers. AniFox does not
+proxy streaming or download media.
 
 The repository contains two clients and the manga API they share:
 
@@ -31,7 +31,7 @@ The repository contains two clients and the manga API they share:
 | --- | --- | --- |
 | Flutter app | `lib/` | Flutter, Riverpod, Material 3 |
 | Web client and landing page | `website/` | Next.js, TypeScript, Tailwind |
-| Shared API and website | `website/app/api/` | Next.js routes on Cloudflare Workers via OpenNext |
+| Shared API and website | `website/app/api/` | Next.js routes deployed with the web client |
 | Manga source adapters | `server/anifox-manga-api/server/` | Node-compatible modules bundled into the web API |
 
 ## Highlights
@@ -42,11 +42,12 @@ The repository contains two clients and the manga API they share:
   and redirects to four built-in embed servers (Vidly, VidBolt, Vidy, EmbedWave).
 - **Library and tracking** — keep a local library and sync progress with AniList,
   MyAnimeList, Kitsu and Simkl.
-- **Continue watching** — resume an episode or film from the home rail.
-- **Downloads through your provider** — `/api/download` resolves the configured
-  provider page, which opens inside AniFox,
-  and the quality links it produces are saved to `AniFox/downloads` and playable
-  from Downloads.
+- **Continue watching and reading** — keep local anime episode and manga page
+  history. Embedded video hosts do not expose playback timestamps, so the app can
+  remember the selected episode but cannot resume its exact position.
+- **Provider-backed downloads** — when `DOWNLOAD_PROVIDER_URL` is configured,
+  the website lists available provider links and the Flutter app can save
+  supported media for offline playback in `AniFox/downloads`.
 - **Personalisation** — colour schemes, dynamic colour, AMOLED black, home
   layout, header and navigation styles, UI scale, card density and a TV layout.
 - **Local-first data** — library, history and settings stay on device and can be
@@ -66,13 +67,12 @@ Requirements:
 
 - Flutter `3.44.0` (pinned in `.fvmrc`; `fvm flutter` works too)
 - Dart `3.9.x` or newer
-- Node.js `22+` for the website and Cloudflare Worker build
+- Node.js `22+` for the website and Cloudflare Worker tooling
 - Toolchains for the platforms you build
 
 ```bash
 cp .env.example .env
 npm install --prefix website
-npm install --prefix server/anifox-manga-api/server
 flutter pub get
 npm run web:dev
 ```
@@ -118,7 +118,7 @@ values such as `DOWNLOAD_PROVIDER_URL` are not embedded in the app.
 
 AniFox ships no download source. Set `DOWNLOAD_PROVIDER_URL` only to a provider
 you are authorized to use. Keep it in the root `.env` locally or as a server-side
-Cloudflare variable. Clients retrieve provider choices through the same-origin
+web-host variable. Clients retrieve provider choices through the same-origin
 `/api/download-links` route. The website presents the choices; the app downloads
 the selected file into its offline library at `AniFox/downloads`:
 
@@ -171,7 +171,6 @@ the shared API routes used by both clients.
 
 ```bash
 npm install --prefix website
-npm install --prefix server/anifox-manga-api/server
 npm run web:dev
 ```
 
@@ -187,8 +186,9 @@ for the client. Website environment variables:
 | `DISCORD_APPLICATION_ID` | Optional | Public application ID for Android and desktop Rich Presence |
 | `MANGADEX_API_URL` | Optional | MangaDex API mirror |
 
-Deploy the website and shared API together to Cloudflare with OpenNext. See
-[`website/README.md`](website/README.md) for route and deployment details.
+Deploy the website and shared API together; they must share one origin. See the
+[free hosting guide](docs/HOSTING.md) for Cloudflare Workers, Vercel, Netlify,
+and Render setup.
 
 ## Manga API
 
@@ -198,7 +198,6 @@ web and Flutter clients. Source adapters and tests live under
 than hosted as a separate Express service.
 
 ```bash
-npm ci --prefix server/anifox-manga-api/server
 npm run api:test
 ```
 
@@ -214,7 +213,7 @@ Port attribution and license details are in
 | Client | Setting |
 | --- | --- |
 | Web | Same origin as the website; no separate API URL |
-| App | `ANIFOX_API_URL=https://your-cloudflare-site.example` in root `.env` |
+| App | `ANIFOX_API_URL=https://your-site.example` in root `.env` |
 
 Use the website origin; do not append `/api`. MangaDex images are served through
 AniFox's same-origin `/api/image` proxy for consistent loading in web and app.
@@ -277,6 +276,8 @@ git push origin v1.0.0
 ## Community
 
 - [Contributing guide](CONTRIBUTING.md) — setup, checks and pull request rules
+- [Documentation index](docs/README.md) — developer and feature guides
+- [Hosting guide](docs/HOSTING.md) — free options for deploying the web client and shared API
 - [Code of conduct](CODE_OF_CONDUCT.md)
 - [Security policy](SECURITY.md) — report vulnerabilities privately
 - [Changelog](CHANGELOG.md) — what changed in each release

@@ -3,7 +3,8 @@
 This folder contains AniFox's server-side manga source adapters. It is a source
 package, not a separately deployed web service: Next.js handlers under
 [`website/app/api/manga`](../../../website/app/api/manga) call these modules and
-Cloudflare Workers hosts the website and API on one origin.
+the chosen web host deploys the website and API on one origin. See the
+[hosting guide](../../../docs/HOSTING.md) for supported deployment options.
 
 ## Implemented sources
 
@@ -11,8 +12,7 @@ Cloudflare Workers hosts the website and API on one origin.
 | --- | --- | --- | --- | --- | --- |
 | MangaDex | Safe-rated only | Safe-rated only | Safe-rated only | Safe-rated only | Safe-rated only |
 
-Other adapter implementations remain in the source tree but are not advertised
-or reachable through AniFox's manga API. MangaDex is community-rated, so Safe
+MangaDex is the only manga adapter in the project. It is community-rated, so Safe
 filtering is not a parental-control guarantee.
 
 ## API routes
@@ -51,9 +51,11 @@ npm test
 
 ## Attribution
 
-Some adapter parsing and source research were ported from MeManga at commit
+Some historical adapter parsing and source research were ported from MeManga at commit
 [`4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8`](https://github.com/meellm/MeManga/tree/4268b38a7cab2ea7e5a5d0612a5c15d05befb8b8),
-then adapted for AniFox's API and data models. MeManga is not a runtime dependency.
+then adapted for AniFox's API and data models. The unused legacy adapters have
+been removed; MeManga is not a runtime dependency. The notice is retained for
+attribution and license compliance.
 See the root [`THIRD_PARTY_NOTICES.md`](../../../THIRD_PARTY_NOTICES.md) for
 copyright and license terms. AniFox is maintained by
 [ItzFallenMe](https://github.com/ItzFallenMe).

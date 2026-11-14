@@ -6,13 +6,6 @@ All notable changes to AniFox are recorded here. The format follows
 
 ## [Unreleased]
 
-### Fixed
-
-- Web API routes now use the Node.js runtime supported by the OpenNext
-  Cloudflare Worker build.
-- Web and app CI install the shared manga adapter dependencies before building
-  the website or running adapter tests.
-
 ### Added
 
 - Open-source contributor guides, issue forms, pull request template, security
@@ -20,11 +13,18 @@ All notable changes to AniFox are recorded here. The format follows
 - Web checks workflow, Dependabot configuration and editor defaults.
 - Third-party font license notices and a single documented root environment
   template for contributors.
+- A documentation index linking project, web, API, tracking, and platform guides.
+- A multi-provider guide for free full-stack web hosting options.
 
 ### Changed
 
 - Removed Google Cast from the web player; bundled third-party iframe sources do
   not expose media URLs for a practical non-Google TV casting path.
+- Landing-page claims now distinguish the Flutter app's local features from the
+  browser client's browsing, streaming, manga reading, and provider links.
+- MangaDex chapter languages are shown with readable names and flag badges.
+- Embedded anime playback records the selected episode without inventing a
+  playback timestamp; incognito mode still suppresses local history.
 - Web client rebuilt around the billboard and rail layout, with a hover-expand
   sidebar on desktop and floating tab navigation on mobile.
 - Watch pages now place a 16:9 player stage above the title details on every
@@ -36,12 +36,25 @@ All notable changes to AniFox are recorded here. The format follows
 
 ### Fixed
 
+- Web API routes use the Node.js runtime supported by the OpenNext Cloudflare
+  Worker build.
+- CI builds the web client and runs the standalone MangaDex API tests.
 - Manga API uses the public MangaDex API after the old scraper provider went
   offline, so catalog, search, chapters and reader pages work again.
 - Android CI installs the Rust toolchain and targets required by `rhttp`.
 - Download, server and episode panels stay hidden until opened, so they no
   longer intercept touches on the player.
-- Removed the unused top navigation and home spotlight components.
+- Stream source selection and player titles work consistently for movies, TV,
+  and anime; movie and TV playback is not filed as manga history.
+- Anime downloads are labeled as episodes rather than chapters.
+
+### Removed
+
+- Unused GitHub release-list, download-count, and direct-release API routes and
+  their UI.
+- Unused legacy manga source adapters and parser tests. MangaDex is the sole
+  manga source; the API still rejects legacy provider IDs.
+- Unused download redirect helper and obsolete image-host allowlists.
 
 ## [2.1.5] - 2026-10-23
 

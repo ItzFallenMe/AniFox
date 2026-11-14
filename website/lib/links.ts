@@ -1,7 +1,4 @@
 export const GITHUB_URL = 'https://github.com/ItzFallenMe/AniFox';
-export const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
-/** Server route that redirects to the newest APK on GitHub releases. */
-export const DOWNLOAD_URL = '/api/release';
 /** Page listing every APK across recent releases. */
 export const DOWNLOAD_PAGE = '/download';
 export const TMDB_URL = 'https://www.themoviedb.org';
@@ -43,19 +40,31 @@ export const POSTERS = [
 
 export const FAQS = [
   {
-    q: 'Is AniFox free?',
-    a: 'Yes. AniFox is a free, open-source app. There is no account, no subscription and no locked tab — the catalogue, player and library are available from day one.',
+    q: 'Is AniFox free, and do I need an account?',
+    a: 'AniFox is free and open source. You do not need an AniFox account or subscription. Connecting an external tracker is optional.',
   },
   {
-    q: 'Does AniFox host or upload any video?',
-    a: 'No. AniFox resolves or redirects to third-party playback providers, which serve their own player and media. AniFox does not host or proxy video bytes. Metadata and artwork come from TMDB and AniList.',
+    q: 'Does AniFox host videos?',
+    a: 'No. Playback is provided by third-party embed hosts; AniFox does not host video. Metadata comes from services such as TMDB and AniList.',
   },
   {
-    q: 'What works without a connection?',
-    a: 'Your watchlist, resume history, search history and episode alerts are stored on-device, so the library opens instantly. Playback itself always comes from the streaming providers and needs a connection.',
+    q: 'Does my app library sync with the website?',
+    a: 'Not automatically. The Flutter app keeps its library, history and settings on that device. Optional AniList, MyAnimeList, Kitsu or Simkl connections can sync the progress those services support.',
   },
   {
-    q: 'How do episode alerts work?',
-    a: 'In supported Flutter app builds, open a series and tap the bell next to its next episode. AniFox schedules a local notification on your device; it does not use a push server.',
+    q: 'How does manga reading work?',
+    a: 'AniFox lists MangaDex titles explicitly rated Safe and only offers chapters hosted by MangaDex. Chapters open in AniFox, in any available language, with a flag and language name. MangaDex ratings are community-maintained and are not a parental-control guarantee.',
+  },
+  {
+    q: 'Can I download videos in the app?',
+    a: 'The Flutter app can save supported direct-video or HLS links and manage them in Downloads. This requires a download provider to be configured for the AniFox deployment. The website shows provider download choices but does not keep offline files.',
+  },
+  {
+    q: 'Where does streaming come from?',
+    a: 'AniFox routes playback to four bundled third-party hosts: Vidly, VidBolt, Vidy and EmbedWave. Support varies by title and host, and availability is controlled by those providers.',
+  },
+  {
+    q: 'What platforms can I use?',
+    a: 'Use the web client in a browser, or download the Flutter app for Android, Windows, macOS or Linux when a build is available.',
   },
 ];

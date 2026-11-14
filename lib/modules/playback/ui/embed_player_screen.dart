@@ -7,6 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_all/webview_all.dart';
 import 'package:webview_all_android/webview_all_android.dart';
 
+import 'package:anifox/common/state/security_prefs_provider.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
 import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
@@ -200,10 +201,15 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   }
 
   Future<void> _recordHistory() async {
+    // This history model currently stores anime episodes and manga pages only.
+    // Do not misfile movies or TV episodes as manga.
+    if (_media.type != MediaType.ANIME) return;
+    if (ref.read(securityPrefsProvider).incognitoMode) return;
+
     final repo = ref.read(historyRepositoryProvider);
     final entry = HistoryEntry()
       ..mediaId = _media.id
-      ..mediaType = _media.type == MediaType.ANIME ? 'anime' : 'manga'
+      ..mediaType = MediaType.ANIME.id
       ..itemNumber = widget.mode.episode.number
       ..itemTitle = widget.mode.episode.title
       ..mediaTitle = _media.title.getPreferedTitle
@@ -217,17 +223,22 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       ..lastUpdated = DateTime.now();
 
     try {
-      await repo.saveProgress(entry);
+      await repo.saveStartedEpisode(entry);
     } catch (_) {}
   }
 
-  List<StreamSource> get _selectableSources => aniFoxStreamSources
-      .where((source) => source.mediaType == _media.type)
-      .toList(growable: false);
+  // The bundled hosts are video embed services. Their source category is
+  // ANIME, but the same `/api/stream` route also supports movies and TV.
+  List<StreamSource> get _selectableSources => aniFoxStreamSources;
 
   String get _title {
-    final episode = _episodeNumber > 0 ? ' • Episode $_episodeNumber' : '';
-    return '${_media.title.getPreferedTitle}$episode';
+    final title = _media.title.getPreferedTitle;
+    return switch (_media.type) {
+      MediaType.MOVIE => title,
+      MediaType.TV => '$title • Season $_season · Episode $_episodeNumber',
+      MediaType.ANIME => '$title • Episode $_episodeNumber',
+      _ => title,
+    };
   }
 
   @override

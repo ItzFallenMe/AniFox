@@ -53,9 +53,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install manga API dependencies
-        run: npm ci --prefix server/anifox-manga-api/server
-
       - name: Test manga API adapters
         working-directory: server/anifox-manga-api/server
         run: npm test

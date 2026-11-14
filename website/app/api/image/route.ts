@@ -3,13 +3,6 @@ export const runtime = "nodejs";
 const ALLOWED_IMAGE_DOMAINS = [
   "mangadex.org",
   "mangadex.network",
-  "mangapill.com",
-  "mangapill.net",
-  "comick.io",
-  "comick.dev",
-  "comick.pictures",
-  "asurascans.com",
-  "tcbonepiecechapters.com",
 ];
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
@@ -35,16 +28,7 @@ function refererFor(url: URL) {
   ) {
     return "https://mangadex.org/";
   }
-  if (url.hostname === "mangapill.com" || url.hostname.endsWith(".mangapill.com")) {
-    return "https://mangapill.com/";
-  }
-  if (url.hostname === "tcbonepiecechapters.com" || url.hostname.endsWith(".tcbonepiecechapters.com")) {
-    return "https://tcbonepiecechapters.com/";
-  }
-  if (url.hostname === "asurascans.com" || url.hostname.endsWith(".asurascans.com")) {
-    return "https://asurascans.com/";
-  }
-  return "https://comick.io/";
+  return "https://mangadex.org/";
 }
 
 export async function OPTIONS() {

@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeftIcon } from "@/components/icons";
 import { mangaImageSrc } from "@/lib/manga-images";
-import { mangaLanguageName } from "@/lib/manga-language";
+import { mangaLanguageFlag, mangaLanguageName } from "@/lib/manga-language";
 
 interface MangaChapter {
   id: string;
@@ -89,9 +89,22 @@ export default function MangaDetailsPage() {
                 >
                   <span className="manga-chapter-number">{chapter.name.match(/[\d.]+/)?.[0] ?? "—"}</span>
                   <strong>{chapter.name}</strong>
-                  <span>
-                    {mangaLanguageName(chapter.languageCode)}
-                    {chapter.createdAt ? ` · ${chapter.createdAt}` : ""}
+                  <span className="manga-chapter-meta">
+                    <span
+                      className="manga-language-badge"
+                      aria-label={`Language: ${mangaLanguageName(chapter.languageCode)}`}
+                      title={mangaLanguageName(chapter.languageCode)}
+                    >
+                      <span className="manga-language-flag" aria-hidden="true">
+                        {mangaLanguageFlag(chapter.languageCode)}
+                      </span>
+                      <span className="manga-language-name">
+                        {mangaLanguageName(chapter.languageCode)}
+                      </span>
+                    </span>
+                    {chapter.createdAt ? (
+                      <span className="manga-chapter-date">{chapter.createdAt}</span>
+                    ) : null}
                   </span>
                   <span className="manga-chapter-link-icon" aria-hidden="true">
                     <ChevronRight />

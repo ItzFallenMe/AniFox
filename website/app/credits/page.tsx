@@ -48,9 +48,9 @@ const credits = [
   },
   {
     role: "Manga providers",
-    name: "MangaDex · MangaPill · Asura Scans · ComicK · TCB Scans",
+    name: "MangaDex",
     detail:
-      "MangaDex provides the browse catalog; all five implemented adapters support search and chapter reading. Provider availability can change.",
+      "AniFox uses MangaDex for its manga catalog and reading, and only exposes titles rated Safe and chapters hosted by MangaDex.",
     href: "https://mangadex.org",
     label: "Visit MangaDex",
     Icon: BookOpenText,
@@ -84,7 +84,6 @@ const stack = [
   "Tailwind CSS",
   "Node.js",
   "Cloudflare Workers",
-  "Cheerio",
   "media_kit",
   "Inter",
   "Outfit",

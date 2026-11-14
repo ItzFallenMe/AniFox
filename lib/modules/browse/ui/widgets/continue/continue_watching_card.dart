@@ -122,9 +122,11 @@ class _ContinueWatchingItemState extends ConsumerState<ContinueWatchingItem>
           ? (widget.entry.itemTitle ?? 'Continue watching')
           : subtitleText,
       progress: widget.progress,
-      progressText: formatTimeRemaining(
-        widget.entry.total.toInt() - widget.entry.progress.toInt(),
-      ),
+      progressText: widget.entry.total > 0
+          ? formatTimeRemaining(
+              widget.entry.total.toInt() - widget.entry.progress.toInt(),
+            )
+          : 'Position unavailable',
       badgeText: 'EP ${widget.entry.itemNumber.toInt()}',
       imageUrl: widget.entry.thumbnailUrl,
       fallbackIcon: Icons.play_circle_outline_rounded,

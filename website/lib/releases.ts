@@ -24,8 +24,6 @@ export interface ReleaseInfo {
   htmlUrl: string;
   apks: ApkAsset[];
   packages: ReleasePackage[];
-  /** True when the data came from GitHub rather than the offline fallback. */
-  live: boolean;
 }
 
 interface RawAsset {
@@ -103,14 +101,12 @@ const toRelease = (raw: RawRelease): ReleaseInfo | null => {
     htmlUrl: raw.html_url,
     apks,
     packages,
-    live: true,
   };
 };
 
 /**
- * Newest releases, newest first. Runs on the server (page render and the
- * `/api/releases` route); never called from the browser, so the optional
- * `GITHUB_TOKEN` stays private.
+ * Newest releases, newest first. Runs on the server during page rendering, so
+ * the optional `GITHUB_TOKEN` stays private.
  */
 export const getReleases = async (): Promise<ReleaseInfo[]> => {
   try {

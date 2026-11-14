@@ -120,11 +120,12 @@ class _DownloadOptionsScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final mediaType = widget.media.type == MediaType.MOVIE
-        ? 'movie'
-        : widget.media.type == MediaType.TV
-        ? 'episode'
-        : 'chapter';
+    final mediaType = switch (widget.media.type) {
+      MediaType.MOVIE => 'movie',
+      MediaType.TV || MediaType.ANIME => 'episode',
+      MediaType.MANGA => 'chapter',
+      MediaType.NOVEL => 'item',
+    };
 
     return Scaffold(
       appBar: AppBar(

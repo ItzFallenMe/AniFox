@@ -3,13 +3,12 @@
 The current AniFox manga API is part of the website deployment. Next.js route
 handlers live in [`website/app/api/manga`](../../website/app/api/manga) and call
 the source adapters in [`server/`](server). The website and API deploy together
-to Cloudflare Workers with OpenNext; this directory is not a standalone Express
-or Vercel service.
+as one Next.js application; this directory is not a standalone Express service.
+See the [hosting guide](../../docs/HOSTING.md) for deployment options.
 
-From the repository root, install the adapter dependency and run its tests:
+Run the adapter tests from the repository root:
 
 ```bash
-npm ci --prefix server/anifox-manga-api/server
 npm run api:test
 ```
 

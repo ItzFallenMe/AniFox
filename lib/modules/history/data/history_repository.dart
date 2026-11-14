@@ -16,6 +16,30 @@ class HistoryRepository {
     });
   }
 
+  /// Records the episode selected in an embedded player that has no timestamp
+  /// API. Its position is intentionally unknown, so do not fabricate progress.
+  Future<void> saveStartedEpisode(HistoryEntry entry) async {
+    if (entry.mediaType != MediaType.ANIME.id) return;
+
+    await _isar.writeTxn(() async {
+      final previous = await _isar.historyEntrys
+          .filter()
+          .mediaIdEqualTo(entry.mediaId)
+          .itemNumberEqualTo(entry.itemNumber)
+          .findFirst();
+      if (previous != null) {
+        if (previous.progress > entry.progress) {
+          entry.progress = previous.progress;
+        }
+        if (previous.total > entry.total) {
+          entry.total = previous.total;
+        }
+        entry.thumbnailUrl ??= previous.thumbnailUrl;
+      }
+      await _isar.historyEntrys.put(entry);
+    });
+  }
+
   Future<void> deleteEntry(int id) async {
     await _isar.writeTxn(() async {
       await _isar.historyEntrys.delete(id);

@@ -6,7 +6,7 @@
 
 <p align="center">
   The website and web client for <a href="https://github.com/ItzFallenMe/AniFox">AniFox</a> —
-  a black-glass home for anime, movies, TV, and manga.
+  browse anime, movies, TV, and Safe-rated MangaDex titles.
   <br />
   Built with Next.js, React, TypeScript and Tailwind CSS.
 </p>
@@ -44,8 +44,7 @@
   restricted to titles MangaDex explicitly rates Safe.
 - **Credits** — `/credits` lists the author, repository, metadata providers and
   the stack.
-- **Download landing page** — platform download cards and live GitHub release
-  download totals.
+- **Download page** — platform installers and APKs from GitHub Releases.
 - **Downloads** — title pages show available quality/source links in AniFox,
   with an episode picker for series; provider URLs stay server-side.
 
@@ -62,16 +61,15 @@
 | `/title/[type]/[id]` | Title details |
 | `/watch/[type]/[id]/[ep]` | Player |
 | `/manga` | Manga catalog |
+| `/manga/[id]` | Manga details and hosted chapter list |
 | `/manga/[id]/[chapter]` | Manga reader |
 | `/credits` | Credits |
 | `/api/tmdb/[...path]` | Server-side TMDB proxy |
 | `/api/manga/[...path]` | Shared manga source API used by web and Flutter |
 | `/api/stream` | Validated redirect to a bundled playback provider |
-| `/api/download` | Validated redirect to the configured licensed download provider |
 | `/api/download-links` | Server-side fetch of provider choices for the title page |
 | `/api/download-link` | Validated redirect for a selected provider link |
 | `/api/image` | Allow-listed manga image proxy |
-| `/api/download-count` | Aggregated GitHub release downloads |
 
 ## Getting started
 
@@ -80,7 +78,6 @@ Requirements: **Node.js 22+** for Next.js and Cloudflare OpenNext tooling.
 ```bash
 cp .env.example .env
 npm install --prefix website
-npm install --prefix server/anifox-manga-api/server
 npm run web:dev
 ```
 
@@ -96,8 +93,8 @@ file. Copy it to `.env`; the website loads it for local development. Set
 call their own `/api` routes and need no API URL.
 
 Server-side values include `TMDB_API_KEY`, `MANGADEX_API_URL` (optional API
-mirror), and `DOWNLOAD_PROVIDER_URL`. The download provider is optional; only configure a
-provider you are authorized to use. `NEXT_PUBLIC_SITE_URL` sets the canonical
+mirror), and `DOWNLOAD_PROVIDER_URL`. The download provider is optional; only
+configure a provider you are authorized to use. `NEXT_PUBLIC_SITE_URL` sets the canonical
 website origin for metadata. `DISCORD_APPLICATION_ID` is public and is forwarded
 to Flutter desktop builds by `npm run flutter -- ...`. Never commit a populated
 `.env` file.
@@ -112,10 +109,11 @@ own player and media; AniFox does not proxy playback bytes.
 ## Download provider
 
 AniFox does not ship a download source. Set the server-only
-`DOWNLOAD_PROVIDER_URL` to a provider you are licensed to use. The website
-fetches the provider's title page server-side and renders its download choices
-in AniFox. Selecting a choice uses a same-origin redirect; AniFox does not proxy
-the resulting file.
+`DOWNLOAD_PROVIDER_URL` to a provider you are licensed to use. The website and
+Flutter app fetch the provider's title page server-side and render available
+download choices. Selecting a choice uses a same-origin redirect; the app can
+save supported links for offline playback. AniFox does not proxy the resulting
+file.
 
 The provider must serve one page per title, using the same templates as the
 streaming source:
@@ -168,16 +166,17 @@ Flutter client uses the same Worker origin.
 
 ```bash
 cd website
-npm install
-npm install --prefix ../server/anifox-manga-api/server
+npm ci
 npx wrangler login
 npm run cloudflare:deploy
 ```
 
-`wrangler.jsonc` and `open-next.config.ts` are checked in. Configure
-`TMDB_API_KEY`, `DOWNLOAD_PROVIDER_URL` (if you use an authorized provider), and
-`NEXT_PUBLIC_SITE_URL` in the Worker environment. `ANIFOX_API_URL` is only needed
-by Flutter clients and should be the Worker site's root origin.
+`wrangler.jsonc` and `open-next.config.ts` are checked in. Make
+`NEXT_PUBLIC_SITE_URL` available during the build and configure `TMDB_API_KEY`
+and optional `DOWNLOAD_PROVIDER_URL` as Worker secrets. See the
+[hosting guide](../docs/HOSTING.md) for complete Cloudflare steps and other
+deployment options. `ANIFOX_API_URL` is for Flutter clients and should be the
+Worker site's root origin.
 
 ## Project structure
 
@@ -205,9 +204,9 @@ accept only titles that MangaDex explicitly rates Safe.
 Images use the same-origin `/api/image` proxy for web and app clients. Only
 MangaDex-hosted chapters are offered, with language labels. Since MangaDex
 content is community-rated, this is not a parental-control guarantee.
-AniFox does not host or store media. Playback and download
-providers deliver their own pages and media. Source implementations adapted
-from MeManga are attributed in the root [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
+AniFox does not host or store media. Playback and download providers deliver
+their own pages and media. Source-adapter attribution is documented in the root
+[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
 AniFox is not affiliated with TMDB, AniList, MyAnimeList, Discord or any provider.
 
 ## Credits

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { mangaImageSrc } from "@/lib/manga-images";
-import { mangaLanguageName } from "@/lib/manga-language";
+import { mangaLanguageFlag, mangaLanguageName } from "@/lib/manga-language";
 
 interface MangaPage {
   title?: string;
@@ -178,7 +178,18 @@ export default function MangaReaderPage() {
           <span>
             {chapterTitle}
             {selectedChapter?.languageCode
-              ? ` · ${mangaLanguageName(selectedChapter.languageCode)}`
+              ? (
+                <span
+                  className="manga-reader-language"
+                  aria-label={`Language: ${mangaLanguageName(selectedChapter.languageCode)}`}
+                  title={mangaLanguageName(selectedChapter.languageCode)}
+                >
+                  <span aria-hidden="true">
+                    {mangaLanguageFlag(selectedChapter.languageCode)}
+                  </span>
+                  {mangaLanguageName(selectedChapter.languageCode)}
+                </span>
+              )
               : ""}
             {pages.length ? ` · Page ${activePage} of ${pages.length}` : ""}
           </span>

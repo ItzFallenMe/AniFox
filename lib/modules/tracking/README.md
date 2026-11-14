@@ -1,102 +1,37 @@
-# Tracking Architecture & Developer Guide
+# Tracking integrations
 
-This directory manages all media tracking providers (e.g. AniList, MyAnimeList, Kitsu, Local).
+The tracking feature connects the local AniFox library and playback history to
+AniList, MyAnimeList, Kitsu, and Simkl. Local tracking remains available without
+an external account.
 
-## Directory Layout
+## Code layout
 
-```
-lib/features/tracking/
-├── domain/                    # Domain models & state (TrackerType, TrackerProfile, etc.)
-├── engine/
-│   ├── contracts/             # Core Interfaces & Base Classes
-│   │   ├── tracking_service.dart  # Core tracking contract
-│   │   ├── remote_tracker.dart    # Remote tracker contract (search, discover, profile)
-│   │   └── base_tracker.dart      # Base class with logging & error execution wrapper
-│   └── trackers/              # Modular Tracker Implementations
-│       ├── anilist/
-│       ├── kitsu/
-│       ├── local/
-│       ├── mal/
-│       └── index.dart         # Barrel export for all trackers
-└── providers/
-    └── tracker_registry.dart  # Central tracker factory & Riverpod providers
+```text
+lib/modules/tracking/
+├── engine/       Tracker contracts, synchronization, and provider clients
+├── models/       Tracker credentials, profiles, links, and list items
+├── state/        Riverpod providers and tracker registry
+├── ui/           Tracker settings and account-management widgets
+└── utils/        Parsing and formatting helpers
 ```
 
----
+Tracker credentials are passed to Flutter as build-time defines. For local
+development, copy the root `.env.example` to `.env` and run Flutter through
+`npm run flutter -- ...`; never commit populated credentials.
 
-## How to Add a New Tracker
+## Adding or changing a tracker
 
-Adding a new tracking service (e.g. `SIMKL` or `Trakt`) requires 3 steps:
+1. Review the contracts in `engine/tracking_service.dart`,
+   `engine/remote_tracker.dart`, and `engine/base_tracker.dart`.
+2. Implement the provider under `engine/trackers/<provider>/` and export it from
+   `engine/trackers/index.dart`.
+3. Register it in `state/tracker_registry.dart` and add any authentication or
+   settings UI needed by the provider.
+4. Verify which media types and progress fields the service supports; do not
+   imply that unsupported data syncs.
+5. Run Flutter analysis, tests, and formatting as described in the root
+   [contributing guide](../../../CONTRIBUTING.md).
 
-### 1. Add Entry to `TrackerType`
-In `lib/features/tracking/domain/models/tracker_type.dart`, add the new enum value and optional icon string:
-
-```dart
-enum TrackerType {
-  anilist('AniList'),
-  myanimelist('MyAnimeList'),
-  kitsu('Kitsu'),
-  simkl('SIMKL'), // <-- New Tracker
-  local('Local');
-  ...
-}
-```
-
-### 2. Implement Tracker Contracts
-Create a directory under `lib/features/tracking/engine/trackers/<tracker_name>/` and extend `BaseTracker` while implementing `RemoteTracker` (or `TrackingService`):
-
-```dart
-class SimklTracker extends BaseTracker implements RemoteTracker {
-  final Ref ref;
-
-  SimklTracker(this.ref);
-
-  @override
-  TrackerType get type => TrackerType.simkl;
-
-  @override
-  Future<bool> get isAuthenticated async => ...;
-
-  @override
-  bool supportsMediaType(MediaType mediaType) => true;
-
-  @override
-  Future<void> updateListItem({...}) async {
-    return executeApi('updateListItem', () async {
-      // Implementation logic
-    });
-  }
-
-  // Implement remaining RemoteTracker methods...
-}
-```
-
-Export your new tracker in `lib/features/tracking/engine/trackers/index.dart`:
-
-```dart
-export 'simkl/simkl_tracker.dart';
-```
-
-### 3. Register in `TrackerRegistry`
-In `lib/features/tracking/providers/tracker_registry.dart`, register your tracker inside `createTracker`:
-
-```dart
-class TrackerRegistry {
-  static TrackingService createTracker(TrackerType type, Ref ref) {
-    switch (type) {
-      case TrackerType.anilist:
-        return AnilistTracker(ref);
-      case TrackerType.myanimelist:
-        return MalTracker(ref);
-      case TrackerType.kitsu:
-        return KitsuTracker(ref);
-      case TrackerType.simkl:
-        return SimklTracker(ref); // <-- Register instance
-      case TrackerType.local:
-        return LocalTracker(ref.watch(databaseProvider));
-    }
-  }
-}
-```
-
-That's it! The Riverpod providers (`availableTrackersProvider`, `primaryTrackerProvider`, `activeTrackersProvider`) will automatically recognize and include your new tracker throughout the app UI and background sync engine.
+Keep provider-specific API calls in the tracker implementation, not in widgets.
+Use the existing synchronization engine and shared network configuration so
+authentication, errors, and retries stay consistent.

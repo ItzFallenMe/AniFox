@@ -2682,7 +2682,7 @@ body {
 
 .manga-chapter-row {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) minmax(85px, 200px) 14px;
+  grid-template-columns: 38px minmax(0, 1fr) minmax(118px, 190px) 14px;
   align-items: center;
   gap: 11px;
   min-height: 49px;
@@ -2722,11 +2722,45 @@ body {
   white-space: nowrap;
 }
 
-.manga-chapter-row > span:nth-last-child(2) {
+.manga-chapter-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.manga-language-badge {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.manga-language-flag {
+  flex: 0 0 auto;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.manga-language-name {
   overflow: hidden;
-  color: rgba(255, 255, 255, 0.36);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manga-chapter-date {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.4);
   font-size: 8px;
-  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2822,7 +2856,20 @@ body {
 
 .manga-reader-title span {
   color: rgba(255, 255, 255, 0.39);
-  font-size: 8px;
+  font-size: 9px;
+}
+
+.manga-reader-title .manga-reader-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-inline: 4px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: inherit;
+}
+
+.manga-reader-language > span {
+  font-size: 13px;
 }
 
 .manga-reader-toolbar nav {
@@ -3091,13 +3138,27 @@ body {
   }
 
   .manga-chapter-row {
-    grid-template-columns: 32px minmax(0, 1fr) minmax(58px, 100px) 12px;
+    grid-template-columns: 32px minmax(0, 1fr) minmax(74px, 112px) 12px;
     gap: 6px;
     padding-inline: 8px;
   }
 
-  .manga-chapter-row > span:nth-last-child(2) {
-    font-size: 7px;
+  .manga-chapter-meta {
+    gap: 0;
+  }
+
+  .manga-language-badge {
+    gap: 4px;
+    padding: 4px 5px;
+    font-size: 9px;
+  }
+
+  .manga-language-flag {
+    font-size: 14px;
+  }
+
+  .manga-chapter-date {
+    display: none;
   }
 
   .manga-chapter-number {

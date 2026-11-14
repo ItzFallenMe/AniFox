@@ -6,58 +6,63 @@ import {
   Download,
   History,
   Layers,
+  Monitor,
   Play,
   Search,
+  Settings2,
   ShieldCheck,
-  Sparkles,
   Star,
-  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { GithubIcon } from '@/components/icons';
 import { SiteNav } from '@/components/site-nav';
 import { SiteFooter } from '@/components/site-footer';
 import { FaqSection } from '@/components/faq';
 import { HeroPhone, LibraryPhone, PlayerPhone } from '@/components/phones';
 import { Counter, Reveal, Spotlight } from '@/components/motion';
-import { DOWNLOAD_PAGE, GITHUB_URL, TMDB_URL } from '@/lib/links';
+import { DOWNLOAD_PAGE, TMDB_URL } from '@/lib/links';
 
 const FEATURES = [
   {
     icon: Bookmark,
-    title: 'A watchlist that stays',
-    body: 'Bookmark any film, series or anime. Titles are stored on-device, so the list opens instantly and works without a connection.',
+    title: 'A library kept on your device',
+    body: 'Save titles and keep AniFox preferences locally. Connect AniList, MyAnimeList, Kitsu or Simkl if you want supported tracker progress synced.',
     tone: 'brand',
   },
   {
     icon: History,
-    title: 'Continue watching',
-    body: 'The player records the exact season and episode. Home picks it up, Detail offers Continue — one tap and you are back.',
+    title: 'Return to your place',
+    body: 'The app keeps anime episode and manga page progress locally. Embedded video hosts do not share playback timestamps, so a saved stream returns to its episode.',
     tone: 'neutral',
   },
   {
     icon: Bell,
-    title: 'Episode alerts',
-    body: 'Tap the bell on a series and AniFox schedules a local notification for the next air date, even if the app is closed.',
+    title: 'On-device episode alerts',
+    body: 'Schedule local notifications for upcoming anime episodes. AniFox uses your device notifications rather than an AniFox push server.',
     tone: 'neutral',
   },
   {
     icon: Search,
-    title: 'Search that remembers',
-    body: 'Recent searches are saved locally and offered the moment you open the tab. Deep search covers the whole TMDB catalogue.',
+    title: 'Search across catalogs',
+    body: 'Find films and series through TMDB, anime through AniList, and Safe-rated manga through MangaDex. Recent searches stay on your device.',
     tone: 'neutral',
   },
   {
     icon: BookOpenText,
-    title: 'A reader for your next chapter',
-    body: 'Browse Safe-rated MangaDex titles and read hosted chapters in AniFox, with every chapter labeled by language.',
+    title: 'A Safe-rated MangaDex reader',
+    body: 'Browse titles MangaDex rates Safe and read only MangaDex-hosted chapters inside AniFox. Chapter languages are labeled with flags and names.',
     tone: 'brand',
   },
   {
-    icon: Sparkles,
-    title: 'Black-glass design',
-    body: 'A warm glass palette, editorial artwork, fine borders, and a focused orange accent across the website and app.',
+    icon: Download,
+    title: 'Offline downloads in the app',
+    body: 'When a download provider is configured for the deployment, choose an available quality and manage saved media in the app’s Downloads screen.',
+    tone: 'neutral',
+  },
+  {
+    icon: Settings2,
+    title: 'Customize the experience',
+    body: 'Adjust themes, layout, player preferences, and manga reading direction, page scale, background, and controls.',
     tone: 'neutral',
   },
 ];
@@ -66,23 +71,23 @@ const STEPS = [
   {
     icon: Search,
     title: 'Find it',
-    body: 'Browse trending films, series and anime, or search TMDB and AniList when you know what you want.',
+    body: 'Explore movie and TV metadata from TMDB, anime from AniList, and Safe-rated manga from MangaDex.',
   },
   {
     icon: Bookmark,
     title: 'Keep it',
-    body: 'Save a title to the watchlist and, for series, set an alert for the next episode. Everything stays on your device.',
+    body: 'Save titles locally, or connect a supported tracker to sync anime and manga progress outside the device.',
   },
   {
     icon: Play,
-    title: 'Watch it',
-    body: 'Open playback from a third-party provider, switch sources if one stalls, and return to the exact episode from Continue watching.',
+    title: 'Watch or read',
+    body: 'Use a supported streaming host, read hosted manga chapters inside AniFox, or save provider downloads in the app when configured.',
   },
 ];
 
 const STATS = [
-  { value: 1000000, suffix: '+', label: 'TMDB titles' },
-  { value: 5, suffix: '', label: 'Connected manga sources' },
+  { value: 4, suffix: '', label: 'Built-in stream hosts' },
+  { value: 1, suffix: '', label: 'Safe-rated manga catalog' },
   { value: 0, suffix: '', label: 'Accounts required' },
 ];
 
@@ -121,9 +126,10 @@ export default function HomePage() {
 
               <Reveal delay={200}>
                 <p className="mx-auto mt-7 max-w-xl text-base font-medium leading-relaxed text-muted sm:text-lg lg:mx-0">
-                  AniFox is a black-glass home for anime, films, series, and manga.
-                  Pick up where you left off, keep your library close, and use the
-                  same web-hosted API from the site and Flutter clients.
+                  AniFox brings anime, films, series, and Safe-rated MangaDex
+                  reading together. The Flutter app adds a local library,
+                  customizable reader, and provider-backed downloads; the web
+                  app lets you browse, stream, and read in your browser.
                 </p>
               </Reveal>
 
@@ -136,15 +142,13 @@ export default function HomePage() {
                     <Download className="h-5 w-5" />
                     All downloads
                   </Link>
-                  <a
-                    href={GITHUB_URL}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    href="/home"
                     className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/12 bg-white/[0.04] px-8 text-sm font-bold text-white backdrop-blur-xl transition-colors hover:border-white/25 hover:bg-white/[0.08] sm:w-auto"
                   >
-                    <GithubIcon className="h-4 w-4" />
-                    View source
-                  </a>
+                    <Monitor className="h-4 w-4" />
+                    Open Web App
+                  </Link>
                 </div>
               </Reveal>
 
@@ -229,8 +233,9 @@ export default function HomePage() {
                 <span className="text-muted">Nothing you don&apos;t.</span>
               </h2>
               <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-                No account is required. Browse the web catalog, or use the
-                Flutter app for a local library and playback history.
+                No AniFox account is required. Use the website for browser-based
+                browsing, playback and manga reading, or install the Flutter app
+                for local history, reader settings and download management.
               </p>
             </div>
           </Reveal>
@@ -281,32 +286,34 @@ export default function HomePage() {
                 — The player
               </p>
               <h2 className="font-display text-4xl font-black uppercase leading-[0.9] tracking-tighter text-white sm:text-6xl">
-                Press play.
+                Choose a host.
                 <br />
-                <span className="text-muted">Skip the noise.</span>
+                <span className="text-muted">Stay in AniFox.</span>
               </h2>
               <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-                AniFox does not host or proxy video. Playback is provided by
-                independent third-party players.
+                AniFox sends validated title IDs to third-party streaming hosts.
+                The app displays their player in a WebView; the website uses an
+                iframe. Stream availability and playback controls belong to each
+                host.
               </p>
             </Reveal>
 
             <div className="mt-9 space-y-5">
               {[
                 {
-                  icon: ShieldCheck,
-                  title: 'External playback',
-                  body: 'Playback comes from an independent player. AniFox does not host or proxy media.',
-                },
-                {
-                  icon: Zap,
-                  title: 'Instant recovery',
-                  body: 'If a provider is unavailable, choose another source from the player without returning to the catalog.',
-                },
-                {
                   icon: Layers,
-                  title: 'Autoplay as a choice',
-                  body: 'Autoplay is a setting, not a surprise. Turn it off and the provider waits for you.',
+                  title: 'Four built-in hosts',
+                  body: 'Choose Vidly, VidBolt, Vidy or EmbedWave where that host supports the title and its available IDs.',
+                },
+                {
+                  icon: ShieldCheck,
+                  title: 'Third-party playback',
+                  body: 'The provider supplies the player and video. AniFox does not host or proxy video bytes.',
+                },
+                {
+                  icon: Download,
+                  title: 'Downloads when configured',
+                  body: 'The app can save supported provider links for offline playback. The website presents provider links but does not manage local downloads.',
                 },
               ].map((item, index) => (
                 <Reveal key={item.title} delay={index * 80}>
@@ -337,14 +344,15 @@ export default function HomePage() {
                 — Your library
               </p>
               <h2 className="font-display text-4xl font-black uppercase leading-[0.9] tracking-tighter text-white sm:text-6xl">
-                It remembers
+                Your library
                 <br />
-                <span className="text-muted">where you were.</span>
+                <span className="text-muted">stays yours.</span>
               </h2>
               <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted">
-                A watchlist, resume history, recent searches and episode alerts —
-                all stored on your device. No sign-in, no sync server, no
-                attention tracking. Open AniFox and your library is already there.
+                The Flutter app stores its library, reading and episode history,
+                and preferences on your device. This data does not automatically
+                sync to the website; optional tracker connections can sync the
+                progress they support.
               </p>
             </Reveal>
 
