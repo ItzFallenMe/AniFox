@@ -244,8 +244,9 @@ scripts/       root .env to Flutter build-define wrapper
   macOS packages are unsigned; macOS notarization and an installable iOS release
   need platform signing credentials.
 
-Configure the Actions variable `ANIFOX_API_URL` with the production HTTPS website
-origin, and the `TMDB_API_KEY`, `ANDROID_KEYSTORE_BASE64`,
+Configure `ANIFOX_API_URL` as an Actions secret or variable with the production
+HTTPS website origin. The release workflow prefers the secret when both exist.
+Set `TMDB_API_KEY`, `ANDROID_KEYSTORE_BASE64`,
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`
 repository secrets before publishing. The iOS verification artifact is not
 installable; App Store distribution requires Apple signing/provisioning setup.
