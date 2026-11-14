@@ -1,62 +1,59 @@
-# AniFox CLI
+# AniFox TUI
 
-A small Node.js terminal client for the AniFox website API.
+An interactive terminal UI for browsing the AniFox API. Built with Node.js 22+ and native terminal controls; no runtime dependencies.
 
-## Requirements
-
-- Node.js 22 or newer
-- Network access to the AniFox deployment
-
-## Run locally
+## Run
 
 From the repository root:
 
 ```bash
-node cli/index.mjs --help
-node cli/index.mjs manga sources
-node cli/index.mjs manga search "one piece"
-node cli/index.mjs manga catalog --page 1 --type latest
-node cli/index.mjs tmdb search "dune"
-node cli/index.mjs tmdb trending --type movie --window week
-node cli/index.mjs stream movie 550
+node cli/index.mjs
 ```
 
-## Install as a command
+Or install the package locally:
 
 ```bash
 npm install -g ./cli
-anifox --help
+anifox
 ```
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` or `j` / `k` | Navigate lists |
+| `Enter` | Open selected item |
+| `/` | Search the current catalog |
+| `n` / `p` | Next / previous manga catalog page |
+| `c` | Enter a chapter ID from manga details |
+| `s` | Resolve a stream for a supported media item |
+| `Esc` | Go back |
+| `q` | Quit |
+
+## Features
+
+- MangaDex source list, catalog, search, details and chapter page lookup
+- TMDB movie/TV search and trending feed
+- Stream URL resolution for movie, TV and anime IDs
+- Scrollable JSON detail view
+- ANSI terminal interface with no third-party runtime dependencies
 
 ## API origin
 
-The default API origin is `https://anifox.runs-on.dev`. Set a different deployment origin with:
+The default origin is `https://anifox.runs-on.dev`. The app appends documented `/api/...` routes to this origin.
+
+Override it with:
 
 ```bash
-ANIFOX_API_URL=https://your-anifox-host.example anifox manga sources
+ANIFOX_API_URL=https://your-anifox-host.example node cli/index.mjs
 ```
 
-The value is the website origin, not an `/api` URL. The CLI appends the documented routes, for example `/api/manga/sources`, `/api/manga/search`, `/api/tmdb/search/multi`, and `/api/stream`.
+Set the website origin only; do not append `/api`.
 
-## Commands
+## Requirements and notes
 
-| Command | Description |
-| --- | --- |
-| `manga sources` | List configured manga sources |
-| `manga catalog` | Browse MangaDex catalog |
-| `manga search <query>` | Search manga |
-| `manga title <id>` | Fetch manga details |
-| `manga chapter <manga-id> <chapter-id>` | Fetch chapter pages |
-| `tmdb search <query>` | Search movie and TV metadata |
-| `tmdb trending` | Browse trending titles |
-| `stream movie <tmdb-id>` | Resolve a movie stream URL |
-| `stream tv <tmdb-id> <season> <episode>` | Resolve a TV episode URL |
-| `stream anime <anilist-id> <episode>` | Resolve an anime episode URL |
-
-Append `--json` to list/search commands for machine-readable output. Stream commands print the provider redirect URL returned by AniFox.
-
-## Notes
-
-- Movie/TV metadata requires the deployment's server-side `TMDB_API_KEY`.
-- Download links are intentionally not included in this initial CLI.
-- The CLI uses only documented AniFox API routes and does not proxy or host media.
+- Node.js 22 or newer
+- An interactive terminal (TTY)
+- Movie/TV metadata depends on the deployment's server-side `TMDB_API_KEY`.
+- Stream resolution returns a third-party provider URL. AniFox does not proxy or host media.
+- Download-link APIs are not exposed in this initial TUI.
