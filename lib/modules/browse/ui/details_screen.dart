@@ -25,6 +25,8 @@ import 'package:anifox/modules/tracking/state/tracker_registry.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/common/state/theme_prefs_provider.dart';
 import 'package:anifox/common/state/ui_prefs_provider.dart';
+import 'package:anifox/modules/downloads/data/download_provider.dart';
+import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/modules/tv/ui/screens/tv_details_screen.dart';
 import 'package:anifox/common/widgets/app_icon_button.dart';
 import 'package:anifox/common/widgets/app_scaffold.dart';
@@ -128,6 +130,34 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                   onPressed: () => context.pop(),
                 ),
                 actions: [
+                  if (DownloadProvider.isConfigured &&
+                      widget.mediaType != MediaType.MANGA &&
+                      widget.mediaType != MediaType.NOVEL)
+                    AppIconButton(
+                      tooltip: 'Download',
+                      backgroundColor: theme.colorScheme.secondaryContainer,
+                      foregroundColor:
+                          theme.colorScheme.onSecondaryContainer,
+                      radius: uiRoundness,
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      onPressed: () {
+                        final episodeLabel = switch (widget.mediaType) {
+                          MediaType.TV => 'Season 1 · Episode 1',
+                          MediaType.ANIME => 'Episode 1',
+                          _ => '',
+                        };
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => DownloadOptionsScreen(
+                              media: displayMedia,
+                              season: 1,
+                              episode: 1,
+                              episodeLabel: episodeLabel,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   AppIconButton(
                     tooltip: 'Share',
                     backgroundColor: theme.colorScheme.secondaryContainer,

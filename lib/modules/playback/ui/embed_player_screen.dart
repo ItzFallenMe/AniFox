@@ -37,6 +37,8 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   String? _url;
   bool _isLoading = true;
   int _progress = 0;
+  bool _showTopBar = true;
+  Timer? _topBarTimer;
   Widget? _fullscreenWebView;
   VoidCallback? _hideFullscreenWebView;
 
@@ -65,10 +67,22 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
 
   @override
   void dispose() {
+    _topBarTimer?.cancel();
     try {
       WakelockPlus.disable();
     } catch (_) {}
     super.dispose();
+  }
+
+  /// The bundled hosts render their own controls, so AniFox's chrome stays out
+  /// of the way and only reappears when the viewer taps the video.
+  void _showTopBarTemporarily() {
+    _topBarTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _showTopBar = true);
+    _topBarTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && !_isLoading) setState(() => _showTopBar = false);
+    });
   }
 
   void _configureController() {
@@ -90,6 +104,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
           },
           onPageFinished: (_) {
             if (mounted) setState(() => _isLoading = false);
+            _showTopBarTemporarily();
           },
         ),
       );
@@ -260,7 +275,14 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: _buildTopBar(context),
+                    child: IgnorePointer(
+                      ignoring: !_showTopBar,
+                      child: AnimatedOpacity(
+                        opacity: _showTopBar ? 1 : 0,
+                        duration: const Duration(milliseconds: 250),
+                        child: _buildTopBar(context),
+                      ),
+                    ),
                   ),
                   if (_isLoading && _url != null)
                     Positioned(
@@ -293,7 +315,11 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     if (_url == null) {
       return _buildUnsupported();
     }
-    return WebViewWidget(controller: _controller);
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _showTopBarTemporarily(),
+      child: WebViewWidget(controller: _controller),
+    );
   }
 
   Widget _buildUnsupported() {
@@ -377,14 +403,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
             onPressed: _openDownloads,
             icon: const Icon(Icons.download_rounded, color: Colors.white),
           ),
-          IconButton(
-            tooltip: 'Downloads',
-            onPressed: () => context.push('/downloads'),
-            icon: const Icon(
-              Icons.download_for_offline_outlined,
-              color: Colors.white,
-            ),
-          ),
+
           PopupMenuButton<StreamSource>(
             tooltip: 'Source',
             initialValue: _source,

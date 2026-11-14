@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:anifox/modules/browse/data/tmdb_api.dart';
 import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
 import 'package:anifox/modules/tracking/engine/remote_tracker.dart';
 import 'package:anifox/common/models/unified_media.dart';
@@ -31,6 +32,16 @@ final detailsProvider = FutureProvider.autoDispose
       ref,
       args,
     ) async {
+      if (args.trackerId == 'tmdb' &&
+          (args.type == MediaType.MOVIE || args.type == MediaType.TV) &&
+          TmdbApi.isConfigured) {
+        try {
+          final media = await TmdbApi.details(args.type, args.id);
+          if (media != null) return media;
+        } catch (_) {
+          // Fall through to the tracker when TMDB is unavailable.
+        }
+      }
       if (args.trackerId != null) {
         final targetType = TrackerType.tryFromId(args.trackerId!);
         if (targetType != null) {
