@@ -250,6 +250,33 @@ def resolve_and_open(
         webbrowser.open(url)
 
 
+def anime_stream_flow(api: AniFoxAPI) -> None:
+    anilist_id = Selector.ask("AniList anime ID")
+    if not anilist_id.isdigit():
+        console.print("[yellow]Enter a numeric AniList ID.[/]")
+        wait()
+        return
+    episode_text = Selector.ask("Episode number", default="1")
+    if not episode_text.isdigit() or int(episode_text) < 1:
+        console.print("[yellow]Enter a valid episode number.[/]")
+        wait()
+        return
+    source = Selector.choose("Choose AniFox anime provider", ["vidly", "vidbolt", "vidy"])
+    if not source:
+        return
+    url = api.resolve_stream(
+        source=source,
+        media_type="anime",
+        anilist_id=anilist_id,
+        episode=int(episode_text),
+    )
+    console.print(Panel(url, title="[bold]Anime provider URL[/]", border_style=ACCENT))
+    if Selector.confirm("Open provider page in your browser?", default=False):
+        webbrowser.open(url)
+    else:
+        wait()
+
+
 def tmdb_menu(api: AniFoxAPI, *, trending: bool = False) -> None:
     if trending:
         media_type = Selector.choose("Trending category", ["all", "movie", "tv"]) or "all"
@@ -296,6 +323,7 @@ def main() -> None:
                     "Manga sources",
                     "Trending movies & TV",
                     "Search movies & TV",
+                    "Resolve anime by AniList ID",
                     "API status / configuration",
                     "Quit",
                 ],
@@ -327,6 +355,12 @@ def main() -> None:
             elif choice == "Search movies & TV":
                 try:
                     tmdb_menu(api)
+                except (AniFoxAPIError, httpx.HTTPError) as exc:
+                    console.print(f"[red]API error: {exc}[/]")
+                    wait()
+            elif choice == "Resolve anime by AniList ID":
+                try:
+                    anime_stream_flow(api)
                 except (AniFoxAPIError, httpx.HTTPError) as exc:
                     console.print(f"[red]API error: {exc}[/]")
                     wait()
