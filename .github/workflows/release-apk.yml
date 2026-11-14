@@ -257,7 +257,14 @@ jobs:
         if: matrix.target == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config unzip libgtk-3-dev \
+            libsecret-1-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+            libasound2-dev libepoxy-dev libva-dev flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak remote-add --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
 
       - name: Install Flutter dependencies
         run: npm run flutter -- pub get
@@ -278,9 +285,29 @@ jobs:
 
       - name: Package Linux build
         if: matrix.target == 'linux'
-        run: >-
-          tar -czf "build/anifox-${RELEASE_TAG}-linux-x64.tar.gz"
-          -C build/linux/x64/release/bundle .
+        run: |
+          mkdir -p build/flatpak
+          flatpak-builder \
+            --user \
+            --disable-rofiles-fuse \
+            --force-clean \
+            --install-deps-from=flathub \
+            --repo=build/flatpak/repo \
+            build/flatpak/build \
+            flatpak.json
+
+          flatpak build-bundle \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            build/flatpak/repo \
+            "build/anifox-${RELEASE_TAG}-linux-x64.flatpak" \
+            dev.itzfallenme.anifox \
+            stable
+
+          flatpak install --user --noninteractive --assumeyes \
+            "build/anifox-${RELEASE_TAG}-linux-x64.flatpak"
+          flatpak info --user dev.itzfallenme.anifox
+          flatpak run --user --command=sh dev.itzfallenme.anifox \
+            -c 'test -x /app/bin/anifox && test -x /app/libexec/anifox/anifox && test -d /app/libexec/anifox/data && test -d /app/libexec/anifox/lib'
 
       - name: Package macOS build
         if: matrix.target == 'macos'
@@ -305,7 +332,7 @@ jobs:
 
   ios-unsigned:
     name: Build unsigned iOS app for verification
-    runs-on: macos-15
+    runs-on: macos-26
     needs: validate
     env:
       RELEASE_TAG: ${{ needs.validate.outputs.release_tag }}
@@ -375,7 +402,7 @@ jobs:
             "anifox-${RELEASE_TAG}-universal.apk" \
             "anifox-${RELEASE_TAG}-play-store.aab" \
             "anifox-${RELEASE_TAG}-windows-x64.zip" \
-            "anifox-${RELEASE_TAG}-linux-x64.tar.gz"; do
+            "anifox-${RELEASE_TAG}-linux-x64.flatpak"; do
             test -s "release-assets/$asset" || {
               echo "::error::Missing release package: $asset"
               exit 1

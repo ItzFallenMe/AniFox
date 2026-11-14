@@ -1,0 +1,64 @@
+{
+  "app-id": "dev.itzfallenme.anifox",
+  "branch": "stable",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "51",
+  "sdk": "org.gnome.Sdk",
+  "command": "anifox",
+  "finish-args": [
+    "--share=ipc",
+    "--share=network",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--socket=pulseaudio",
+    "--device=dri",
+    "--filesystem=home",
+    "--talk-name=org.freedesktop.secrets",
+    "--talk-name=org.freedesktop.Notifications",
+    "--talk-name=org.freedesktop.portal.OpenURI",
+    "--talk-name=org.freedesktop.portal.FileChooser"
+  ],
+  "modules": [
+    {
+      "name": "anifox",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -d /app/libexec",
+        "cp -a bundle /app/libexec/anifox",
+        "install -Dm755 anifox-wrapper /app/bin/anifox",
+        "install -Dm644 dev.itzfallenme.anifox.desktop /app/share/applications/dev.itzfallenme.anifox.desktop",
+        "install -Dm644 dev.itzfallenme.anifox.metainfo.xml /app/share/metainfo/dev.itzfallenme.anifox.metainfo.xml",
+        "install -Dm644 app_icon.png /app/share/icons/hicolor/512x512/apps/dev.itzfallenme.anifox.png",
+        "install -Dm644 LICENSE /app/share/licenses/dev.itzfallenme.anifox/LICENSE"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "build/linux/x64/release/bundle",
+          "dest": "bundle"
+        },
+        {
+          "type": "file",
+          "path": "packaging/flatpak/anifox-wrapper"
+        },
+        {
+          "type": "file",
+          "path": "packaging/flatpak/dev.itzfallenme.anifox.desktop"
+        },
+        {
+          "type": "file",
+          "path": "packaging/flatpak/dev.itzfallenme.anifox.metainfo.xml"
+        },
+        {
+          "type": "file",
+          "path": "assets/images/app_logo.png",
+          "dest-filename": "app_icon.png"
+        },
+        {
+          "type": "file",
+          "path": "LICENSE"
+        }
+      ]
+    }
+  ]
+}

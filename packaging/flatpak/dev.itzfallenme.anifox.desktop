@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=AniFox
+Comment=Anime, movie and TV streaming client
+Exec=anifox
+Icon=dev.itzfallenme.anifox
+Terminal=false
+Categories=AudioVideo;Video;Player;
+StartupNotify=true
