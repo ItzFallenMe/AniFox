@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:anifox/common/models/ui_style_enums.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/common/state/ui_prefs_provider.dart';
 import 'package:anifox/common/widgets/app_scaffold.dart';
@@ -181,8 +181,8 @@ class _SearchGrid extends ConsumerWidget {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 140),
           sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithMinCrossAxisExtent(
-              minCrossAxisExtent: layout.width,
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: layout.width,
               childAspectRatio: layout.aspectRatio,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
