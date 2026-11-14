@@ -90,11 +90,16 @@ function platformDownloads(release?: ReleaseInfo): PlatformDownload[] {
     },
     {
       name: 'Linux',
-      description: '64-bit Linux',
+      description: '64-bit Linux · Flatpak bundle',
       Icon: Terminal,
       assets: packages
-        .filter(file => /linux-x64\.(?:tar\.gz|zip)$/i.test(file.name))
-        .map(file => ({ ...file, label: 'Download for Linux' })),
+        .filter(file => /linux-x64\.(?:tar\.gz|zip|flatpak)$/i.test(file.name))
+        .map(file => ({
+          ...file,
+          label: /\.flatpak$/i.test(file.name)
+            ? 'Download Flatpak bundle'
+            : 'Download for Linux',
+        })),
     },
   ];
 }

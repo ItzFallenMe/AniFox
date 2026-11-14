@@ -55,7 +55,9 @@ const architectureOf = (name: string): string => {
 const platformOf = (name: string): string => {
   if (/play-store\.aab$/i.test(name)) return 'Google Play app bundle';
   if (/(?:windows(?:-x64)?\.zip)$/i.test(name)) return 'Windows · x64';
-  if (/(?:linux-x64\.tar\.gz|linux\.zip)$/i.test(name)) return 'Linux · x64';
+  if (/(?:linux-x64\.(?:tar\.gz|zip|flatpak)|linux\.zip)$/i.test(name)) {
+    return /\.flatpak$/i.test(name) ? 'Linux · Flatpak' : 'Linux · x64';
+  }
   if (/(?:macos-(?:arm64|x64)\.zip|macos\.zip)$/i.test(name)) return 'macOS';
   if (/\.ipa$/i.test(name)) return 'iOS';
   return 'App package';
@@ -63,7 +65,7 @@ const platformOf = (name: string): string => {
 
 function isReleasePackage(name: string) {
   return (
-    /^anifox-.*\.(?:apk|aab|ipa|zip|dmg|msi|tar\.gz)$/i.test(name) ||
+    /^anifox-.*\.(?:apk|aab|ipa|zip|dmg|msi|tar\.gz|flatpak)$/i.test(name) ||
     /^(?:windows|linux|macos)\.zip$/i.test(name)
   );
 }

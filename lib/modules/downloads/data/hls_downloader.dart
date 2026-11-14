@@ -42,18 +42,21 @@ class HlsDownloader {
     final parsed = Uri.tryParse(url);
     if (parsed == null) throw const HlsDownloadException('Invalid download URL.');
 
-    final isHls = parsed.path.toLowerCase().endsWith('.m3u8') ||
-        parsed.path.toLowerCase().endsWith('.m3u');
-
     final output = File(outputPath);
     await output.parent.create(recursive: true);
 
-    if (!isHls) {
-      await _downloadFile(parsed, output, onProgress, isCanceled, headers);
+    // Provider links frequently point at an HTML landing page instead of the
+    // file itself. Follow those pages (and HEAD-style probes) first so both
+    // direct files and HLS manifests resolve to what the app can download.
+    final target = await _resolveTarget(parsed, headers, isCanceled);
+    headers = target.headers;
+
+    if (!target.isHls) {
+      await _downloadFile(target.uri, output, onProgress, isCanceled, headers);
       return;
     }
 
-    var playlistUri = parsed;
+    var playlistUri = target.uri;
     var playlist = await _fetchText(playlistUri, headers);
 
     if (playlist.contains('#EXT-X-STREAM-INF')) {
@@ -143,6 +146,132 @@ class HlsDownloader {
         await tempDir.delete(recursive: true);
       }
     }
+  }
+
+  /// Follows HTML interstitials until a media URL (or HLS manifest) is found.
+  Future<_MediaTarget> _resolveTarget(
+    Uri uri,
+    Map<String, String> headers,
+    bool Function() isCanceled,
+  ) async {
+    var current = uri;
+    var currentHeaders = Map<String, String>.from(headers);
+
+    for (var hop = 0; hop < 4; hop++) {
+      if (isCanceled()) throw const HlsCanceledException();
+      if (_looksLikeHls(current)) {
+        return _MediaTarget(current, isHls: true, headers: currentHeaders);
+      }
+
+      final request = http.Request('GET', current);
+      request.headers.addAll(_defaultHeaders);
+      request.headers.addAll(currentHeaders);
+      final response = await _client.send(request);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        await _discard(response);
+        throw HlsDownloadException(
+          'Download failed (HTTP ${response.statusCode}).',
+        );
+      }
+
+      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+      if (contentType.contains('mpegurl')) {
+        await _discard(response);
+        return _MediaTarget(current, isHls: true, headers: currentHeaders);
+      }
+
+      if (contentType.contains('html')) {
+        final bytes = await response.stream.toBytes();
+        final pageUrl = current;
+        final next = _extractMediaUrl(
+          utf8.decode(bytes, allowMalformed: true),
+          pageUrl,
+        );
+        if (next == null) {
+          throw const HlsDownloadException(
+            'The provider download page did not expose a media file.',
+          );
+        }
+        current = next;
+        currentHeaders = {...currentHeaders, 'Referer': pageUrl.toString()};
+        continue;
+      }
+
+      await _discard(response);
+      return _MediaTarget(current, isHls: false, headers: currentHeaders);
+    }
+
+    throw const HlsDownloadException(
+      'Too many redirects while resolving the download.',
+    );
+  }
+
+  Future<void> _discard(http.StreamedResponse response) async {
+    final subscription = response.stream.listen((_) {});
+    await subscription.cancel();
+  }
+
+  bool _looksLikeHls(Uri uri) {
+    final path = uri.path.toLowerCase();
+    return path.endsWith('.m3u8') || path.endsWith('.m3u');
+  }
+
+  String? _extractMediaUrl(String html, Uri base) {
+    final candidates = <String>[];
+    final attributePattern = RegExp(
+      r'''(?:href|src|data-url)\s*=\s*["']([^"']+)["']''',
+      caseSensitive: false,
+    );
+    final scriptPattern = RegExp(
+      r'''(?:location(?:\.href)?|window\.location)\s*=\s*["']([^"']+)["']|location\.replace\(\s*["']([^"']+)["']\s*\)''',
+      caseSensitive: false,
+    );
+    final refreshPattern = RegExp(
+      r'''content\s*=\s*["'][^"']*url=([^"';]+)''',
+      caseSensitive: false,
+    );
+
+    for (final match in attributePattern.allMatches(html)) {
+      candidates.add(match.group(1)!);
+    }
+    for (final match in scriptPattern.allMatches(html)) {
+      final value = match.group(1) ?? match.group(2);
+      if (value != null) candidates.add(value);
+    }
+    for (final match in refreshPattern.allMatches(html)) {
+      candidates.add(match.group(1)!);
+    }
+
+    String? fallback;
+    for (final raw in candidates) {
+      final value = raw
+          .replaceAll('&amp;', '&')
+          .replaceAll('\\/', '/')
+          .trim();
+      final uri = Uri.tryParse(value);
+      if (uri == null) continue;
+      final resolved = base.resolveUri(uri);
+      if (resolved.scheme != 'http' && resolved.scheme != 'https') continue;
+
+      final lower = resolved.toString().toLowerCase();
+      if (lower.startsWith('javascript:') || lower.startsWith('mailto:')) {
+        continue;
+      }
+
+      if (RegExp(r'\.(?:mp4|mkv|webm|avi|mov|m3u8|m3u)(?:[?#]|$)')
+          .hasMatch(lower)) {
+        return resolved.toString();
+      }
+      fallback ??= lower.contains('/download') ||
+              lower.contains('/get?') ||
+              lower.contains('/file?') ||
+              lower.contains('download?')
+          ? resolved.toString()
+          : null;
+    }
+
+    return fallback;
   }
 
   Future<void> _downloadFile(
@@ -395,6 +524,14 @@ class HlsDownloader {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
             '(KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   };
+}
+
+class _MediaTarget {
+  final Uri uri;
+  final bool isHls;
+  final Map<String, String> headers;
+
+  const _MediaTarget(this.uri, {required this.isHls, required this.headers});
 }
 
 class _MediaPlaylist {
