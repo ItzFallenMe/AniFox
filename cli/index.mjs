@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const DEFAULT_BASE_URL = "https://anifox.runs-on.dev";
-const BASE_URL = (process.env.ANIFOX_API_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
+let BASE_URL = (process.env.ANIFOX_API_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
@@ -123,8 +123,13 @@ function printList(data, jsonMode) {
 async function run(argv) {
   const { positional, options } = parseArgs(argv);
   if (options["base-url"]) {
-    // The option is applied before request construction.
-    process.env.ANIFOX_API_URL = options["base-url"];
+    try {
+      const parsed = new URL(options["base-url"]);
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
+      BASE_URL = parsed.origin.replace(/\/+$/, "");
+    } catch {
+      throw new Error("--base-url must be a valid HTTP(S) origin.");
+    }
   }
   if (!positional.length || positional[0] === "help" || options.help) return usage();
 
