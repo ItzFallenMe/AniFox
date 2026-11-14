@@ -304,3 +304,26 @@ provider.
 AniFox is free software licensed under the **GNU General Public License v3.0**.
 See [LICENSE](LICENSE). This project is a derivative of
 [AnymeX](https://github.com/RyanYuuki/AnymeX) and keeps the same license.
+
+
+## Terminal UI (Python)
+
+AniFox also includes an interactive terminal browser in `tui/`, built with
+Rich and InquirerPy using a selector-oriented architecture inspired by
+[viu-media/viu](https://github.com/viu-media/viu).
+
+```bash
+cd tui
+python -m venv .venv
+# Activate the environment, then:
+pip install -e .
+anifox
+```
+
+The TUI browses the MangaDex catalog, searches manga, displays manga details
+and chapter page data, searches and browses TMDB movies/TV, and resolves AniFox
+stream provider URLs. Configure `ANIFOX_API_URL` with the website origin
+(default: `https://anifox.runs-on.dev`); do not append `/api`.
+
+See [tui/README.md](tui/README.md) for installation, controls, API behavior,
+and third-party attribution.
