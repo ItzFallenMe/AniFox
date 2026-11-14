@@ -148,14 +148,19 @@ npm run flutter -- build appbundle --release                   # Play Store bund
 npm run flutter -- build ios --release --no-codesign            # iOS verification
 npm run flutter -- build macos --release                       # macOS
 npm run flutter -- build windows --release                     # Windows
-npm run flutter -- build linux --release                       # Linux
+npm run flutter -- build linux --release                       # Linux app bundle
 ```
 
 Tagging `vMAJOR.MINOR.PATCH` publishes Android APKs for `arm64-v8a`,
 `armeabi-v7a` and `x86_64`, a universal APK, a Play Store app bundle, and
-Windows, Linux and macOS packages, plus a `SHA256SUMS.txt` checksum list.
+Windows, Linux and macOS packages, plus a `SHA256SUMS.txt` checksum list. The
+Linux release is a Flatpak bundle for x86_64; install it with
+`flatpak install --user --bundle anifox-vX.Y.Z-linux-x64.flatpak`. Flatpak
+installs the GNOME runtime (including GTK and WebKitGTK) automatically on first
+install, so no distro-specific development or runtime packages are needed.
 The iOS target is compiled as an unsigned verification artifact; an installable
-iOS release still requires Apple signing and provisioning credentials.
+iOS release still requires Apple signing and provisioning credentials. iOS 15
+or newer is required by the Liquid Glass widgets dependency.
 
 Display names, bundle identifiers and icons live in `package_rename_config.yaml`
 and `flutter_launcher_icons.yaml`. After changing the logo:
