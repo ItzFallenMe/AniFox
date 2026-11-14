@@ -12,6 +12,8 @@ import 'package:anifox/modules/launch/ui/splash_screen.dart';
 import 'package:anifox/modules/schedule/ui/calendar_screen.dart';
 import 'package:anifox/modules/downloads/ui/downloads_screen.dart';
 import 'package:anifox/modules/browse/ui/discover_screen.dart';
+import 'package:anifox/modules/browse/ui/media_feed_screen.dart';
+import 'package:anifox/modules/browse/ui/unified_search_screen.dart';
 import 'package:anifox/core/remote_config/ui/remote_config_editor_screen.dart';
 import 'package:anifox/modules/history/ui/continue_history_screen.dart';
 import 'package:anifox/modules/library/ui/library_screen.dart';
@@ -85,25 +87,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             navigatorKey: _searchNavigatorKey,
             routes: [
               GoRoute(
+                path: '/search',
+                builder: (context, state) => const UnifiedSearchScreen(),
+              ),
+              GoRoute(
                 path: '/anime',
-                builder: (context, state) => const DiscoverScreen(
-                  type: MediaType.ANIME,
-                  showMediaSwitcher: false,
-                ),
+                builder: (context, state) =>
+                    const MediaFeedScreen(mediaType: MediaType.ANIME),
               ),
               GoRoute(
                 path: '/movies',
-                builder: (context, state) => const DiscoverScreen(
-                  type: MediaType.MOVIE,
-                  showMediaSwitcher: false,
-                ),
+                builder: (context, state) =>
+                    const MediaFeedScreen(mediaType: MediaType.MOVIE),
               ),
               GoRoute(
                 path: '/tv',
-                builder: (context, state) => const DiscoverScreen(
-                  type: MediaType.TV,
-                  showMediaSwitcher: false,
-                ),
+                builder: (context, state) =>
+                    const MediaFeedScreen(mediaType: MediaType.TV),
               ),
               GoRoute(
                 path: '/discover',

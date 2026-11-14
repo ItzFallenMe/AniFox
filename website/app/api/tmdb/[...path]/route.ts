@@ -11,7 +11,7 @@ const ALLOWED_QUERY_KEYS = new Set([
 
 function isAllowedPath(path: string) {
   return (
-    /^\/trending\/all\/(day|week)$/.test(path) ||
+    /^\/trending\/(?:all|movie|tv)\/(?:day|week)$/.test(path) ||
     /^\/search\/multi$/.test(path) ||
     /^\/movie\/(popular|top_rated|upcoming|now_playing|\d+)$/.test(path) ||
     /^\/tv\/(popular|top_rated|airing_today|on_the_air|\d+)$/.test(path) ||

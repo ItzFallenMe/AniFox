@@ -46,6 +46,7 @@ class _TvShellState extends ConsumerState<TvShell> {
     final routeTab = switch (path) {
       '/home' => 0,
       '/discover' => 1,
+      '/search' => 1,
       '/tv' => 2,
       '/anime' => 3,
       '/movies' => 4,
@@ -68,11 +69,11 @@ class _TvShellState extends ConsumerState<TvShell> {
         );
       } else {
         final location = switch (index) {
-          1 => '/discover',
+          1 => '/search',
           2 => '/tv',
           3 => '/anime',
           4 => '/movies',
-          _ => '/discover',
+          _ => '/search',
         };
         context.go(location);
       }

@@ -223,7 +223,7 @@ class _NavDest {
 
 const _destinations = [
   _NavDest(Icons.home_outlined, 'Home', '/home'),
-  _NavDest(Icons.search_rounded, 'Search', '/discover'),
+  _NavDest(Icons.search_rounded, 'Search', '/search'),
   _NavDest(Icons.tv_outlined, 'TV', '/tv'),
   _NavDest(Icons.auto_awesome_outlined, 'Anime', '/anime'),
   _NavDest(Icons.movie_outlined, 'Movies', '/movies'),
@@ -260,7 +260,7 @@ void _selectDestination(
       );
       return;
     case 1:
-      context.go('/discover');
+      context.go('/search');
       return;
     case 5:
       navigationShell.goBranch(
