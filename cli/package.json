@@ -1,0 +1,13 @@
+{
+  "name": "anifox-cli",
+  "version": "0.1.0",
+  "description": "Terminal client for the AniFox API",
+  "type": "module",
+  "bin": {
+    "anifox": "./index.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "GPL-3.0-only"
+}
