@@ -41,7 +41,10 @@ void main() {
       expect(results.single.type, MediaType.MANGA);
       expect(results.single.source, 'mangadex');
       expect(results.single.title.getPreferedTitle, 'One Piece');
-      expect(results.single.cover, 'https://cdn.example/cover.jpg');
+      expect(
+        results.single.cover,
+        'https://manga.example/api/image?url=https%3A%2F%2Fcdn.example%2Fcover.jpg',
+      );
     });
 
     test('maps chapter ids and page image URLs', () async {
@@ -74,8 +77,8 @@ void main() {
       expect(chapters.first.id, 'one-piece::chapter-2');
       expect(chapters.first.uploadDate, 'Today');
       expect(pages.map((page) => page.url), [
-        'https://cdn.example/page-1.jpg',
-        'https://cdn.example/page-2.jpg',
+        'https://manga.example/api/image?url=https%3A%2F%2Fcdn.example%2Fpage-1.jpg',
+        'https://manga.example/api/image?url=https%3A%2F%2Fcdn.example%2Fpage-2.jpg',
       ]);
     });
 
@@ -89,26 +92,33 @@ void main() {
     });
   });
 
-  test('resolves relative proxied image URLs against the manga API root', () async {
-    final client = MockClient((request) async {
-      return _jsonResponse({
-        'mangaList': [
-          {
-            'id': 'mangapill-encoded-id',
-            'title': 'Sample manga',
-            'source': 'mangapill',
-            'image': '/api/image?url=https%3A%2F%2Fcdn.mangapill.com%2Fcover.jpg',
-          },
-        ],
+  test(
+    'resolves relative same-origin image proxy URLs against the API root',
+    () async {
+      final client = MockClient((request) async {
+        return _jsonResponse({
+          'mangaList': [
+            {
+              'id': 'mangadex-id',
+              'title': 'Sample manga',
+              'source': 'mangadex',
+              'image':
+                  '/api/image?url=https%3A%2F%2Fuploads.mangadex.org%2Fcovers%2Fmanga-id%2Fcover.jpg',
+            },
+          ],
+        });
       });
-    });
-    final source = _source(client);
+      final source = _source(client);
 
-    final results = await source.search('Sample', MediaType.MANGA);
+      final results = await source.search('Sample', MediaType.MANGA);
 
-    expect(results.single.cover, startsWith('https://manga.example/api/image?url='));
-    expect(results.single.source, 'mangapill');
-  });
+      expect(
+        results.single.cover,
+        'https://manga.example/api/image?url=https%3A%2F%2Fuploads.mangadex.org%2Fcovers%2Fmanga-id%2Fcover.jpg',
+      );
+      expect(results.single.source, 'mangadex');
+    },
+  );
 }
 
 MangaApiSource _source(http.Client client) => MangaApiSource(

@@ -265,10 +265,21 @@ class MangaApiSource extends MangaSource {
 
   String _normalizeImageUrl(String value) {
     if (value.isEmpty) return value;
-    if (value.startsWith('//')) return 'https:$value';
-    final uri = Uri.tryParse(value);
-    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return '';
     final origin = Uri.parse(sourceInfo.baseUrl);
+
+    var uri = Uri.tryParse(value);
+    if (uri == null) return '';
+    if (uri.path == '/api/image' && !uri.hasAuthority) {
+      return origin.resolveUri(uri).toString();
+    }
+    if (uri.scheme.isEmpty && uri.hasAuthority) {
+      uri = Uri.parse('https:$value');
+    }
+    if (uri.scheme != 'https' || !uri.hasAuthority) return '';
+    if (uri.origin == origin.origin && uri.path == '/api/image') {
+      return uri.toString();
+    }
+
     return origin
         .replace(
           path: '/api/image',
