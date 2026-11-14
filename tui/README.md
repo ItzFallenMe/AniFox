@@ -30,7 +30,7 @@ python -m anifox_tui.app
 - Inspect chapter page URLs returned by AniFox
 - Browse trending TMDB movies and TV
 - Search movies and TV, inspect details, and select TV seasons/episodes
-- Resolve a provider URL through AniFox and optionally open it in a browser
+- Resolve movie, TV, and anime provider URLs through AniFox and optionally open them in a browser
 - Rich terminal panels and fuzzy interactive selectors
 
 ## API
