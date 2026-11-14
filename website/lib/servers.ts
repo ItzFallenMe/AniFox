@@ -1,4 +1,4 @@
-export type ServerId = "vidly" | "vidy" | "embedwave" | "vidbolt" | "custom";
+export type ServerId = "vidly" | "vidy" | "embedwave" | "vidbolt";
 
 export interface ServerInfo {
   id: ServerId;
@@ -7,15 +7,6 @@ export interface ServerInfo {
   tagline: string;
 }
 
-/**
- * Optional operator-configured source. When NEXT_PUBLIC_STREAM_API_URL is set it
- * is listed first and used by default. Expected routes:
- *   /movie/{tmdbId}
- *   /tv/{tmdbId}/{season}/{episode}
- *   /anime/{anilistId}/{episode}
- */
-const CUSTOM_BASE = (process.env.NEXT_PUBLIC_STREAM_API_URL ?? "").trim().replace(/\/+$/, "");
-
 const BUNDLED_SERVERS: ServerInfo[] = [
   { id: "vidly", name: "Vidly", baseUrl: "https://vidly.pro", tagline: "Server 1 · anime, TV, movies" },
   { id: "vidbolt", name: "VidBolt", baseUrl: "https://vidbolt.xyz", tagline: "Server 2 · anime, TV, movies" },
@@ -23,15 +14,10 @@ const BUNDLED_SERVERS: ServerInfo[] = [
   { id: "embedwave", name: "EmbedWave", baseUrl: "https://embedwave.cc", tagline: "Server 4 · TMDB player" },
 ];
 
-/** Streaming backends: the configured source first, then the bundled hosts. */
-export const SERVERS: ServerInfo[] = CUSTOM_BASE
-  ? [
-      { id: "custom", name: "AniFox Source", baseUrl: CUSTOM_BASE, tagline: "Configured source" },
-      ...BUNDLED_SERVERS,
-    ]
-  : BUNDLED_SERVERS;
+/** Streaming targets are resolved by the same-origin `/api/stream` route. */
+export const SERVERS: ServerInfo[] = BUNDLED_SERVERS;
 
-export const DEFAULT_SERVER: ServerId = CUSTOM_BASE ? "custom" : "vidly";
+export const DEFAULT_SERVER: ServerId = "vidly";
 
 export interface PlaybackInfo {
   type: "movie" | "tv" | "anime";
@@ -54,46 +40,19 @@ export function serverById(id: string | null | undefined): ServerInfo {
  * this title with the metadata we have.
  */
 export function buildEmbedUrl(info: PlaybackInfo, serverId: ServerId): string | null {
-  const server = serverById(serverId);
-  const base = server.baseUrl.replace(/\/+$/, "");
   const { type, tmdbId, anilistId, malId, episode, season } = info;
-  const isAnime = type === "anime";
-  const isMovie = type === "movie";
+  if (type === "movie" && !tmdbId) return null;
+  if (type === "tv" && !tmdbId) return null;
+  if (type === "anime" && (serverId === "embedwave" || (!anilistId && !(malId && ["vidly", "vidbolt"].includes(serverId))))) return null;
 
-  switch (serverId) {
-    case "custom":
-      if (isAnime && anilistId) return `${base}/anime/${anilistId}/${episode}`;
-      if (isMovie && tmdbId) return `${base}/movie/${tmdbId}`;
-      if (tmdbId) return `${base}/tv/${tmdbId}/${season}/${episode}`;
-      return null;
-
-    case "vidly":
-      if (isAnime) {
-        if (anilistId) return `${base}/anime/${anilistId}/${episode}`;
-        if (malId) return `${base}/anime/mal/${malId}/${episode}`;
-      }
-      if (isMovie && tmdbId) return `${base}/movie/${tmdbId}`;
-      if (tmdbId) return `${base}/tv/${tmdbId}/${season}/${episode}`;
-      return null;
-
-    case "vidy":
-      if (isAnime && anilistId) return `${base}/anime/${anilistId}/${episode}`;
-      if (isMovie && tmdbId) return `${base}/movie/${tmdbId}`;
-      if (tmdbId) return `${base}/tv/${tmdbId}/${season}/${episode}`;
-      return null;
-
-    case "embedwave":
-      if (!tmdbId) return null;
-      if (isMovie) return `${base}/embed/movie/${tmdbId}`;
-      return `${base}/embed/tv/${tmdbId}/${season}/${episode}`;
-
-    case "vidbolt":
-      if (isAnime) {
-        if (anilistId) return `${base}/anime/${anilistId}/${episode}`;
-        if (malId) return `${base}/anime/mal/${malId}/${episode}`;
-      }
-      if (isMovie && tmdbId) return `${base}/movie/${tmdbId}`;
-      if (tmdbId) return `${base}/tv/${tmdbId}/${season}/${episode}`;
-      return null;
-  }
+  const query = new URLSearchParams({
+    source: serverId,
+    type,
+    episode: String(Math.max(1, episode)),
+    season: String(Math.max(1, season)),
+  });
+  if (tmdbId) query.set("tmdbId", String(tmdbId));
+  if (anilistId) query.set("anilistId", String(anilistId));
+  if (malId) query.set("malId", String(malId));
+  return `/api/stream?${query.toString()}`;
 }

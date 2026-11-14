@@ -49,6 +49,15 @@ export function AnimeIcon(props: IconProps) {
   );
 }
 
+/** Simple Icons Crunchyroll brand mark, used as an anime-category glyph. */
+export function CrunchyrollIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M2.909 13.436C2.914 7.61 7.642 2.893 13.468 2.898c5.576.005 10.137 4.339 10.51 9.819q.021-.351.022-.706C24.007 5.385 18.64.006 12.012 0S.007 5.36 0 11.988 5.36 23.994 11.988 24q.412 0 .815-.027c-5.526-.338-9.9-4.928-9.894-10.538Zm16.284.155a4.1 4.1 0 0 1-4.095-4.103 4.1 4.1 0 0 1 2.712-3.855 8.95 8.95 0 0 0-4.187-1.037 9.007 9.007 0 1 0 8.997 9.016q-.001-.847-.15-1.651a4.1 4.1 0 0 1-3.278 1.63Z" />
+    </svg>
+  );
+}
+
 export function MovieIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" {...base} {...props}>
@@ -111,15 +120,6 @@ export function ArrowUpIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" {...base} {...props}>
       <path d="M12 19V5M5 12l7-7 7 7" />
-    </svg>
-  );
-}
-
-export function CastIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" {...base} {...props}>
-      <path d="M2 16.5a4.5 4.5 0 0 1 4.5 4.5M2 12a9 9 0 0 1 9 9M2 20.5h.01" />
-      <path d="M2 7V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
     </svg>
   );
 }

@@ -45,13 +45,13 @@ export function Rail({ title, items, ranked = false, href = "/explore" }: RailPr
   if (!items.length) return null;
 
   return (
-    <section className="px-6 pt-8 lg:px-20">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section className="media-rail px-6 pt-8 lg:px-20">
+      <div className="media-rail-heading mb-4 flex items-center justify-between gap-4">
         <h2 className="truncate text-[18px] font-semibold tracking-tight text-white/90 lg:text-[20px]">
           {title}
         </h2>
         <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-1 md:flex">
+          <div className="media-rail-arrows hidden items-center gap-1 md:flex">
             <button
               type="button"
               aria-label={`Scroll ${title} left`}
@@ -73,7 +73,7 @@ export function Rail({ title, items, ranked = false, href = "/explore" }: RailPr
           </div>
           <Link
             href={href}
-            className="group/va flex shrink-0 items-center gap-1.5 py-1 text-[13px] font-medium tracking-[-0.01em] text-white/50 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
+            className="media-rail-more group/va flex shrink-0 items-center gap-1.5 py-1 text-[13px] font-medium tracking-[-0.01em] text-white/50 outline-none transition-colors duration-200 hover:text-white focus-visible:text-white"
           >
             <span className="relative after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-current after:transition-transform after:duration-300 group-hover/va:after:scale-x-100 group-focus-visible/va:after:scale-x-100">
               View all
@@ -88,7 +88,7 @@ export function Rail({ title, items, ranked = false, href = "/explore" }: RailPr
           ref={scroller}
           role="group"
           aria-label={title}
-          className="no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth overscroll-x-contain px-2 pt-4"
+          className="stagger no-scrollbar flex snap-x gap-3 overflow-x-auto scroll-smooth overscroll-x-contain px-2 pt-4"
         >
           {items.map((media, cardIndex) => (
             <MediaCard

@@ -2,6 +2,9 @@ node_modules
 .next
 out
 .env*.local
+.dev.vars*
+.wrangler/
+.open-next/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts

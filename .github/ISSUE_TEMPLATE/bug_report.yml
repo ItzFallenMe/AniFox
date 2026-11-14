@@ -23,7 +23,7 @@ body:
     attributes:
       label: Version or commit
       description: Release version, or the commit you built from.
-      placeholder: "2.1.5+4 / a1b2c3d"
+      placeholder: "1.0.0+1 / a1b2c3d"
     validations:
       required: true
   - type: input

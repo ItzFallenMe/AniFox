@@ -15,11 +15,14 @@
 
 <!-- Commands you ran and anything you checked by hand. -->
 
-- [ ] `flutter analyze` (app changes)
+- [ ] `npm run flutter -- analyze --no-pub` (app changes)
+- [ ] `npm run flutter -- test --no-pub` (app changes)
 - [ ] `dart format --output=none --set-exit-if-changed lib test`
-- [ ] `cd website && npm run typecheck`
-- [ ] `cd website && npm run lint`
-- [ ] `cd website && npm run build`
+- [ ] `npm run web:typecheck`
+- [ ] `npm run web:lint`
+- [ ] `npm run web:build`
+- [ ] `npm run web:cloudflare:build` (web changes)
+- [ ] `npm run api:test` (API changes)
 
 ## Checklist
 

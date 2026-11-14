@@ -1,8 +1,11 @@
 name: Test APK
 
+permissions:
+  contents: read
+
 on:
   push:
-    branches: [main, anifox, "reimagined*"]
+    branches: [main, anifox]
   pull_request:
   workflow_dispatch:
 
@@ -42,13 +45,27 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-pub
 
-      - name: Build debug APK
-        run: flutter build apk --debug --no-pub
+      - name: Run Flutter tests
+        run: flutter test --no-pub
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test manga API adapters
+        working-directory: server/anifox-manga-api/server
+        run: npm test
+
+      - name: Build debug APKs for Android ABIs
+        run: >-
+          flutter build apk --debug --no-pub --split-per-abi
+          --target-platform android-arm,android-arm64,android-x64
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: anifox-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: anifox-debug-apks
+          path: build/app/outputs/flutter-apk/app-*-debug.apk
           if-no-files-found: error
           retention-days: 14

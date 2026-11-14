@@ -16,6 +16,14 @@ updates:
     commit-message:
       prefix: "deps(web)"
 
+  - package-ecosystem: npm
+    directory: "/server/anifox-manga-api/server"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(api)"
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

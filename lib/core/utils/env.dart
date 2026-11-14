@@ -3,8 +3,6 @@
 class Env {
   static const RELEASE_REPO = String.fromEnvironment('RELEASE_REPO');
 
-  static const COMMENTUM_API_URL = String.fromEnvironment('COMMENTUM_API_URL');
-
   static const ANILIST_CLIENT_ID = String.fromEnvironment('ANILIST_CLIENT_ID');
 
   static const ANILIST_CLIENT_SECRET = String.fromEnvironment(
@@ -23,13 +21,13 @@ class Env {
 
   static const TMDB_API_KEY = String.fromEnvironment('TMDB_API_KEY');
 
-  /// Optional URL of the separately deployed AniFox manga API.
-  static const MANGA_API_URL = String.fromEnvironment('MANGA_API_URL');
+  /// Root origin for the AniFox web app and its shared `/api` routes.
+  static const ANIFOX_API_URL = String.fromEnvironment('ANIFOX_API_URL');
 
-  /// Optional licensed download provider root URL (no trailing slash).
-  /// Expects `/movie/{tmdb}`, `/tv/{tmdb}/{season}/{episode}` and
-  /// `/anime/{anilist}/{episode}` pages, authorised by allowed domain.
-  static const DOWNLOAD_URL = String.fromEnvironment('DOWNLOAD_URL');
+  /// Discord application id. This is public configuration, not a secret.
+  static const DISCORD_APPLICATION_ID = String.fromEnvironment(
+    'DISCORD_APPLICATION_ID',
+  );
 
   // helpers
   static List<String> get ANILIST_CLIENT_ID_LIST =>

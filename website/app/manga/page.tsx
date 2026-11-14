@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { SearchIcon } from "@/components/icons";
+import { mangaImageSrc } from "@/lib/manga-images";
 
 interface MangaItem {
   id: string;
   title: string;
+  source?: string;
   image?: string | null;
   description?: string | null;
   chapter?: string | null;
@@ -19,33 +21,43 @@ interface MangaResponse {
 }
 
 export default function MangaCatalogPage() {
+  const activeRequest = useRef<AbortController | null>(null);
   const [items, setItems] = useState<MangaItem[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadCatalog(search = "") {
+  const loadCatalog = useCallback(async (search: string) => {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     setError(null);
     try {
       const endpoint = search
-        ? `/api/manga/search?query=${encodeURIComponent(search)}`
+        ? `/api/manga/search?query=${encodeURIComponent(search)}&source=mangadex`
         : "/api/manga/catalog";
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, { signal: controller.signal, cache: "no-store" });
       const data = (await response.json()) as MangaResponse;
       if (!response.ok) throw new Error(data.error || "Could not load manga.");
+      if (controller.signal.aborted) return;
       setItems(data.mangaList ?? []);
     } catch (cause) {
+      if (controller.signal.aborted) return;
       setItems([]);
       setError(cause instanceof Error ? cause.message : "Could not load manga.");
     } finally {
-      setLoading(false);
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void loadCatalog();
-  }, []);
+    void loadCatalog("");
+    return () => activeRequest.current?.abort();
+  }, [loadCatalog]);
 
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,25 +65,25 @@ export default function MangaCatalogPage() {
   }
 
   return (
-    <div className="animate-fade-in px-6 pb-20 pt-[76px] md:pt-8 lg:px-20">
+    <div className="manga-client-page animate-fade-in px-6 pb-20 pt-[76px] md:pt-8 lg:px-20">
       <header className="max-w-2xl">
         <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">
           A new chapter awaits
         </span>
         <h1 className="mt-3 text-[32px] font-extrabold leading-[1.05] tracking-[-0.04em] text-white sm:text-[42px]">
           Find your next{" "}
-          <span className="bg-gradient-to-r from-rose-300 via-rose-400 to-orange-300 bg-clip-text text-transparent">
+          <span className="manga-heading-accent">
             manga.
           </span>
         </h1>
         <p className="mt-3 text-[14px] leading-relaxed text-white/45">
-          Browse the catalog or search for a series to start reading.
+          Browse and read safe-rated manga from MangaDex.
         </p>
       </header>
 
       <form
         onSubmit={onSearch}
-        className="mt-7 flex h-14 items-center gap-3 rounded-2xl border border-white/[0.07] bg-[#0f1014] px-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)] transition-all duration-200 focus-within:border-white/20 focus-within:bg-[#15171d] md:px-5"
+        className="manga-search-panel mt-7 flex min-h-14 flex-wrap items-center gap-3 rounded-2xl border px-4 py-2 transition-all duration-200 md:px-5"
       >
         <SearchIcon className="h-5 w-5 shrink-0 text-white/40" />
         <input
@@ -82,6 +94,11 @@ export default function MangaCatalogPage() {
           aria-label="Search manga titles"
           className="relative z-10 w-full bg-transparent text-[16px] font-medium tracking-[-0.01em] text-white outline-none placeholder:text-white/35"
         />
+        <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          <span className="text-[11px] font-semibold normal-case tracking-normal text-white/80">
+            MangaDex · Safe only
+          </span>
+        </label>
         {query ? (
           <button
             type="button"
@@ -95,7 +112,7 @@ export default function MangaCatalogPage() {
         <button
           type="submit"
           disabled={loading}
-          className="relative z-10 h-9 shrink-0 rounded-full bg-white px-4 text-[13px] font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+          className="relative z-10 h-9 shrink-0 rounded-full px-4 text-[13px] font-bold transition disabled:opacity-40"
         >
           Search
         </button>
@@ -117,8 +134,7 @@ export default function MangaCatalogPage() {
               Manga catalog unavailable
             </p>
             <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-white/40">
-              {error} Set <code className="text-white/60">MANGA_API_URL</code> for
-              this deployment to enable the manga catalog.
+              {error} AniFox’s manga endpoints run on this deployment; check back if a source is temporarily offline.
             </p>
             <button
               type="button"
@@ -142,16 +158,18 @@ export default function MangaCatalogPage() {
           </div>
         ) : items.length ? (
           <div className="stagger grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-            {items.map((item) => (
-              <Link
-                key={item.id}
-                href={`/manga/${encodeURIComponent(item.id)}`}
-                className="group block min-w-0"
-              >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#17181d] ring-1 ring-white/[0.06]">
-                  {item.image ? (
+            {items.map((item) => {
+              const cover = mangaImageSrc(item.image);
+              return (
+                <Link
+                  key={item.id}
+                  href={`/manga/${encodeURIComponent(item.id)}`}
+                  className="manga-client-card group block min-w-0"
+                >
+                <div className="manga-cover relative aspect-[2/3] overflow-hidden rounded-xl bg-[#111014] ring-1 ring-white/[0.06]">
+                  {cover ? (
                     <Image
-                      src={item.image}
+                      src={cover}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 42vw, (max-width: 1000px) 22vw, 170px"
@@ -168,6 +186,9 @@ export default function MangaCatalogPage() {
                       Read now
                     </span>
                   </div>
+                  <span className="absolute left-2 top-2 rounded-full border border-white/15 bg-black/65 px-2 py-1 text-[8px] font-bold uppercase tracking-[0.13em] text-white/80 backdrop-blur">
+                    Safe · MangaDex
+                  </span>
                 </div>
                 <p className="mt-3 truncate text-[13px] font-semibold tracking-[-0.01em] text-white/90 transition group-hover:text-white">
                   {item.title}
@@ -177,8 +198,9 @@ export default function MangaCatalogPage() {
                     {item.chapter}
                   </p>
                 ) : null}
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-6 py-12 text-center">

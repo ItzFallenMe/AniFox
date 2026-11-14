@@ -61,6 +61,8 @@ read.js
 .env.*
 !.env.example
 !**/.env.example
+.dev.vars*
+.wrangler/
 keys.json
 
 # expression for github history cleaing

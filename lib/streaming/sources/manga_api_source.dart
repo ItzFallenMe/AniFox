@@ -8,10 +8,10 @@ import 'package:anifox/streaming/models/stream_source.dart';
 import 'package:anifox/streaming/state/manga_source.dart';
 import 'package:http/http.dart' as http;
 
-/// Client for the separately deployable AniFox manga API.
+/// Client for the AniFox web app's shared `/api/manga` routes.
 ///
-/// The service URL is supplied using `--dart-define=MANGA_API_URL=...`; the
-/// application never contacts the scraped content host directly.
+/// Configure the same-origin API with `ANIFOX_API_URL`. The app never calls a
+/// manga provider's scraper endpoints directly.
 class MangaApiSource extends MangaSource {
   static const sourceId = 'anifox-manga-api';
   static const sourceName = 'AniFox Manga';
@@ -39,7 +39,7 @@ class MangaApiSource extends MangaSource {
   }
 
   static StreamSource? get configuredSource {
-    final rawUrl = Env.MANGA_API_URL.trim();
+    final rawUrl = Env.ANIFOX_API_URL.trim();
     final uri = Uri.tryParse(rawUrl);
     if (uri == null ||
         !uri.hasAuthority ||
@@ -53,7 +53,7 @@ class MangaApiSource extends MangaSource {
       kind: StreamSourceKind.builtin,
       mediaType: MediaType.MANGA,
       baseUrl: rawUrl.replaceFirst(RegExp(r'/+$'), ''),
-      tagline: 'Manga catalog and chapter reader',
+      tagline: 'MangaDex · Safe-rated titles only',
     );
   }
 
@@ -110,8 +110,12 @@ class MangaApiSource extends MangaSource {
 
     final result = await _getJson(
       _endpoint(
-        ['api', 'search', query.trim()],
-        query: {'page': '${page < 1 ? 1 : page}'},
+        ['api', 'manga', 'search'],
+        query: {
+          'query': query.trim(),
+          'page': '${page < 1 ? 1 : page}',
+          'source': 'all',
+        },
       ),
     );
     final root = _asMap(result);
@@ -124,7 +128,7 @@ class MangaApiSource extends MangaSource {
   Future<List<UnifiedMedia>> getTrending({int page = 1}) async {
     final result = await _getJson(
       _endpoint(
-        ['api', 'mangaList'],
+        ['api', 'manga', 'catalog'],
         query: {'page': '${page < 1 ? 1 : page}'},
       ),
     );
@@ -156,6 +160,7 @@ class MangaApiSource extends MangaSource {
       final chapterId = _readString(chapter['id']);
       final title = _readString(chapter['name']);
       if (chapterId == null || title == null) continue;
+      final languageCode = _readString(chapter['languageCode']);
 
       final numberMatch = _chapterNumberPattern.firstMatch(title);
       final parsedNumber = numberMatch == null
@@ -169,6 +174,7 @@ class MangaApiSource extends MangaSource {
           number: parsedNumber ?? (chapters.length - index).toDouble(),
           title: title,
           uploadDate: _readString(chapter['createdAt']),
+          languageCode: languageCode,
         ),
       );
     }
@@ -186,9 +192,10 @@ class MangaApiSource extends MangaSource {
     final mangaId = chapterId.substring(0, separator);
     final sourceChapterId = chapterId.substring(separator + 2);
     final result = _asMap(
-      await _getJson(_endpoint(['api', 'manga', mangaId, sourceChapterId])),
+      await _getJson(
+        _endpoint(['api', 'manga', 'chapter', mangaId, sourceChapterId]),
+      ),
     );
-
     return _asList(result['images'])
         .map((entry) {
           final image = _asMap(entry);
@@ -204,7 +211,7 @@ class MangaApiSource extends MangaSource {
     if (providerId.trim().isEmpty) {
       throw const MangaApiException('A manga source id is required.');
     }
-    return _getJson(_endpoint(['api', 'manga', providerId]));
+    return _getJson(_endpoint(['api', 'manga', 'title', providerId]));
   }
 
   UnifiedMedia? _mapCatalogItem(dynamic raw) {
@@ -212,6 +219,8 @@ class MangaApiSource extends MangaSource {
     final id = _readString(item['id']);
     final title = _readString(item['title']);
     if (id == null || title == null) return null;
+    final provider = _readString(item['source']) ?? sourceInfo.name;
+    final image = _readString(item['image']);
 
     return UnifiedMedia(
       id: id,
@@ -221,18 +230,18 @@ class MangaApiSource extends MangaSource {
       url: _readString(item['url']),
       type: MediaType.MANGA,
       title: MediaTitle(english: title, romaji: title),
-      cover: _readString(item['image']) == null
-          ? null
-          : _normalizeImageUrl(_readString(item['image'])!),
+      cover: image == null ? null : _normalizeImageUrl(image),
       description: _readString(item['description']),
       chapters: _parseChapterCount(_readString(item['chapter'])),
-      source: sourceInfo.name,
+      source: provider,
     );
   }
 
   UnifiedMedia _mapDetails(dynamic raw, String mangaId) {
     final details = _asMap(raw);
     final title = _readString(details['name']) ?? 'Unknown manga';
+    final provider = _readString(details['source']) ?? sourceInfo.name;
+    final image = _readString(details['imageUrl']);
     final genreValues = _asList(
       details['genres'],
     ).map(_readString).whereType<String>().toList(growable: false);
@@ -245,14 +254,12 @@ class MangaApiSource extends MangaSource {
       sourceName: sourceInfo.name,
       type: MediaType.MANGA,
       title: MediaTitle(english: title, romaji: title),
-      cover: _readString(details['imageUrl']) == null
-          ? null
-          : _normalizeImageUrl(_readString(details['imageUrl'])!),
+      cover: image == null ? null : _normalizeImageUrl(image),
       description: _readString(details['description']),
       genres: genreValues,
       chapters: chapters.isEmpty ? null : chapters.length,
       status: _readString(details['status']),
-      source: sourceInfo.name,
+      source: provider,
     );
   }
 
@@ -260,9 +267,14 @@ class MangaApiSource extends MangaSource {
     if (value.isEmpty) return value;
     if (value.startsWith('//')) return 'https:$value';
     final uri = Uri.tryParse(value);
-    if (uri != null && uri.hasScheme) return value;
-    if (value.startsWith('/')) return 'https://ww6.mangakakalot.tv$value';
-    return 'https://ww6.mangakakalot.tv/$value';
+    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return '';
+    final origin = Uri.parse(sourceInfo.baseUrl);
+    return origin
+        .replace(
+          path: '/api/image',
+          queryParameters: {'url': uri.toString()},
+        )
+        .toString();
   }
 
   int? _parseChapterCount(String? value) {

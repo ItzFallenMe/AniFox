@@ -11,6 +11,7 @@ class UnifiedEpisode {
   final String? airDate;
   final String? uploadDate;
   final String? scanlator;
+  final String? languageCode;
 
   const UnifiedEpisode({
     required this.id,
@@ -23,6 +24,7 @@ class UnifiedEpisode {
     this.scanlator,
     this.airDate,
     this.uploadDate,
+    this.languageCode,
   });
 
   factory UnifiedEpisode.fromChapter(UnifiedChapter chapter) {
@@ -34,6 +36,7 @@ class UnifiedEpisode {
       scanlator: chapter.scanlator,
       airDate: chapter.airDate,
       uploadDate: chapter.uploadDate,
+      languageCode: chapter.languageCode,
     );
   }
 
@@ -48,6 +51,7 @@ class UnifiedEpisode {
     String? airDate,
     String? uploadDate,
     String? scanlator,
+    String? languageCode,
   }) {
     return UnifiedEpisode(
       id: id ?? this.id,
@@ -60,6 +64,7 @@ class UnifiedEpisode {
       airDate: airDate ?? this.airDate,
       uploadDate: uploadDate ?? this.uploadDate,
       scanlator: scanlator ?? this.scanlator,
+      languageCode: languageCode ?? this.languageCode,
     );
   }
 
@@ -75,6 +80,7 @@ class UnifiedEpisode {
       'airDate': airDate,
       'uploadDate': uploadDate,
       'scanlator': scanlator,
+      'languageCode': languageCode,
     };
   }
 }

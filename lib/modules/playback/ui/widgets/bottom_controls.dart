@@ -16,7 +16,6 @@ import 'package:anifox/common/models/video_stream.dart';
 import 'package:anifox/common/widgets/app_bottom_sheet.dart';
 import 'package:anifox/common/widgets/app_sheet_action.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:window_manager/window_manager.dart';
 
 class BottomControls extends ConsumerStatefulWidget {
   final bool showControls;
@@ -50,41 +49,7 @@ class BottomControls extends ConsumerStatefulWidget {
 
 class _BottomControlsState extends ConsumerState<BottomControls> {
   double? _dragingValue;
-  bool _isFullScreen = false;
   bool _isPortrait = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      windowManager.isFullScreen().then((val) {
-        if (mounted) setState(() => _isFullScreen = val);
-      });
-    }
-  }
-
-  void _toggleFullScreen() async {
-    if (widget.onToggleFullScreen != null) {
-      widget.onToggleFullScreen!();
-      return;
-    }
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      bool isFull = await windowManager.isFullScreen();
-      if (isFull) {
-        await windowManager.setFullScreen(false);
-        if (Platform.isWindows) {
-          await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-        }
-        if (mounted) setState(() => _isFullScreen = false);
-      } else {
-        if (Platform.isWindows) {
-          await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-        }
-        await windowManager.setFullScreen(true);
-        if (mounted) setState(() => _isFullScreen = true);
-      }
-    }
-  }
 
   void _toggleOrientation() {
     setState(() => _isPortrait = !_isPortrait);
@@ -436,10 +401,10 @@ class _BottomControlsState extends ConsumerState<BottomControls> {
         if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
           const SizedBox(width: 14),
           PlayerIconButton(
-            icon: (widget.isFullScreen ?? _isFullScreen)
+            icon: widget.isFullScreen == true
                 ? Icons.fullscreen_exit_rounded
                 : Icons.fullscreen_rounded,
-            onTap: _toggleFullScreen,
+            onTap: widget.onToggleFullScreen,
           ),
         ],
       ],

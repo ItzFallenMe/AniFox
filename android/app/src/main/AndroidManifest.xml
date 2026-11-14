@@ -105,6 +105,13 @@
 
     <queries>
         <intent>
+            <action android:name="com.discord.socialsdk.rpc.IDiscordRpcService" />
+        </intent>
+        <package android:name="com.discord" />
+        <package android:name="com.discord.canary" />
+        <package android:name="com.discord.ptb" />
+        <package android:name="com.discord.debug" />
+        <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>

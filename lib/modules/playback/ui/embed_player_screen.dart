@@ -1,13 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_all/webview_all.dart';
+import 'package:webview_all_android/webview_all_android.dart';
 
+import 'package:anifox/common/state/security_prefs_provider.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
-import 'package:anifox/modules/downloads/data/download_provider.dart';
-import 'package:anifox/modules/downloads/ui/download_web_screen.dart';
+import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
 import 'package:anifox/modules/playback/models/player_mode.dart';
 import 'package:anifox/streaming/catalog.dart';
@@ -34,6 +37,8 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   String? _url;
   bool _isLoading = true;
   int _progress = 0;
+  Widget? _fullscreenWebView;
+  VoidCallback? _hideFullscreenWebView;
 
   UnifiedMedia get _media => widget.mode.media;
   int get _episodeNumber => widget.mode.episode.number.toInt();
@@ -88,34 +93,66 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
           },
         ),
       );
+
+    if (_controller.platform is AndroidWebViewController) {
+      unawaited(
+        (_controller.platform as AndroidWebViewController)
+            .setCustomWidgetCallbacks(
+              onShowCustomWidget: _showFullscreenWebView,
+              onHideCustomWidget: _onHideFullscreenWebView,
+            ),
+      );
+    }
   }
 
   Future<void> _openDownloads() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final url = DownloadProvider.urlFor(
-      _media,
-      season: _season,
-      episode: _episodeNumber,
-    );
-
-    if (url == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Downloads are not configured in this build.'),
-        ),
-      );
-      return;
-    }
+    final episodeLabel = switch (_media.type) {
+      MediaType.MOVIE => '',
+      MediaType.TV => 'Season $_season · Episode $_episodeNumber',
+      MediaType.ANIME => 'Episode $_episodeNumber',
+      _ => '',
+    };
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => DownloadWebScreen(
-          pageUrl: url,
-          mediaTitle: _media.title.getPreferedTitle,
-          episodeLabel: _episodeNumber > 0 ? 'Episode $_episodeNumber' : '',
+        builder: (_) => DownloadOptionsScreen(
+          media: _media,
+          season: _season,
+          episode: _episodeNumber,
+          episodeLabel: episodeLabel,
         ),
       ),
     );
+  }
+
+  void _showFullscreenWebView(
+    Widget fullscreenWidget,
+    VoidCallback onCustomWidgetHidden,
+  ) {
+    if (!mounted) {
+      onCustomWidgetHidden();
+      return;
+    }
+    setState(() {
+      _fullscreenWebView = fullscreenWidget;
+      _hideFullscreenWebView = onCustomWidgetHidden;
+    });
+  }
+
+  void _onHideFullscreenWebView() {
+    if (!mounted) {
+      _fullscreenWebView = null;
+      _hideFullscreenWebView = null;
+      return;
+    }
+    setState(() {
+      _fullscreenWebView = null;
+      _hideFullscreenWebView = null;
+    });
+  }
+
+  void _exitFullscreenWebView() {
+    _hideFullscreenWebView?.call();
   }
 
   Future<void> _loadSource(StreamSource source) async {
@@ -164,10 +201,15 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   }
 
   Future<void> _recordHistory() async {
+    // This history model currently stores anime episodes and manga pages only.
+    // Do not misfile movies or TV episodes as manga.
+    if (_media.type != MediaType.ANIME) return;
+    if (ref.read(securityPrefsProvider).incognitoMode) return;
+
     final repo = ref.read(historyRepositoryProvider);
     final entry = HistoryEntry()
       ..mediaId = _media.id
-      ..mediaType = _media.type == MediaType.ANIME ? 'anime' : 'manga'
+      ..mediaType = MediaType.ANIME.id
       ..itemNumber = widget.mode.episode.number
       ..itemTitle = widget.mode.episode.title
       ..mediaTitle = _media.title.getPreferedTitle
@@ -181,37 +223,64 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       ..lastUpdated = DateTime.now();
 
     try {
-      await repo.saveProgress(entry);
+      await repo.saveStartedEpisode(entry);
     } catch (_) {}
   }
 
-  List<StreamSource> get _selectableSources => aniFoxStreamSources
-      .where((source) => source.mediaType == _media.type)
-      .toList(growable: false);
+  // The bundled hosts are video embed services. Their source category is
+  // ANIME, but the same `/api/stream` route also supports movies and TV.
+  List<StreamSource> get _selectableSources => aniFoxStreamSources;
 
   String get _title {
-    final episode = _episodeNumber > 0 ? ' • Episode $_episodeNumber' : '';
-    return '${_media.title.getPreferedTitle}$episode';
+    final title = _media.title.getPreferedTitle;
+    return switch (_media.type) {
+      MediaType.MOVIE => title,
+      MediaType.TV => '$title • Season $_season · Episode $_episodeNumber',
+      MediaType.ANIME => '$title • Episode $_episodeNumber',
+      _ => title,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: _fullscreenWebView == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _exitFullscreenWebView();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
           children: [
-            Positioned.fill(child: _buildPlayer()),
-            Positioned(top: 0, left: 0, right: 0, child: _buildTopBar(context)),
-            if (_isLoading && _url != null)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  value: _progress > 0 ? _progress / 100 : null,
-                  minHeight: 2,
-                  backgroundColor: Colors.white12,
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _buildPlayer()),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildTopBar(context),
+                  ),
+                  if (_isLoading && _url != null)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(
+                        value: _progress > 0 ? _progress / 100 : null,
+                        minHeight: 2,
+                        backgroundColor: Colors.white12,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (_fullscreenWebView != null)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black,
+                  child: _fullscreenWebView!,
                 ),
               ),
           ],
@@ -350,4 +419,3 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     );
   }
 }
-

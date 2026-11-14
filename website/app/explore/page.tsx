@@ -58,8 +58,14 @@ function ExploreContent() {
   const items = useMemo(() => applyFilter(data?.items ?? [], filter), [data, filter]);
 
   return (
-    <div className="animate-fade-in px-6 pb-20 pt-[76px] md:pt-8 lg:px-20">
-      <div className="flex h-14 items-center gap-3 rounded-2xl border border-white/[0.07] bg-[#0f1014] px-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)] transition-all duration-200 focus-within:border-white/20 focus-within:bg-[#15171d] md:px-5">
+    <div className="discover-page animate-fade-in px-6 pb-20 pt-[76px] md:pt-8 lg:px-20">
+      <header className="mb-7 max-w-2xl">
+        <p className="mb-3 text-[9px] font-black uppercase tracking-[0.32em] text-brand">— Discover</p>
+        <h1 className="font-display text-3xl font-black tracking-tight text-white sm:text-5xl">Find your next story.</h1>
+        <p className="mt-3 text-sm leading-relaxed text-white/50">Search films, series, and anime together. Results open on their detail pages.</p>
+      </header>
+
+      <div className="discover-search flex h-14 items-center gap-3 rounded-2xl border px-4 transition-all duration-200 md:px-5">
         <SearchIcon className="h-5 w-5 shrink-0 text-white/40" />
         <input
           value={query}
@@ -88,8 +94,8 @@ function ExploreContent() {
             type="button"
             onClick={() => setFilter(item.id)}
             aria-pressed={filter === item.id}
-            className={`relative z-10 flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium tracking-[-0.01em] outline-none transition-colors duration-200 ${
-              filter === item.id ? "bg-white text-black" : "text-white/50 hover:text-white"
+            className={`discover-filter relative z-10 flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium tracking-[-0.01em] outline-none transition-colors duration-200 ${
+              filter === item.id ? "text-black" : "text-white/50 hover:text-white"
             }`}
           >
             {item.label}

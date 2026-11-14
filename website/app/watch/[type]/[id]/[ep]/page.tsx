@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
-import { CastButton } from "@/components/cast-button";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { ErrorNotice } from "@/components/notice";
 import { useAsync } from "@/lib/hooks";
@@ -20,13 +19,26 @@ function parseType(value: string | string[] | undefined): MediaType | null {
   return value === "movie" || value === "tv" || value === "anime" ? value : null;
 }
 
+function parsePositiveInteger(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || !/^\d{1,16}$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseSeason(value: string | null): number {
+  if (!value || !/^\d{1,3}$/.test(value)) return 1;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 1;
+}
+
 function WatchContent() {
   const params = useParams<{ type: string; id: string; ep: string }>();
   const searchParams = useSearchParams();
   const type = parseType(params.type);
-  const id = Number(params.id);
-  const episode = Math.max(1, Number(params.ep) || 1);
-  const season = Math.max(1, Number(searchParams.get("season")) || 1);
+  const id = parsePositiveInteger(params.id);
+  const episode = parsePositiveInteger(params.ep) ?? 1;
+  const season = parseSeason(searchParams.get("season"));
 
   const [server, setServer] = useState<ServerId>(DEFAULT_SERVER);
   const [panel, setPanel] = useState<"servers" | "episodes" | null>(null);
@@ -64,7 +76,7 @@ function WatchContent() {
   }, [panel]);
 
   const { data, loading, error } = useAsync<MediaDetails | null>(async () => {
-    if (!type || !Number.isFinite(id)) return null;
+    if (!type || id === null) return null;
     if (type === "movie") return getMovieDetails(id);
     if (type === "tv") return getTvDetails(id);
 
@@ -75,7 +87,7 @@ function WatchContent() {
   }, [type, id]);
 
   const seasonEpisodes = useAsync<EpisodeInfo[]>(async () => {
-    if (type !== "tv") return [];
+    if (type !== "tv" || id === null) return [];
     return getTvSeason(id, season);
   }, [type, id, season]);
 
@@ -111,7 +123,9 @@ function WatchContent() {
     );
   }
   if (error) return <ErrorNotice message={error.message} />;
-  if (!data || !type) return <ErrorNotice message="This title could not be found." />;
+  if (!data || !type || id === null) {
+    return <ErrorNotice message="This title could not be found." />;
+  }
 
   const watchBase = `/watch/${type}/${id}`;
   const episodeTitle =
@@ -148,6 +162,16 @@ function WatchContent() {
           runtime: item.runtime,
           airDate: item.airDate,
         }));
+  const currentEpisodeIndex = episodes.findIndex((item) => item.number === episode);
+  const previousEpisode = currentEpisodeIndex > 0 ? episodes[currentEpisodeIndex - 1] : null;
+  const nextEpisode =
+    currentEpisodeIndex >= 0 && currentEpisodeIndex < episodes.length - 1
+      ? episodes[currentEpisodeIndex + 1]
+      : null;
+  const episodeHref = (number: number) => {
+    const query = type === "tv" && season !== 1 ? `?season=${season}` : "";
+    return `${watchBase}/${number}${query}`;
+  };
   const serverPanelOpen = panel === "servers";
   const episodesPanelOpen = panel === "episodes";
 
@@ -165,23 +189,6 @@ function WatchContent() {
           <ChevronLeftIcon />
         </Link>
         <div className="watch-mobile-bar-title">{data.title}</div>
-        {episodes.length > 1 ? (
-          <button
-            type="button"
-            className="watch-mobile-server"
-            onClick={() => setPanel("episodes")}
-          >
-            Episodes
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="watch-mobile-server"
-          onClick={() => setPanel("servers")}
-          aria-label={`Streaming server: ${serverById(server).name}`}
-        >
-          {serverById(server).name}
-        </button>
       </div>
 
       <div
@@ -195,9 +202,9 @@ function WatchContent() {
             key={`${server}-${embedUrl}`}
             src={embedUrl}
             title={`${data.title} player`}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allow="autoplay; fullscreen *; encrypted-media; picture-in-picture"
             allowFullScreen
-            referrerPolicy="no-referrer"
+            referrerPolicy="origin"
             className="vp-video vp-frame"
           />
         ) : (
@@ -221,24 +228,24 @@ function WatchContent() {
             {episodes.length > 1 ? (
               <div className="vp-step">
                 <Link
-                  className={`vp-step-btn ${episode <= 1 ? "is-disabled" : ""}`}
-                  href={episode > 1 ? `${watchBase}/${episode - 1}${type === "tv" && season > 1 ? `?season=${season}` : ""}` : `${watchBase}/${episode}`}
+                  className={`vp-step-btn ${previousEpisode ? "" : "is-disabled"}`}
+                  href={previousEpisode ? episodeHref(previousEpisode.number) : episodeHref(episode)}
                   aria-label="Previous episode"
-                  aria-disabled={episode <= 1}
+                  aria-disabled={!previousEpisode}
                   onClick={(event) => {
-                    if (episode <= 1) event.preventDefault();
+                    if (!previousEpisode) event.preventDefault();
                     event.stopPropagation();
                   }}
                 >
                   <ChevronLeftIcon />
                 </Link>
                 <Link
-                  className={`vp-step-btn ${episode >= episodes.length ? "is-disabled" : ""}`}
-                  href={episode < episodes.length ? `${watchBase}/${episode + 1}${type === "tv" && season > 1 ? `?season=${season}` : ""}` : `${watchBase}/${episode}`}
+                  className={`vp-step-btn ${nextEpisode ? "" : "is-disabled"}`}
+                  href={nextEpisode ? episodeHref(nextEpisode.number) : episodeHref(episode)}
                   aria-label="Next episode"
-                  aria-disabled={episode >= episodes.length}
+                  aria-disabled={!nextEpisode}
                   onClick={(event) => {
-                    if (episode >= episodes.length) event.preventDefault();
+                    if (!nextEpisode) event.preventDefault();
                     event.stopPropagation();
                   }}
                 >
@@ -246,7 +253,6 @@ function WatchContent() {
                 </Link>
               </div>
             ) : null}
-            <CastButton src={embedUrl} title={data.title} />
             <div className="vp-trigger-wrap" onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"
@@ -260,54 +266,6 @@ function WatchContent() {
                 <span className="vp-trigger-label">Server</span>
                 <span className="vp-trigger-value">{serverById(server).name}</span>
               </button>
-              <div
-                className={`vp-panel ${serverPanelOpen ? "is-open" : ""}`}
-                aria-hidden={!serverPanelOpen}
-                inert={!serverPanelOpen}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="vp-panel-box" role="menu" aria-label="Streaming servers">
-                  <div className="vp-panel-head">
-                    <span className="vp-panel-title">Streaming servers</span>
-                    <button
-                      type="button"
-                      className="vp-panel-close"
-                      onClick={() => setPanel(null)}
-                      aria-label="Close server list"
-                    >
-                      <CloseIcon />
-                    </button>
-                  </div>
-                  <div className="vp-panel-cols">
-                    <section className="vp-col">
-                      <div className="vp-col-title">Sources</div>
-                      <div className="vp-col-list" role="group" aria-label="Sources">
-                        {SERVERS.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            role="menuitemradio"
-                            aria-checked={item.id === server}
-                            onClick={() => chooseServer(item.id)}
-                            className={`vp-opt ${item.id === server ? "is-active" : ""}`}
-                          >
-                            <span className="vp-opt-check">
-                              <CheckIcon />
-                            </span>
-                            <span className="vp-opt-text">
-                              <span className="vp-opt-label">{item.name}</span>
-                              <span className="vp-opt-detail">{item.tagline}</span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-                  <div className="vp-panel-foot">
-                    <span className="vp-note">Each source uses its own player and may show ads.</span>
-                  </div>
-                </div>
-              </div>
             </div>
             {episodes.length ? (
               <button
@@ -326,6 +284,55 @@ function WatchContent() {
                 <span className="vp-trigger-value">Episode {episode}</span>
               </button>
             ) : null}
+          </div>
+        </div>
+
+        <div
+          className={`vp-panel ${serverPanelOpen ? "is-open" : ""}`}
+          aria-hidden={!serverPanelOpen}
+          inert={!serverPanelOpen}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="vp-panel-box" role="menu" aria-label="Streaming servers">
+            <div className="vp-panel-head">
+              <span className="vp-panel-title">Streaming servers</span>
+              <button
+                type="button"
+                className="vp-panel-close"
+                onClick={() => setPanel(null)}
+                aria-label="Close server list"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="vp-panel-cols">
+              <section className="vp-col">
+                <div className="vp-col-title">Sources</div>
+                <div className="vp-col-list" role="group" aria-label="Sources">
+                  {SERVERS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={item.id === server}
+                      onClick={() => chooseServer(item.id)}
+                      className={`vp-opt ${item.id === server ? "is-active" : ""}`}
+                    >
+                      <span className="vp-opt-check">
+                        <CheckIcon />
+                      </span>
+                      <span className="vp-opt-text">
+                        <span className="vp-opt-label">{item.name}</span>
+                        <span className="vp-opt-detail">{item.tagline}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+            <div className="vp-panel-foot">
+              <span className="vp-note">Each source uses its own player and may show ads.</span>
+            </div>
           </div>
         </div>
 
@@ -376,12 +383,11 @@ function WatchContent() {
             <div className="vp-eps-scroll">
               <div className="vp-eps-list">
                 {episodes.map((item, index) => {
-                  const query = type === "tv" && season > 1 ? `?season=${season}` : "";
                   const current = item.number === episode;
                   return (
                     <Link
                       key={item.number}
-                      href={`${watchBase}/${item.number}${query}`}
+                      href={episodeHref(item.number)}
                       className={`vp-ep ${current ? "is-current" : ""}`}
                       style={{ "--i": Math.min(index, 12) } as CSSProperties}
                       aria-current={current ? "true" : undefined}
@@ -446,20 +452,18 @@ function WatchContent() {
               <ListIcon /> Episodes
             </button>
           ) : null}
-          <CastButton src={embedUrl} title={data.title} />
         </div>
 
         {data.overview ? <p className="watch-mobile-overview">{data.overview}</p> : null}
 
         {episodes.length > 1 ? (
           <div className="watch-mobile-chips" aria-label="Episodes">
-            {episodes.slice(0, 40).map((item) => {
-              const query = type === "tv" && season > 1 ? `?season=${season}` : "";
-              const current = item.number === episode;
+              {episodes.slice(0, 40).map((item) => {
+                const current = item.number === episode;
               return (
                 <Link
                   key={item.number}
-                  href={`${watchBase}/${item.number}${query}`}
+                  href={episodeHref(item.number)}
                   aria-current={current ? "true" : undefined}
                   className={current ? "is-current" : ""}
                 >

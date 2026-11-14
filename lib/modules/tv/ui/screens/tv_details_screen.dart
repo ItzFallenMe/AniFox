@@ -20,6 +20,8 @@ import 'package:anifox/modules/browse/state/episodes_provider.dart';
 import 'package:anifox/modules/browse/state/media_preference_provider.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
+import 'package:anifox/modules/downloads/data/download_provider.dart';
+import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/modules/playback/models/player_mode.dart';
 import 'package:anifox/modules/reader/models/reader_mode.dart';
 import 'package:anifox/modules/tracking/models/models/tracked_list_item.dart';
@@ -383,6 +385,18 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll('\n', ' ')
         .trim();
+    final downloadEpisode = nextTarget?.episode;
+    final downloadSeason =
+        downloadEpisode?.season ?? int.tryParse(media.season ?? '') ?? 1;
+    final downloadEpisodeNumber = downloadEpisode?.number.round() ?? 1;
+    final canDownload =
+        !isManga &&
+        DownloadProvider.linksUriFor(
+              media,
+              season: downloadSeason,
+              episode: downloadEpisodeNumber,
+            ) !=
+            null;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -691,7 +705,63 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
                         );
                       },
                     ),
-                  
+                  if (canDownload)
+                    AppFocusHover(
+                      onTap: () {
+                        final episodeLabel = switch (media.type) {
+                          MediaType.MOVIE => '',
+                          MediaType.TV =>
+                            'Season $downloadSeason · Episode $downloadEpisodeNumber',
+                          MediaType.ANIME =>
+                            'Episode $downloadEpisodeNumber',
+                          _ => '',
+                        };
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => DownloadOptionsScreen(
+                              media: media,
+                              season: downloadSeason,
+                              episode: downloadEpisodeNumber,
+                              episodeLabel: episodeLabel,
+                            ),
+                          ),
+                        );
+                      },
+                      builder: (context, isFocused, isHovered) {
+                        final active = isFocused || isHovered;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 11,
+                          ),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(radius),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.download_rounded,
+                                size: 15,
+                                color: active ? Colors.black : cs.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Download',
+                                style: TextStyle(
+                                  color: active ? Colors.black : Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   AppFocusHover(
                     onTap: () {
                       if (tracker is RemoteTracker &&

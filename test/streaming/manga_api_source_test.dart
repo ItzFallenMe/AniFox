@@ -11,13 +11,16 @@ void main() {
   group('MangaApiSource', () {
     test('maps search results into AniFox manga media', () async {
       final client = MockClient((request) async {
-        expect(request.url.pathSegments, ['api', 'search', 'One Piece']);
+        expect(request.url.pathSegments, ['api', 'manga', 'search']);
+        expect(request.url.queryParameters['query'], 'One Piece');
         expect(request.url.queryParameters['page'], '2');
+        expect(request.url.queryParameters['source'], 'all');
         return _jsonResponse({
           'mangaList': [
             {
               'id': 'one-piece',
               'title': 'One Piece',
+              'source': 'mangadex',
               'image': '//cdn.example/cover.jpg',
               'description': 'A pirate adventure',
             },
@@ -36,13 +39,14 @@ void main() {
       expect(results.single.id, 'one-piece');
       expect(results.single.providerId, 'one-piece');
       expect(results.single.type, MediaType.MANGA);
+      expect(results.single.source, 'mangadex');
       expect(results.single.title.getPreferedTitle, 'One Piece');
       expect(results.single.cover, 'https://cdn.example/cover.jpg');
     });
 
     test('maps chapter ids and page image URLs', () async {
       final client = MockClient((request) async {
-        if (request.url.path == '/api/manga/one-piece') {
+        if (request.url.path == '/api/manga/title/one-piece') {
           return _jsonResponse({
             'name': 'One Piece',
             'chapterList': [
@@ -51,7 +55,7 @@ void main() {
             ],
           });
         }
-        if (request.url.path == '/api/manga/one-piece/chapter-2') {
+        if (request.url.path == '/api/manga/chapter/one-piece/chapter-2') {
           return _jsonResponse({
             'images': [
               {'image': '//cdn.example/page-1.jpg'},
@@ -83,6 +87,27 @@ void main() {
         throwsA(isA<MangaApiException>()),
       );
     });
+  });
+
+  test('resolves relative proxied image URLs against the manga API root', () async {
+    final client = MockClient((request) async {
+      return _jsonResponse({
+        'mangaList': [
+          {
+            'id': 'mangapill-encoded-id',
+            'title': 'Sample manga',
+            'source': 'mangapill',
+            'image': '/api/image?url=https%3A%2F%2Fcdn.mangapill.com%2Fcover.jpg',
+          },
+        ],
+      });
+    });
+    final source = _source(client);
+
+    final results = await source.search('Sample', MediaType.MANGA);
+
+    expect(results.single.cover, startsWith('https://manga.example/api/image?url='));
+    expect(results.single.source, 'mangapill');
   });
 }
 

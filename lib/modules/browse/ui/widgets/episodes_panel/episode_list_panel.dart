@@ -457,24 +457,31 @@ class _EpisodeListPanelState extends ConsumerState<EpisodeListPanel> {
         );
 
         // 5. Single-pass Deduplication & Chunk Filtering
-        final dedupedMap = <double, UnifiedEpisode>{};
+        final dedupedMap = <String, UnifiedEpisode>{};
 
         for (final ep in seasonEpisodes) {
           if (activeChunk.min != null &&
               (ep.number < activeChunk.min! || ep.number > activeChunk.max!)) {
             continue;
           }
-          if (!dedupedMap.containsKey(ep.number) ||
+          final dedupeKey = widget.media.type == MediaType.MANGA
+              ? '${ep.number}:${ep.languageCode ?? "unknown"}'
+              : '${ep.number}';
+          if (!dedupedMap.containsKey(dedupeKey) ||
               ep.scanlator == prefScanlator) {
-            dedupedMap[ep.number] = ep;
+            dedupedMap[dedupeKey] = ep;
           }
         }
 
         final finalEpisodes = dedupedMap.values.toList()
           ..sort(
-            (a, b) => _descending
-                ? b.number.compareTo(a.number)
-                : a.number.compareTo(b.number),
+            (a, b) {
+              final numberOrder = _descending
+                  ? b.number.compareTo(a.number)
+                  : a.number.compareTo(b.number);
+              if (numberOrder != 0) return numberOrder;
+              return (a.languageCode ?? '').compareTo(b.languageCode ?? '');
+            },
           );
 
         int staggerIndex = 2;

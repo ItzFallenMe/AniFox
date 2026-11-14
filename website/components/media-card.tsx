@@ -28,7 +28,7 @@ export function MediaCard({ media, fluid = false, rank }: MediaCardProps) {
   );
 
   const art = (
-    <div className={`relative z-20 aspect-[2/3] shrink-0 overflow-hidden rounded-lg bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-300 group-hover/card:-translate-y-2 group-hover/card:ring-white/20 group-focus-visible/card:ring-white/60 ${fluid ? "w-full" : "w-[130px] sm:w-[160px] lg:w-[185px]"}`}>
+    <div className={`media-card-art relative z-20 aspect-[2/3] shrink-0 overflow-hidden rounded-xl bg-[#111014] ring-1 ring-white/5 transition-all duration-300 group-hover/card:-translate-y-2 group-hover/card:ring-white/20 group-focus-visible/card:ring-white/60 ${fluid ? "w-full" : "w-[130px] sm:w-[160px] lg:w-[185px]"}`}>
       {image}
     </div>
   );
@@ -39,12 +39,12 @@ export function MediaCard({ media, fluid = false, rank }: MediaCardProps) {
         href={titleHref(media)}
         aria-label={`#${rank} ${media.title}`}
         style={{ "--i": Math.min(rank - 1, 12) } as CSSProperties}
-        className="group/card relative flex shrink-0 snap-start items-center pr-2 outline-none lg:pr-6"
+        className="media-card group/card relative flex shrink-0 snap-start items-center pr-2 outline-none lg:pr-6"
       >
         <span aria-hidden="true" className="rank-num">
           {rank}
         </span>
-        <div className="relative z-20 aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-lg bg-[#1a1c24] ring-1 ring-white/5 transition-all duration-300 group-hover/card:-translate-y-2 group-hover/card:ring-white/20 sm:w-[130px] lg:w-[160px]">
+        <div className="media-card-art relative z-20 aspect-[2/3] w-[110px] shrink-0 overflow-hidden rounded-xl bg-[#111014] ring-1 ring-white/5 transition-all duration-300 group-hover/card:-translate-y-2 group-hover/card:ring-white/20 sm:w-[130px] lg:w-[160px]">
           {image}
         </div>
       </Link>
@@ -54,7 +54,7 @@ export function MediaCard({ media, fluid = false, rank }: MediaCardProps) {
   return (
     <Link
       href={titleHref(media)}
-      className={`group/card relative flex shrink-0 snap-start flex-col outline-none ${fluid ? "w-full" : "w-[130px] sm:w-[160px] lg:w-[185px]"}`}
+      className={`media-card group/card relative flex shrink-0 snap-start flex-col outline-none ${fluid ? "w-full" : "w-[130px] sm:w-[160px] lg:w-[185px]"}`}
     >
       {art}
       <div className="mt-2 min-w-0">
@@ -64,7 +64,7 @@ export function MediaCard({ media, fluid = false, rank }: MediaCardProps) {
         <p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[10.5px] font-medium text-white/45">
           {media.score != null && media.score > 0 ? (
             <span className="flex shrink-0 items-center text-white/65">
-              <StarIcon className="mr-1 h-2.5 w-2.5" />
+              <StarIcon className="mr-1 h-2.5 w-2.5 text-[#ffad78]" />
               {media.score.toFixed(1)}
             </span>
           ) : null}
