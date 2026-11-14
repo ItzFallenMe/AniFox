@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:anifox/common/models/ui_style_enums.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/common/widgets/app_scaffold.dart';
 import 'package:anifox/common/widgets/smart_image.dart';
