@@ -39,7 +39,8 @@ function isAllowedPath(path: string) {
   return (
     /^\/trending\/(?:all|movie|tv)\/(?:day|week)$/.test(path) ||
     /^\/search\/multi$/.test(path) ||
-    /^\/(?:movie|tv)\/(?:popular|top_rated|upcoming|now_playing|airing_today|on_the_air)$/.test(path) ||
+    /^\/movie\/(?:popular|top_rated|upcoming|now_playing)$/.test(path) ||
+    /^\/tv\/(?:popular|top_rated|airing_today|on_the_air)$/.test(path) ||
     /^\/(?:movie|tv)\/\d{1,16}$/.test(path) ||
     /^\/tv\/\d{1,16}\/season\/\d{1,3}$/.test(path)
   );
