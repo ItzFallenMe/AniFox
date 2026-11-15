@@ -93,6 +93,7 @@ function safeProviderUrl(source: SourceId, path: string): string | null {
 }
 
 export async function OPTIONS() {
+  const id = requestId();
   return new Response(null, {
     status: 204,
     headers: {
@@ -101,6 +102,7 @@ export async function OPTIONS() {
       "Access-Control-Allow-Headers": "Accept",
       "Access-Control-Max-Age": "86400",
       "X-AniFox-API-Version": API_VERSION,
+      "X-Request-Id": id,
     },
   });
 }
