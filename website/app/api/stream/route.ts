@@ -69,13 +69,13 @@ function singleParam(params: URLSearchParams, key: string): string | null | fals
 function positiveId(value: string | null | false): string | null | false {
   if (value === false) return false;
   if (value === null) return null;
-  return /^\\d{1,16}$/.test(value) && /[1-9]/.test(value) ? value : false;
+  return /^\d{1,16}$/.test(value) && /[1-9]/.test(value) ? value : false;
 }
 
 function seasonNumber(value: string | null | false): string | null | false {
   if (value === false) return false;
   if (value === null) return "1";
-  if (!/^\\d{1,3}$/.test(value)) return false;
+  if (!/^\d{1,3}$/.test(value)) return false;
   return String(Number(value));
 }
 
@@ -93,6 +93,12 @@ function safeProviderUrl(source: SourceId, path: string): string | null {
 export async function GET(request: Request) {
   const id = requestId();
   const params = new URL(request.url).searchParams;
+  const allowedKeys = new Set(["source", "type", "episode", "season", "tmdbId", "anilistId", "malId"]);
+  for (const key of params.keys()) {
+    if (!allowedKeys.has(key)) {
+      return apiError(id, 400, "UNKNOWN_PARAMETER", `Unknown query parameter: ${key}`);
+    }
+  }
 
   const sourceValue = singleParam(params, "source");
   const typeValue = singleParam(params, "type");
@@ -106,7 +112,7 @@ export async function GET(request: Request) {
     return apiError(id, 400, "INVALID_QUERY", "A query parameter is duplicated or has an invalid format.");
   }
 
-  if (typeof sourceValue !== "string" || !(sourceValue in SOURCES)) {
+  if (typeof sourceValue !== "string" || !Object.hasOwn(SOURCES, sourceValue)) {
     return apiError(id, 400, "UNSUPPORTED_SOURCE", "Choose a supported AniFox streaming source.");
   }
 
