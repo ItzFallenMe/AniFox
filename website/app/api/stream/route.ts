@@ -52,7 +52,9 @@ function apiError(
 ): Response {
   return Response.json(
     {
-      error: { code, message, requestId: id },
+      error: message,
+      code,
+      requestId: id,
       meta: { apiVersion: API_VERSION },
     },
     { status, headers: responseHeaders(id) },
