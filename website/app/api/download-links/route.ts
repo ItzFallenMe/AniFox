@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,4096}$/;
 const MAX_LINKS = 100;
 const MAX_HTML_BYTES = 3 * 1024 * 1024;
+const API_VERSION = "1";
 const REQUEST_TIMEOUT_MS = 15_000;
 const API_VERSION = "1";
 
@@ -196,23 +197,17 @@ export async function GET(request: Request) {
   if (!path) return jsonError(id, "The title does not have an ID supported by the download provider.", 400, "UNSUPPORTED_MEDIA_REQUEST");
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response: Response;
-    try {
-      response = await fetch(new URL(path.slice(1), provider), {
-        headers: { Accept: "text/html" },
-        cache: "no-store",
-        redirect: "manual",
-        signal: controller.signal,
-      });
-      // Redirects are deliberately not followed: provider responses must come
-      // from the configured origin, preventing server-side redirect pivots.
-      if (response.status >= 300 && response.status < 400) {
-        return jsonError(id, "The download provider redirected unexpectedly.", 502, "DOWNLOAD_PROVIDER_REDIRECT");
-      }
-    } finally {
-      clearTimeout(timeout);
+    const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    const response = await fetch(new URL(path.slice(1), provider), {
+      headers: { Accept: "text/html" },
+      cache: "no-store",
+      redirect: "manual",
+      signal,
+    });
+    // Redirects are deliberately not followed: provider responses must come
+    // from the configured origin, preventing server-side redirect pivots.
+    if (response.status >= 300 && response.status < 400) {
+      return jsonError(id, "The download provider redirected unexpectedly.", 502, "DOWNLOAD_PROVIDER_REDIRECT");
     }
 
     if (!response.ok || !(response.headers.get("content-type") ?? "").toLowerCase().includes("text/html")) {
@@ -236,9 +231,9 @@ export async function GET(request: Request) {
     const tooLarge = error instanceof Error && error.message === "DOWNLOAD_RESPONSE_TOO_LARGE";
     return jsonError(
       id,
-      tooLarge ? "The download provider response exceeded the size limit." : "The download provider could not be reached. Please try again.",
+      tooLarge ? "The download provider response exceeded the size limit." : timedOut ? "The download provider timed out." : "The download provider could not be reached. Please try again.",
       tooLarge ? 413 : 502,
-      tooLarge ? "DOWNLOAD_RESPONSE_TOO_LARGE" : "DOWNLOAD_PROVIDER_UNAVAILABLE",
+      tooLarge ? "DOWNLOAD_RESPONSE_TOO_LARGE" : timedOut ? "DOWNLOAD_PROVIDER_TIMEOUT" : "DOWNLOAD_PROVIDER_UNAVAILABLE",
     );
   }
 }
