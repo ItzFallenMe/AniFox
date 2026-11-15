@@ -72,11 +72,13 @@ function hasOnlyParams(url: URL, allowed: string[]) {
 
 
 export async function OPTIONS() {
+  const id = requestId();
   return new Response(null, {
     status: 204,
     headers: {
       ...commonHeaders,
       "Access-Control-Max-Age": "86400",
+      "X-Request-Id": id,
     },
   });
 }
