@@ -64,7 +64,8 @@
 | `/manga/[id]` | Manga details and hosted chapter list |
 | `/manga/[id]/[chapter]` | Manga reader |
 | `/credits` | Credits |
-| `/api/health` | API process and optional integration configuration status |\n| `/api/tmdb/[...path]` | Validated, cached server-side TMDB proxy |
+| `/api/health` | API process and optional integration configuration status |
+| `/api/tmdb/[...path]` | Validated, cached server-side TMDB proxy |
 | `/api/manga/[...path]` | Shared manga source API used by web and Flutter |
 | `/api/stream` | Validated redirect to a bundled playback provider |
 | `/api/stream/status` | Provider configuration and supported media types |
