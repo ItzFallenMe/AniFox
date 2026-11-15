@@ -5,7 +5,6 @@ const MAX_LINKS = 100;
 const MAX_HTML_BYTES = 3 * 1024 * 1024;
 const API_VERSION = "1";
 const REQUEST_TIMEOUT_MS = 15_000;
-const API_VERSION = "1";
 
 interface DownloadLink {
   quality: string;
@@ -229,6 +228,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     const tooLarge = error instanceof Error && error.message === "DOWNLOAD_RESPONSE_TOO_LARGE";
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
     return jsonError(
       id,
       tooLarge ? "The download provider response exceeded the size limit." : timedOut ? "The download provider timed out." : "The download provider could not be reached. Please try again.",
