@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -7,8 +9,10 @@ const API_VERSION = "1";
  * Reports local API process/configuration state only.
  * This endpoint does not probe upstream vendors or expose secret values.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const id = crypto.randomUUID();
+  const limited = await enforceApiRateLimit(request, id, "health");
+  if (limited) return limited;
   const checks = {
     tmdbConfigured: Boolean(process.env.TMDB_API_KEY?.trim()),
     mangaConfigured: true,
