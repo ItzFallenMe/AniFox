@@ -132,7 +132,10 @@ export async function GET(request: Request) {
     }
 
     const bytes = await readLimitedBytes(response);
-    return new Response(bytes, {
+    // Use a concrete ArrayBuffer for compatibility with the DOM BodyInit type.
+    const body = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(body).set(bytes);
+    return new Response(body, {
       status: 200,
       headers: {
         "Access-Control-Allow-Origin": "*",
