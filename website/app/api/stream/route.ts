@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const API_VERSION = "1";
@@ -109,6 +111,8 @@ export async function OPTIONS() {
 
 export async function GET(request: Request) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "stream");
+  if (limited) return limited;
   const params = new URL(request.url).searchParams;
   const allowedKeys = new Set(["source", "type", "episode", "season", "tmdbId", "anilistId", "malId"]);
   for (const key of params.keys()) {
