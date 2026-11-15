@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../../lib/api-rate-limit";
+
 // The shared manga adapters are packaged with this monorepo and execute in
 // this route; they are not a separately deployed service.
 import mangaApi from "../../../../../server/anifox-manga-api/server/sources.js";
@@ -88,6 +90,8 @@ export async function GET(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "manga", 2);
+  if (limited) return limited;
   const { path } = await context.params;
   const url = new URL(request.url);
   const [endpoint, first, second] = path;
