@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,4096}$/;
@@ -44,6 +46,8 @@ function getProviderOrigin(): URL | null {
 
 export async function GET(request: Request) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "download-link");
+  if (limited) return limited;
   const params = new URL(request.url).searchParams;
   if ([...params.keys()].some((key) => key !== "token")) {
     return error(id, "Unknown query parameter.", 400, "UNKNOWN_PARAMETER");
