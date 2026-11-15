@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
@@ -62,6 +64,8 @@ export async function GET(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "tmdb", 2);
+  if (limited) return limited;
   const apiKey = process.env.TMDB_API_KEY?.trim();
   if (!apiKey) {
     return jsonError(id, 503, "TMDB_NOT_CONFIGURED", "TMDB metadata is not configured on this deployment.");
