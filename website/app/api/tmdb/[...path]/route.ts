@@ -21,7 +21,7 @@ function requestId() {
 
 function jsonError(id: string, status: number, code: string, message: string) {
   return Response.json(
-    { error: { code, message, requestId: id }, meta: { apiVersion: API_VERSION } },
+    { error: message, code, requestId: id, meta: { apiVersion: API_VERSION } },
     {
       status,
       headers: {
