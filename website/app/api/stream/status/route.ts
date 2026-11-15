@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const API_VERSION = "1";
@@ -13,8 +15,10 @@ const PROVIDERS = [
  * Reports AniFox's local provider configuration.
  * This endpoint deliberately does not probe third-party hosts or claim uptime.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const id = crypto.randomUUID();
+  const limited = await enforceApiRateLimit(request, id, "stream-status");
+  if (limited) return limited;
 
   return Response.json(
     {
