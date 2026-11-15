@@ -61,6 +61,7 @@ async function readLimitedBytes(response: Response): Promise<Uint8Array> {
 }
 
 export async function OPTIONS() {
+  const id = requestId();
   return new Response(null, {
     status: 204,
     headers: {
@@ -68,6 +69,9 @@ export async function OPTIONS() {
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Accept",
       "Access-Control-Max-Age": "86400",
+      "X-Request-Id": id,
+      "X-AniFox-API-Version": API_VERSION,
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }
