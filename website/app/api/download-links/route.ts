@@ -1,7 +1,12 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,4096}$/;
 const MAX_LINKS = 100;
+const MAX_HTML_BYTES = 3 * 1024 * 1024;
+const API_VERSION = "1";
+const REQUEST_TIMEOUT_MS = 15_000;
 
 interface DownloadLink {
   quality: string;
@@ -11,19 +16,33 @@ interface DownloadLink {
   href: string;
 }
 
-function jsonError(message: string, status: number) {
+function requestId() {
+  return crypto.randomUUID();
+}
+
+function jsonError(id: string, message: string, status: number, code: string) {
   return Response.json(
-    { error: message },
-    { status, headers: { "Cache-Control": "no-store" } },
+    { error: message, code, requestId: id, meta: { apiVersion: API_VERSION } },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-Id": id,
+        "X-AniFox-API-Version": API_VERSION,
+      },
+    },
   );
 }
 
 function numericId(value: string | null) {
-  return value && /^\d{1,16}$/.test(value) && Number(value) > 0 ? value : null;
+  return value && /^\d{1,16}$/.test(value) && /[1-9]/.test(value) ? value : null;
 }
 
 function seasonNumber(value: string | null) {
-  return value && /^\d{1,3}$/.test(value) ? String(Number(value)) : "1";
+  if (value === null) return "1";
+  if (!/^\d{1,3}$/.test(value)) return null;
+  return String(Number(value));
 }
 
 function decodeHtml(value: string) {
@@ -50,9 +69,7 @@ function textContent(html: string) {
       .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
       .replace(/<!--([\s\S]*?)-->/g, " ")
       .replace(/<[^>]+>/g, " "),
-  )
-    .replace(/\s+/g, " ")
-    .trim();
+  ).replace(/\s+/g, " ").trim();
 }
 
 function spanText(html: string, className: RegExp) {
@@ -76,11 +93,17 @@ function parseLinks(html: string, providerOrigin: string): DownloadLink[] {
 
     let target: URL;
     try {
-      target = new URL(href, providerOrigin);
+      target = new URL(decodeHtml(href), providerOrigin);
     } catch {
       continue;
     }
-    if (target.origin !== providerOrigin || target.pathname !== "/get") continue;
+    if (
+      target.protocol !== "https:" ||
+      target.origin !== providerOrigin ||
+      target.pathname !== "/get" ||
+      [...target.searchParams.keys()].some((key) => key !== "t") ||
+      target.searchParams.getAll("t").length !== 1
+    ) continue;
 
     const token = target.searchParams.get("t");
     if (!token || !TOKEN_PATTERN.test(token) || seen.has(token)) continue;
@@ -100,59 +123,121 @@ function parseLinks(html: string, providerOrigin: string): DownloadLink[] {
   return links;
 }
 
-export async function GET(request: Request) {
-  const configuredProvider = process.env.DOWNLOAD_PROVIDER_URL?.trim();
-  if (!configuredProvider) {
-    return jsonError("Download links are not configured on this AniFox deployment.", 503);
+async function readLimitedText(response: Response) {
+  const length = Number(response.headers.get("content-length"));
+  if (Number.isFinite(length) && length > MAX_HTML_BYTES) {
+    throw new Error("DOWNLOAD_RESPONSE_TOO_LARGE");
   }
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let output = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_HTML_BYTES) {
+      await reader.cancel();
+      throw new Error("DOWNLOAD_RESPONSE_TOO_LARGE");
+    }
+    output += decoder.decode(value, { stream: true });
+  }
+  return output + decoder.decode();
+}
 
-  let provider: URL;
+function getProviderOrigin(): URL | null {
+  const configured = process.env.DOWNLOAD_PROVIDER_URL?.trim();
+  if (!configured) return null;
   try {
-    provider = new URL(configuredProvider);
+    const provider = new URL(configured);
+    if (
+      provider.protocol !== "https:" ||
+      provider.pathname !== "/" ||
+      provider.username ||
+      provider.password ||
+      provider.search ||
+      provider.hash ||
+      provider.port
+    ) return null;
+    return provider;
   } catch {
-    return jsonError("The download provider URL is invalid.", 503);
+    return null;
   }
-  if (
-    provider.protocol !== "https:" ||
-    provider.pathname !== "/" ||
-    provider.username ||
-    provider.password ||
-    provider.search ||
-    provider.hash
-  ) {
-    return jsonError("The download provider URL must be a valid HTTPS origin.", 503);
+}
+
+export async function GET(request: Request) {
+  const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "download-links", 5);
+  if (limited) return limited;
+  const params = new URL(request.url).searchParams;
+  const allowed = new Set(["type", "tmdbId", "anilistId", "episode", "season"]);
+  for (const key of params.keys()) {
+    if (!allowed.has(key)) return jsonError(id, `Unknown query parameter: ${key}`, 400, "UNKNOWN_PARAMETER");
+    if (params.getAll(key).length > 1) return jsonError(id, `Query parameter ${key} must appear once.`, 400, "DUPLICATE_PARAMETER");
   }
 
-  const params = new URL(request.url).searchParams;
+  const provider = getProviderOrigin();
+  if (!provider) {
+    return jsonError(id, "Download links are not configured with a valid HTTPS provider origin.", 503, "DOWNLOAD_PROVIDER_NOT_CONFIGURED");
+  }
+
   const type = params.get("type");
   const tmdb = numericId(params.get("tmdbId"));
   const anilist = numericId(params.get("anilistId"));
-  const episode = numericId(params.get("episode")) ?? "1";
+  const episode = params.has("episode") ? numericId(params.get("episode")) : "1";
   const season = seasonNumber(params.get("season"));
 
+  if ((params.has("tmdbId") && !tmdb) || (params.has("anilistId") && !anilist) ||
+      (params.has("episode") && !episode) || season === null) {
+    return jsonError(id, "One or more media IDs or episode values are invalid.", 400, "INVALID_MEDIA_ID");
+  }
+
   let path: string | null = null;
-  if (type === "movie" && tmdb) path = `/movie/${tmdb}`;
-  if (type === "tv" && tmdb) path = `/tv/${tmdb}/${season}/${episode}`;
-  if (type === "anime" && anilist) path = `/anime/${anilist}/${episode}`;
-  if (!path) return jsonError("The title does not have an ID supported by the download provider.", 400);
+  if (type === "movie" && tmdb && !params.has("anilistId")) path = `/movie/${tmdb}`;
+  if (type === "tv" && tmdb && episode && !params.has("anilistId")) path = `/tv/${tmdb}/${season}/${episode}`;
+  if (type === "anime" && anilist && episode && !params.has("tmdbId")) path = `/anime/${anilist}/${episode}`;
+  if (!path) return jsonError(id, "The title does not have an ID supported by the download provider.", 400, "UNSUPPORTED_MEDIA_REQUEST");
 
   try {
+    const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const response = await fetch(new URL(path.slice(1), provider), {
       headers: { Accept: "text/html" },
       cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
+      redirect: "manual",
+      signal,
     });
-    if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) {
-      return jsonError("The download provider could not load links for this title.", 502);
+    // Redirects are deliberately not followed: provider responses must come
+    // from the configured origin, preventing server-side redirect pivots.
+    if (response.status >= 300 && response.status < 400) {
+      return jsonError(id, "The download provider redirected unexpectedly.", 502, "DOWNLOAD_PROVIDER_REDIRECT");
     }
 
-    const html = await response.text();
+    if (!response.ok || !(response.headers.get("content-type") ?? "").toLowerCase().includes("text/html")) {
+      return jsonError(id, "The download provider could not load links for this title.", 502, "DOWNLOAD_PROVIDER_BAD_RESPONSE");
+    }
+
+    const html = await readLimitedText(response);
     const links = parseLinks(html, provider.origin);
     return Response.json(
       { links },
-      { headers: { "Cache-Control": "no-store" } },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+          "X-Request-Id": id,
+          "X-AniFox-API-Version": API_VERSION,
+        },
+      },
     );
-  } catch {
-    return jsonError("The download provider could not be reached. Please try again.", 502);
+  } catch (error) {
+    const tooLarge = error instanceof Error && error.message === "DOWNLOAD_RESPONSE_TOO_LARGE";
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    return jsonError(
+      id,
+      tooLarge ? "The download provider response exceeded the size limit." : timedOut ? "The download provider timed out." : "The download provider could not be reached. Please try again.",
+      tooLarge ? 413 : 502,
+      tooLarge ? "DOWNLOAD_RESPONSE_TOO_LARGE" : timedOut ? "DOWNLOAD_PROVIDER_TIMEOUT" : "DOWNLOAD_PROVIDER_UNAVAILABLE",
+    );
   }
 }

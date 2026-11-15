@@ -64,9 +64,11 @@
 | `/manga/[id]` | Manga details and hosted chapter list |
 | `/manga/[id]/[chapter]` | Manga reader |
 | `/credits` | Credits |
-| `/api/tmdb/[...path]` | Server-side TMDB proxy |
+| `/api/health` | API process and optional integration configuration status |
+| `/api/tmdb/[...path]` | Validated, cached server-side TMDB proxy |
 | `/api/manga/[...path]` | Shared manga source API used by web and Flutter |
 | `/api/stream` | Validated redirect to a bundled playback provider |
+| `/api/stream/status` | Provider configuration and supported media types |
 | `/api/download-links` | Server-side fetch of provider choices for the title page |
 | `/api/download-link` | Validated redirect for a selected provider link |
 | `/api/image` | Allow-listed manga image proxy |
@@ -99,12 +101,84 @@ website origin for metadata. `DISCORD_APPLICATION_ID` is public and is forwarded
 to Flutter desktop builds by `npm run flutter -- ...`. Never commit a populated
 `.env` file.
 
-## Streaming source API
+## API behavior
+
+All API routes expose the `X-AniFox-API-Version: 1` response header. Responses
+include an `X-Request-Id` header so a failing request can be identified without
+logging user content. JSON error responses use this shape:
+
+```json
+{
+  "error": "Human-readable explanation",
+  "code": "STABLE_ERROR_CODE",
+  "requestId": "request-id",
+  "meta": { "apiVersion": "1" }
+}
+```
+
+Successful response bodies retain their existing route-specific shapes for
+compatibility with the website and Flutter clients.
+
+### Health
+
+`GET /api/health` reports AniFox's local API status and whether optional
+integrations are configured. It does not expose secret values or probe external
+vendors; a configured integration is not a guarantee that the vendor is online.
+
+### TMDB
+
+`GET /api/tmdb/{path}` proxies only the supported trending, search, movie, TV
+and TV-season paths. Unknown paths, query keys, duplicate parameters, invalid
+page/language values and unsupported append fields are rejected. Successful
+metadata responses may be cached for 30 minutes. The API key remains server-side.
+
+### Manga
+
+`GET /api/manga/sources`, `search`, `catalog`, `title/{id}` and
+`chapter/{mangaId}/{chapterId}` use the shared MangaDex adapter. Search, paging,
+status and tag filters are validated; unknown or duplicate query keys are
+rejected. MangaDex Safe content-rating checks remain enforced by the adapter.
+The route preserves the existing success payloads used by web and Flutter.
+
+### Streaming
 
 The player and Flutter app build same-origin `/api/stream` URLs. The handler
-validates the source and media IDs, then redirects to one of the bundled
-providers: Vidly, VidBolt, Vidy or EmbedWave. The selected provider serves its
-own player and media; AniFox does not proxy playback bytes.
+validates source, media type and IDs, rejects unknown, duplicate or malformed
+query parameters, then redirects to a fixed HTTPS provider origin. AniFox does
+not accept arbitrary redirect URLs or proxy playback bytes.
+
+`GET /api/stream/status` returns configured providers and supported media
+types. A provider marked `configured` is present in AniFox's configuration;
+this does not mean the third-party host is currently available.
+
+### Downloads
+
+`GET /api/download-links` validates media IDs and the configured HTTPS provider
+origin, refuses unexpected redirects, limits the upstream HTML response size,
+and only returns same-origin provider tokens matching the expected `/get?t=`
+shape. `GET /api/download-link` validates a single token and redirects to the
+configured provider. AniFox does not proxy the resulting file.
+
+### Images
+
+`GET /api/image?url=...` only fetches HTTPS MangaDex image hosts, validates
+redirects against the same allowlist, accepts raster image content types only,
+and caps the response at 20 MiB. This prevents the route from becoming an
+arbitrary URL-fetching proxy.
+
+### Rate limiting
+
+Cloudflare deployments use the `ANIFOX_API_LIMITER` Worker binding configured
+in `wrangler.jsonc`. Each API route has a per-client allowance of 120 weighted
+requests per 60 seconds; search, image and download-link discovery consume
+additional weight. The client address is taken only from Cloudflare's
+`CF-Connecting-IP` header and SHA-256 hashed before use as a limiter key. AniFox
+does not persist or log client addresses.
+
+Cloudflare's built-in limiter is approximate and counters are local to each
+Cloudflare location; it is not a strict global quota. Shared networks can share
+an IP allowance. For deployments outside Cloudflare, configure equivalent
+platform rate limits. Local Next.js development skips the Worker binding.
 
 ## Download provider
 

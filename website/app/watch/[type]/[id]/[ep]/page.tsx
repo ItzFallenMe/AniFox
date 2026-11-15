@@ -331,7 +331,7 @@ function WatchContent() {
               </section>
             </div>
             <div className="vp-panel-foot">
-              <span className="vp-note">Each source uses its own player and may show ads.</span>
+              <span className="vp-note">Each source runs its own player and may collect data under its own privacy policy. AniFox limits the referrer to its site origin; provider cookies and tracking are controlled by the provider and your browser.</span>
             </div>
           </div>
         </div>

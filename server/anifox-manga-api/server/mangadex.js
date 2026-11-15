@@ -32,7 +32,9 @@ async function request(path, params = {}) {
         })
         if (!response.ok) {
             await response.body?.cancel()
-            throw new Error(`MangaDex responded with ${response.status}`)
+            const error = new Error(`MangaDex responded with ${response.status}`)
+            error.status = response.status
+            throw error
         }
         const text = await readResponseText(response)
         try {

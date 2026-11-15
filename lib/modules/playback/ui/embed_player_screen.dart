@@ -9,6 +9,8 @@ import 'package:webview_all_android/webview_all_android.dart';
 
 import 'package:anifox/common/state/security_prefs_provider.dart';
 import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/core/privacy/embed_navigation_policy.dart';
+import 'package:anifox/core/utils/env.dart';
 import 'package:anifox/modules/history/models/models/history_entry.dart';
 import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/modules/history/state/history_provider.dart';
@@ -20,8 +22,8 @@ import 'package:anifox/streaming/models/stream_source.dart';
 
 /// Plays an episode through one of the bundled embed hosts.
 ///
-/// The hosts render the whole player themselves, so AniFox only supplies the
-/// deep link built from TMDB/AniList/MAL identifiers.
+/// The hosts render their own player, so AniFox supplies the deep link and
+/// restricts top-level navigation to the selected provider and AniFox API.
 class EmbedPlayerScreen extends ConsumerStatefulWidget {
   final PlayerModeOnline mode;
 
@@ -34,6 +36,7 @@ class EmbedPlayerScreen extends ConsumerStatefulWidget {
 class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   late final WebViewController _controller;
   late StreamSource _source;
+  final _navigationPolicy = const EmbedNavigationPolicy();
   String? _url;
   bool _isLoading = true;
   int _progress = 0;
@@ -91,6 +94,23 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       ..setBackgroundColor(Colors.black)
       ..setNavigationDelegate(
         NavigationDelegate(
+          onNavigationRequest: (request) {
+            // Keep provider-owned subframes working. This guard applies only
+            // to top-level navigations, not the provider's media/CDN requests.
+            if (!request.isMainFrame) {
+              return NavigationDecision.navigate;
+            }
+
+            final allowed = _navigationPolicy.allowsMainFrame(
+              targetUrl: request.url,
+              source: _source,
+              apiBaseUrl: Env.ANIFOX_API_URL,
+            );
+
+            return allowed
+                ? NavigationDecision.navigate
+                : NavigationDecision.prevent;
+          },
           onPageStarted: (_) {
             if (mounted) {
               setState(() {
