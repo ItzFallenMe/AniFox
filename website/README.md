@@ -66,7 +66,8 @@
 | `/credits` | Credits |
 | `/api/tmdb/[...path]` | Server-side TMDB proxy |
 | `/api/manga/[...path]` | Shared manga source API used by web and Flutter |
-| `/api/stream` | Validated redirect to a bundled playback provider |\n| `/api/stream/status` | Provider configuration and supported media types |
+| `/api/stream` | Validated redirect to a bundled playback provider |
+| `/api/stream/status` | Provider configuration and supported media types |
 | `/api/download-links` | Server-side fetch of provider choices for the title page |
 | `/api/download-link` | Validated redirect for a selected provider link |
 | `/api/image` | Allow-listed manga image proxy |
