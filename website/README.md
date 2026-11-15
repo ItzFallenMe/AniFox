@@ -103,8 +103,15 @@ to Flutter desktop builds by `npm run flutter -- ...`. Never commit a populated
 
 The player and Flutter app build same-origin `/api/stream` URLs. The handler
 validates the source and media IDs, then redirects to one of the bundled
-providers: Vidly, VidBolt, Vidy or EmbedWave. The selected provider serves its
-own player and media; AniFox does not proxy playback bytes.
+providers: Vidly, VidBolt, Vidy or EmbedWave. Duplicate or malformed query parameters are
+rejected, errors use a consistent JSON envelope, and responses include an
+`X-Request-Id` and `X-AniFox-API-Version` header. Redirect targets are built
+from the fixed HTTPS provider allowlist; AniFox does not accept arbitrary
+redirect URLs or proxy playback bytes.
+
+`GET /api/stream/status` returns AniFox's configured providers and supported
+media types. A provider marked `configured` is present in AniFox's configuration;
+this does not mean the third-party host is currently available.
 
 ## Download provider
 
