@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const ALLOWED_IMAGE_DOMAINS = ["mangadex.org", "mangadex.network"];
@@ -78,6 +80,8 @@ export async function OPTIONS() {
 
 export async function GET(request: Request) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "image", 2);
+  if (limited) return limited;
   const params = new URL(request.url).searchParams;
   if ([...params.keys()].some((key) => key !== "url")) {
     return jsonError(id, "Unknown query parameter.", 400, "UNKNOWN_PARAMETER");
