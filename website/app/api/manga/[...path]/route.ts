@@ -6,7 +6,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const API_VERSION = "1";
-const REQUEST_TIMEOUT_MS = 20_000;
 
 // The adapters are CommonJS JavaScript; pin the route contract here rather
 // than letting TypeScript infer a partial destructured-parameter shape.
@@ -71,14 +70,6 @@ function hasOnlyParams(url: URL, allowed: string[]) {
   );
 }
 
-async function withTimeout<T>(promise: Promise<T>): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("MANGA_UPSTREAM_TIMEOUT")), REQUEST_TIMEOUT_MS)
-    ),
-  ]);
-}
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -104,7 +95,7 @@ export async function GET(
       if (!hasOnlyParams(url, [])) {
         return apiError(id, 400, "UNKNOWN_PARAMETER", "This endpoint does not accept query parameters.");
       }
-      const result = await withTimeout(mangaApi.listSources());
+      const result = await mangaApi.listSources();
       return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600", id);
     }
 
@@ -121,7 +112,7 @@ export async function GET(
       if (source !== "all" && source !== "mangadex") {
         return apiError(id, 400, "UNSUPPORTED_SOURCE", "Only safe-rated MangaDex titles are available.");
       }
-      const result = await withTimeout(searchManga({ query, page, source }));
+      const result = await searchManga({ query, page, source });
       return json(result, 200, "no-store", id);
     }
 
@@ -143,7 +134,7 @@ export async function GET(
       if (category && category !== "None" && !/^[0-9a-f-]{36}$/i.test(category)) {
         return apiError(id, 400, "INVALID_CATEGORY", "Category must be a MangaDex tag ID.");
       }
-      const result = await withTimeout(mangaApi.list({ page, type, state, category }));
+      const result = await mangaApi.list({ page, type, state, category });
       return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600", id);
     }
 
@@ -151,7 +142,7 @@ export async function GET(
       if (!hasOnlyParams(url, [])) {
         return apiError(id, 400, "UNKNOWN_PARAMETER", "This endpoint does not accept query parameters.");
       }
-      const result = await withTimeout(mangaApi.details(first));
+      const result = await mangaApi.details(first);
       return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600", id);
     }
 
@@ -159,7 +150,7 @@ export async function GET(
       if (!hasOnlyParams(url, [])) {
         return apiError(id, 400, "UNKNOWN_PARAMETER", "This endpoint does not accept query parameters.");
       }
-      const result = await withTimeout(mangaApi.pages(first, second));
+      const result = await mangaApi.pages(first, second);
       return json(result, 200, "public, s-maxage=300, stale-while-revalidate=3600", id);
     }
 
@@ -168,7 +159,7 @@ export async function GET(
     const rawStatus = (error as { status?: number })?.status;
     const status = rawStatus === 400 || rawStatus === 404 || rawStatus === 429
       ? rawStatus
-      : errorMessage(error, "").includes("MANGA_UPSTREAM_TIMEOUT")
+      : errorMessage(error, "").includes("timeout")
         ? 504
         : 502;
     const code = status === 400
