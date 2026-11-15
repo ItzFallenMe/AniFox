@@ -1,3 +1,5 @@
+import { enforceApiRateLimit } from "../../../lib/api-rate-limit";
+
 export const runtime = "nodejs";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,4096}$/;
@@ -166,6 +168,8 @@ function getProviderOrigin(): URL | null {
 
 export async function GET(request: Request) {
   const id = requestId();
+  const limited = await enforceApiRateLimit(request, id, "download-links", 5);
+  if (limited) return limited;
   const params = new URL(request.url).searchParams;
   const allowed = new Set(["type", "tmdbId", "anilistId", "episode", "season"]);
   for (const key of params.keys()) {
