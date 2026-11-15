@@ -166,12 +166,19 @@ redirects against the same allowlist, accepts raster image content types only,
 and caps the response at 20 MiB. This prevents the route from becoming an
 arbitrary URL-fetching proxy.
 
-### Deployment note
+### Rate limiting
 
-Rate limiting across serverless instances requires a shared deployment-backed
-store (such as Cloudflare KV/Rate Limiting or Redis). No in-memory limiter is
-pretended to be reliable across workers. Configure platform-level rate limits
-for public endpoints before exposing a high-traffic deployment.
+Cloudflare deployments use the `ANIFOX_API_LIMITER` Worker binding configured
+in `wrangler.jsonc`. Each API route has a per-client allowance of 120 weighted
+requests per 60 seconds; search, image and download-link discovery consume
+additional weight. The client address is taken only from Cloudflare's
+`CF-Connecting-IP` header and SHA-256 hashed before use as a limiter key. AniFox
+does not persist or log client addresses.
+
+Cloudflare's built-in limiter is approximate and counters are local to each
+Cloudflare location; it is not a strict global quota. Shared networks can share
+an IP allowance. For deployments outside Cloudflare, configure equivalent
+platform rate limits. Local Next.js development skips the Worker binding.
 
 ## Download provider
 
