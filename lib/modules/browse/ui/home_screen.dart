@@ -131,6 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ),
 
+            const SliverToBoxAdapter(child: _CatalogHomeRows()),
             if (activeSections.isEmpty)
               const SliverToBoxAdapter(
                 child: Padding(
@@ -138,8 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Center(child: Text('No active sections or sources')),
                 ),
               )
-            else ...[
-              const SliverToBoxAdapter(child: _CatalogHomeRows()),
+            else
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -164,7 +164,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   childCount: activeSections.length,
                 ),
               ),
-            ],
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
