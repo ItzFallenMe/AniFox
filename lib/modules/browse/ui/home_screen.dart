@@ -162,6 +162,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   childCount: activeSections.length,
                 ),
               ),
+            ],
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
@@ -254,6 +255,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         );
     }
+  }
+}
+
+
+class _CatalogHomeRows extends ConsumerWidget {
+  const _CatalogHomeRows();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = [
+      ...ref.watch(mediaFeedRowsProvider(MediaType.MOVIE)),
+      ...ref.watch(mediaFeedRowsProvider(MediaType.TV)),
+    ];
+    final style = ref.watch(uiPrefsProvider.select((p) => p.cardStyle));
+    final isWide = ref.watch(
+      uiPrefsProvider.select((p) => p.isMediaCardWide(style.name)),
+    );
+
+    return Column(
+      children: [
+        for (final row in rows)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: HorizontalSection<UnifiedMedia>(
+              title: row.title,
+              height: style.getLayout(isWideMode: isWide).height,
+              data: ref.watch(mediaFeedRowProvider(row)),
+              itemBuilder: (context, item) => MediaCard(
+                media: item,
+                tag: 'catalog-${row.id}-${item.id}',
+                style: style,
+                onTap: () => context.pushDetails(
+                  mediaType: item.type,
+                  media: item,
+                  tag: 'catalog-${row.id}-${item.id}',
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
