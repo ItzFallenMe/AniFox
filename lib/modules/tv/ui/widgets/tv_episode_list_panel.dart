@@ -16,6 +16,7 @@ class TvEpisodeListPanel extends StatelessWidget {
   final double? currentEpisodeNumber;
   final void Function(UnifiedEpisode episode, StreamSource sourceInfo)
   onEpisodeTap;
+  final List<Widget> Function(BuildContext, UnifiedEpisode, bool, bool)? episodeActionsBuilder;
 
   const TvEpisodeListPanel({
     super.key,
@@ -26,6 +27,7 @@ class TvEpisodeListPanel extends StatelessWidget {
     required this.historyWatchedSet,
     this.currentEpisodeNumber,
     required this.onEpisodeTap,
+    this.episodeActionsBuilder,
   });
 
   @override
@@ -51,6 +53,7 @@ class TvEpisodeListPanel extends StatelessWidget {
             historyWatchedSet.contains(episode.number) ||
             effectiveWatchedProgress >= episode.number;
         final isCurrent = episode.number == currentEpisodeNumber;
+        final actions = episodeActionsBuilder?.call(context, episode, isCurrent, isCompleted) ?? const <Widget>[];
 
         final imageUrl = episode.thumbnailUrl?.isNotEmpty == true
             ? episode.thumbnailUrl!
@@ -169,6 +172,12 @@ class TvEpisodeListPanel extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (actions.isNotEmpty)
+                          Positioned(
+                            right: 8,
+                            bottom: 8,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: actions),
+                          ),
                         if (isCompleted)
                           Positioned(
                             top: 8,
