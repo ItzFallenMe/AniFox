@@ -3,6 +3,7 @@ import 'package:anifox/core/utils/app_logger.dart';
 import 'package:anifox/modules/browse/models/media_args.dart';
 import 'package:anifox/modules/browse/state/matched_media_provider.dart';
 import 'package:anifox/modules/browse/state/media_preference_provider.dart';
+import 'package:anifox/modules/browse/data/tmdb_api.dart';
 import 'package:anifox/modules/episode_meta/state/episode_metadata_providers.dart';
 import 'package:anifox/common/models/unified_episode.dart';
 import 'package:anifox/common/models/unified_media.dart';
@@ -97,6 +98,26 @@ class EpisodesListNotifier extends AsyncNotifier<EpisodesListState> {
               .map(UnifiedEpisode.fromChapter)
               .toList(growable: false),
         );
+      }
+
+      if (arg.type == MediaType.TV && TmdbApi.isConfigured) {
+        final tmdbId = arg.externalIds?.tmdb ?? arg.providerId ?? arg.mediaId;
+        if (tmdbId != null && tmdbId.isNotEmpty) {
+          try {
+            final tmdbEpisodes = await TmdbApi.tvEpisodes(tmdbId);
+            if (tmdbEpisodes.isNotEmpty) {
+              return EpisodesListState(
+                source: matchState.sourceInfo,
+                episodes: tmdbEpisodes,
+              );
+            }
+          } catch (error, stackTrace) {
+            log.w('TMDB episode metadata unavailable; using fallback numbering', [
+              error,
+              stackTrace,
+            ]);
+          }
+        }
       }
 
       final rawEpisodes = generateEpisodesForMedia(arg);

@@ -112,18 +112,40 @@ class _TvDetailsScreenState extends ConsumerState<TvDetailsScreen> {
   }
 
   void _shareMedia(UnifiedMedia media) {
-    final providerId = media.providerId ?? 'anilist';
-    final id = media.id;
-    final type = media.type == MediaType.ANIME ? 'anime' : 'manga';
-    String url;
-    if (providerId == 'myanimelist' || providerId == 'mal') {
-      url = 'https://myanimelist.net/$type/$id';
-    } else if (providerId == 'kitsu') {
-      url = 'https://kitsu.io/$type/$id';
+    final providerId = (media.providerId ?? '').toLowerCase();
+    final type = media.type;
+    final String? url;
+
+    if (type == MediaType.MOVIE || type == MediaType.TV) {
+      final tmdbId = media.externalIds.tmdb;
+      url = tmdbId == null || tmdbId.isEmpty
+          ? media.url
+          : 'https://www.themoviedb.org/${type == MediaType.MOVIE ? 'movie' : 'tv'}/$tmdbId';
     } else {
-      url = 'https://anilist.co/$type/$id';
+      final id = media.id;
+      final trackerId = media.externalIds.anilist ??
+          media.externalIds.mal ??
+          media.externalIds.kitsu ??
+          id;
+      if (providerId == 'myanimelist' || providerId == 'mal' ||
+          media.externalIds.mal != null) {
+        url = 'https://myanimelist.net/${type == MediaType.ANIME ? 'anime' : 'manga'}/${media.externalIds.mal ?? trackerId}';
+      } else if (providerId == 'kitsu' || media.externalIds.kitsu != null) {
+        url = 'https://kitsu.io/${type == MediaType.ANIME ? 'anime' : 'manga'}/${media.externalIds.kitsu ?? trackerId}';
+      } else if (media.externalIds.anilist != null || providerId == 'anilist') {
+        url = 'https://anilist.co/${type == MediaType.ANIME ? 'anime' : 'manga'}/${media.externalIds.anilist ?? trackerId}';
+      } else {
+        url = media.url;
+      }
     }
-    SharePlus.instance.share(ShareParams(uri: Uri.parse(url)));
+
+    final uri = url == null ? null : Uri.tryParse(url);
+    SharePlus.instance.share(
+      ShareParams(
+        uri: uri != null && uri.hasScheme && uri.host.isNotEmpty ? uri : null,
+        text: uri == null ? media.title.getPreferedTitle : null,
+      ),
+    );
   }
 
   Future<void> _playTrailer(String? trailer) async {

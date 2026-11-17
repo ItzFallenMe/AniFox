@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:anifox/common/models/unified_media.dart';
+import 'package:anifox/common/models/unified_episode.dart';
 import 'package:anifox/core/utils/env.dart';
 
 /// Reads TMDB catalogs the same way the website does.
@@ -143,6 +144,58 @@ class TmdbApi {
     return _map(payload, type, detailed: true);
   }
 
+
+  /// Loads real episode titles, air dates, overviews and still images for every
+  /// TMDB season. This avoids treating a TV show's season count as its episode
+  /// count and avoids inventing generic "Episode N" labels.
+  static Future<List<UnifiedEpisode>> tvEpisodes(String tmdbId) async {
+    final cleanId = tmdbId.replaceFirst(RegExp(r'^tmdb-tv-'), '');
+    final details = await _request('/tv/$cleanId');
+    final rawSeasons = details['seasons'];
+    if (rawSeasons is! List) return const [];
+
+    final seasonNumbers = rawSeasons
+        .whereType<Map<String, dynamic>>()
+        .map((season) => season['season_number'])
+        .whereType<num>()
+        .map((number) => number.toInt())
+        .where((number) => number >= 0)
+        .take(20)
+        .toList(growable: false);
+
+    final seasonResults = await Future.wait(
+      seasonNumbers.map((season) async {
+        try {
+          final payload = await _request('/tv/$cleanId/season/$season');
+          final rawEpisodes = payload['episodes'];
+          if (rawEpisodes is! List) return const <UnifiedEpisode>[];
+          return rawEpisodes.whereType<Map<String, dynamic>>().map((item) {
+            final number = item['episode_number'];
+            final seasonNumber = item['season_number'] ?? season;
+            if (number is! num || seasonNumber is! num) return null;
+            return UnifiedEpisode(
+              id: 'tmdb:$cleanId:$seasonNumber:$number',
+              number: number.toDouble(),
+              season: seasonNumber.toInt(),
+              title: item['name'] is String ? item['name'] as String : null,
+              description: item['overview'] is String
+                  ? (item['overview'] as String).trim()
+                  : null,
+              thumbnailUrl: _image(item['still_path'], 'w500'),
+              airDate: item['air_date'] is String
+                  ? item['air_date'] as String
+                  : null,
+            );
+          }).whereType<UnifiedEpisode>().toList(growable: false);
+        } catch (_) {
+          return const <UnifiedEpisode>[];
+        }
+      }),
+    );
+
+    return seasonResults.expand((items) => items).toList(growable: false);
+  }
+
   static UnifiedMedia _map(
     Map<String, dynamic> item,
     MediaType type, {
@@ -159,7 +212,7 @@ class TmdbApi {
             genre['name'] as String,
     ];
     final runtime = item['runtime'] ?? item['episode_run_time'];
-    final seasons = item['number_of_seasons'];
+    final episodeCount = item['number_of_episodes'];
 
     return UnifiedMedia(
       id: 'tmdb-${type.name.toLowerCase()}-$id',
@@ -180,7 +233,7 @@ class TmdbApi {
       score: vote is num && vote > 0 ? double.parse(vote.toStringAsFixed(1)) : null,
       format: type == MediaType.MOVIE ? 'MOVIE' : 'TV',
       genres: genreNames,
-      episodes: type == MediaType.TV && seasons is int ? seasons : null,
+      episodes: type == MediaType.TV && episodeCount is int ? episodeCount : null,
       duration: detailed && runtime is int ? runtime : null,
       externalIds: MediaExternalIds(tmdb: id),
     );
