@@ -718,6 +718,7 @@ class _EpisodeListPanelState extends ConsumerState<EpisodeListPanel> {
         historyWatchedSet: historyWatchedSet,
         currentEpisodeNumber: currentEpisodeNumber,
         onEpisodeTap: widget.onEpisodeTap,
+        episodeActionsBuilder: widget.episodeActionsBuilder,
       );
     }
 
