@@ -12,6 +12,7 @@ import 'package:anifox/modules/browse/ui/widgets/sheets/tracker_error_sheet.dart
 import 'package:anifox/modules/browse/state/discovery_prefs_provider.dart';
 import 'package:anifox/modules/browse/state/discovery_tracker_error_provider.dart';
 import 'package:anifox/modules/browse/state/home_feed_provider.dart';
+import 'package:anifox/modules/browse/state/media_feed_provider.dart';
 import 'package:anifox/modules/library/state/cloud_library_provider.dart';
 import 'package:anifox/modules/tracking/models/models/tracker_type.dart';
 import 'package:anifox/streaming/streaming_providers.dart';
@@ -137,7 +138,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Center(child: Text('No active sections or sources')),
                 ),
               )
-            else
+            else ...[
+              const SliverToBoxAdapter(child: _CatalogHomeRows()),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -255,6 +257,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         );
     }
+  }
+}
+
+
+class _CatalogHomeRows extends ConsumerWidget {
+  const _CatalogHomeRows();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rows = [
+      ...ref.watch(mediaFeedRowsProvider(MediaType.MOVIE)),
+      ...ref.watch(mediaFeedRowsProvider(MediaType.TV)),
+    ];
+    final style = ref.watch(uiPrefsProvider.select((p) => p.cardStyle));
+    final isWide = ref.watch(
+      uiPrefsProvider.select((p) => p.isMediaCardWide(style.name)),
+    );
+
+    return Column(
+      children: [
+        for (final row in rows)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: HorizontalSection<UnifiedMedia>(
+              title: row.title,
+              height: style.getLayout(isWideMode: isWide).height,
+              data: ref.watch(mediaFeedRowProvider(row)),
+              itemBuilder: (context, item) => MediaCard(
+                media: item,
+                tag: 'catalog-${row.id}-${item.id}',
+                style: style,
+                onTap: () => context.pushDetails(
+                  mediaType: item.type,
+                  media: item,
+                  tag: 'catalog-${row.id}-${item.id}',
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
