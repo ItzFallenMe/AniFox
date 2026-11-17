@@ -17,6 +17,8 @@ import 'package:anifox/modules/tracking/state/tracker_registry.dart';
 import 'package:anifox/modules/tracking/state/tracking_prefs_provider.dart';
 import 'package:anifox/modules/browse/state/media_preference_provider.dart';
 import 'package:anifox/modules/tv/ui/widgets/tv_source_dialog.dart';
+import 'package:anifox/modules/downloads/data/download_provider.dart';
+import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/common/models/ui_style_enums.dart';
 import 'package:anifox/common/models/unified_episode.dart';
 import 'package:anifox/common/models/unified_media.dart';
@@ -545,6 +547,22 @@ class _TvEpisodeShelfState extends ConsumerState<TvEpisodeShelf> {
                             state.source,
                             history,
                           ),
+                          onDownload: DownloadProvider.isConfigured &&
+                                  widget.media.type != MediaType.MANGA &&
+                                  widget.media.type != MediaType.NOVEL
+                              ? () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => DownloadOptionsScreen(
+                                      media: widget.media,
+                                      season: episode.season ?? 1,
+                                      episode: episode.number.round(),
+                                      episodeLabel: widget.media.type == MediaType.TV
+                                          ? 'Season ${episode.season ?? 1} · Episode ${episode.number.round()}'
+                                          : 'Episode ${episode.number.round()}',
+                                    ),
+                                  ),
+                                )
+                              : null,
                         );
                       },
                     ),
@@ -861,6 +879,7 @@ class _TvEpisodeCard extends StatelessWidget {
   final bool isCompleted;
   final double radius;
   final VoidCallback onTap;
+  final VoidCallback? onDownload;
 
   const _TvEpisodeCard({
     required this.episode,
@@ -870,6 +889,7 @@ class _TvEpisodeCard extends StatelessWidget {
     required this.isCompleted,
     required this.radius,
     required this.onTap,
+    this.onDownload,
   });
 
   @override
@@ -964,6 +984,30 @@ class _TvEpisodeCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (onDownload != null)
+                          Positioned(
+                            right: 6,
+                            bottom: 7,
+                            child: Material(
+                              color: Colors.black.withValues(alpha: 0.78),
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                tooltip: 'Download episode',
+                                visualDensity: VisualDensity.compact,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 34,
+                                  height: 34,
+                                ),
+                                padding: EdgeInsets.zero,
+                                onPressed: onDownload,
+                                icon: const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
                         if (isCompleted)
                           Positioned(
                             top: 6,
