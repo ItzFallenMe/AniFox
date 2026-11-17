@@ -165,21 +165,36 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
                     radius: uiRoundness,
                     icon: const Icon(Icons.share, size: 18),
                     onPressed: () {
-                      final providerId = displayMedia.providerId ?? 'anilist';
-                      final id = displayMedia.id;
-                      final type = widget.mediaType == MediaType.ANIME
-                          ? 'anime'
-                          : 'manga';
-                      String url;
-                      if (providerId == 'myanimelist' || providerId == 'mal') {
-                        url = 'https://myanimelist.net/$type/$id';
-                      } else if (providerId == 'kitsu') {
-                        url = 'https://kitsu.io/$type/$id';
+                      final providerId = (displayMedia.providerId ?? '').toLowerCase();
+                      final type = widget.mediaType;
+                      final String? url;
+                      if (type == MediaType.MOVIE || type == MediaType.TV) {
+                        final tmdbId = displayMedia.externalIds.tmdb;
+                        url = tmdbId == null || tmdbId.isEmpty
+                            ? displayMedia.url
+                            : 'https://www.themoviedb.org/${type == MediaType.MOVIE ? 'movie' : 'tv'}/$tmdbId';
                       } else {
-                        url = 'https://anilist.co/$type/$id';
+                        final trackerId = displayMedia.externalIds.anilist ??
+                            displayMedia.externalIds.mal ??
+                            displayMedia.externalIds.kitsu ??
+                            displayMedia.id;
+                        if (providerId == 'myanimelist' || providerId == 'mal' ||
+                            displayMedia.externalIds.mal != null) {
+                          url = 'https://myanimelist.net/${type == MediaType.ANIME ? 'anime' : 'manga'}/${displayMedia.externalIds.mal ?? trackerId}';
+                        } else if (providerId == 'kitsu' || displayMedia.externalIds.kitsu != null) {
+                          url = 'https://kitsu.io/${type == MediaType.ANIME ? 'anime' : 'manga'}/${displayMedia.externalIds.kitsu ?? trackerId}';
+                        } else if (displayMedia.externalIds.anilist != null || providerId == 'anilist') {
+                          url = 'https://anilist.co/${type == MediaType.ANIME ? 'anime' : 'manga'}/${displayMedia.externalIds.anilist ?? trackerId}';
+                        } else {
+                          url = displayMedia.url;
+                        }
                       }
+                      final uri = url == null ? null : Uri.tryParse(url);
                       SharePlus.instance.share(
-                        ShareParams(uri: Uri.parse(url)),
+                        ShareParams(
+                          uri: uri != null && uri.hasScheme && uri.host.isNotEmpty ? uri : null,
+                          text: uri == null ? displayMedia.title.getPreferedTitle : null,
+                        ),
                       );
                     },
                   ),
