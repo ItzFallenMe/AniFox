@@ -13,6 +13,8 @@ import 'package:anifox/modules/reader/models/reader_mode.dart';
 import 'package:anifox/common/models/unified_episode.dart';
 import 'package:anifox/common/models/unified_media.dart';
 import 'package:anifox/modules/browse/state/episodes_provider.dart';
+import 'package:anifox/modules/downloads/data/download_provider.dart';
+import 'package:anifox/modules/downloads/ui/download_options_screen.dart';
 import 'package:anifox/common/widgets/app_bottom_sheet.dart';
 import 'package:anifox/common/widgets/app_focus_hover.dart';
 import 'package:anifox/common/widgets/source_selector_list.dart';
