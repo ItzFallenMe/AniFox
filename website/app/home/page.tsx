@@ -18,6 +18,8 @@ interface HomeData {
   tv: Media[];
   topMovies: Media[];
   upcoming: Media[];
+  topTv: Media[];
+  airingToday: Media[];
 }
 
 export default function StreamingHomePage() {
@@ -29,14 +31,16 @@ export default function StreamingHomePage() {
     ]);
 
     try {
-      const [trending, movies, tv, topMovies, upcoming] = await Promise.all([
+      const [trending, movies, tv, topMovies, upcoming, topTv, airingToday] = await Promise.all([
         getTrending(),
-        getMovieList("popular"),
+        getMovieList("now_playing"),
         getTvList("popular"),
         getMovieList("top_rated"),
         getMovieList("upcoming"),
+        getTvList("top_rated"),
+        getTvList("airing_today"),
       ]);
-      return { trending, animeTrending, animePopular, animeTop, movies, tv, topMovies, upcoming };
+      return { trending, animeTrending, animePopular, animeTop, movies, tv, topMovies, upcoming, topTv, airingToday };
     } catch {
       return {
         trending: [],
@@ -47,6 +51,8 @@ export default function StreamingHomePage() {
         tv: [],
         topMovies: [],
         upcoming: [],
+        topTv: [],
+        airingToday: [],
       };
     }
   }, []);
@@ -56,6 +62,8 @@ export default function StreamingHomePage() {
     const list: RailData[] = [];
     if (data.movies.length) list.push({ title: "New Movies", items: data.movies });
     if (data.tv.length) list.push({ title: "Popular TV Shows", items: data.tv });
+    if (data.topTv.length) list.push({ title: "Top Rated TV Shows", items: data.topTv });
+    if (data.airingToday.length) list.push({ title: "Airing Today", items: data.airingToday });
     if (data.animeTrending.length) list.push({ title: "Trending Anime", items: data.animeTrending });
     if (data.topMovies.length) list.push({ title: "Top Rated Movies", items: data.topMovies });
     if (data.upcoming.length) list.push({ title: "Upcoming Movies", items: data.upcoming });
